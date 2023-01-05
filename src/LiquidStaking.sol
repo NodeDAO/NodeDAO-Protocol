@@ -15,6 +15,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     uint256 private bufferedEtherPosition ;
     uint256 private depositFeeRate ;
     uint256 public constant totalBasisPoints = 10000;
+    uint256 public constant DEPOSIT_SIZE = 32 ether;
 
     mapping(address => uint256) public operatorPoolBalances;
 
@@ -46,7 +47,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
             _node_operator = getChainUp();
         }
 
-        // require(iNodeOperatorRegistry.checkTrustOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
+        // require(iNodeOperatorRegistry.checkTrustOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
 
         uint256 depositNet ;
         if(getDepositFeeRate() == 0 ){
@@ -61,6 +62,18 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
         emit DepositReceived(msg.sender, msg.value, _referral);
     }
+
+    function stakeNFT(address _referral, address _node_operator) external payable nonReentrant {
+        require(msg.value >= DEPOSIT_SIZE , "Stake amount must be minimum 32 ether");
+        require(_referral != address(0x0), "Referral address must be provided");
+
+        if (_node_operator == address(0)) {
+            _node_operator = getChainUp();
+        // require(iNodeOperatorRegistry.isOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
+
+    }
+    }
+
 
     function getChainUp() internal pure returns(address) {
          return  address(0) ;
