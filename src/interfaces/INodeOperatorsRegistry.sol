@@ -8,14 +8,14 @@ pragma solidity ^0.8.7;
   */
 interface INodeOperatorsRegistry {
     /**
-      * @notice Add node operator named `name` with reward address `rewardAddress` and staking limit = 0 validators
-      * @param _name Human-readable name
-      * @param _rewardAddress Ethereum 1 address which receives ETH rewards for this operator
-      * @param _controllerAddress Ethereum 1 address for the operator's management authority
-      * @return a unique key of the added operator
-      */
-    function registerOperator(string _name, address _rewardAddress, address _controllerAddress) external returns (uint256 id);
-    
+    * @notice Add node operator named `name` with reward address `rewardAddress` and staking limit = 0 validators
+    * @param _name Human-readable name
+    * @param _rewardAddress Ethereum 1 address which receives ETH rewards for this operator
+    * @param _controllerAddress Ethereum 1 address for the operator's management authority
+    * @return id a unique key of the added operator
+    */
+    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress) external payable returns (uint256 id);
+
     /**
       * @notice Set an operator as trusted
       * @param _id operator id
@@ -33,7 +33,7 @@ interface INodeOperatorsRegistry {
       * @param _id operator id
       * @param _name operator new name
       */
-    function setNodeOperatorName(uint256 _id, string _name) external;
+    function setNodeOperatorName(uint256 _id, string memory _name) external;
 
     /**
       * @notice Set the rewardAddress of the operator
@@ -53,18 +53,17 @@ interface INodeOperatorsRegistry {
       * @notice Get information about an operator
       * @param _id operator id
       * @param _fullInfo Get all information
-      * 
       */
     function getNodeOperator(uint256 _id, bool _fullInfo) external view returns (
         bool trusted,
-        string name,
+        string memory name,
         address rewardAddress,
         address controllerAddress);
 
     /**
       * @notice Returns total number of node operators
       */
-    function getNodeOperatorsCount() public view returns (uint256);
+    function getNodeOperatorsCount() external view returns (uint256);
 
    /**
       * @notice Returns whether an operator is trusted
