@@ -10,3 +10,6 @@
 [submodule "lib/openzeppelin-upgrades"]
 	path = lib/openzeppelin-upgrades
 	url = https://github.com/Openzeppelin/openzeppelin-upgrades
+[submodule "lib/ERC721A-Upgradeable"]
+	path = lib/ERC721A-Upgradeable
+	url = https://github.com/chiru-labs/ERC721A-Upgradeable
