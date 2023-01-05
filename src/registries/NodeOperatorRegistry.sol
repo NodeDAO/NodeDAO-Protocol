@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-contract NodeOperatorRegistry {
+import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+
+contract NodeOperatorRegistry is ReentrancyGuardUpgradeable {
     uint256 public totalOperators;
 
     function registerValidator(
