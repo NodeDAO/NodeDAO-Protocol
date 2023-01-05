@@ -7,7 +7,7 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
-contract KETH is
+contract NETH is
     Initializable,
     OwnableUpgradeable,
     UUPSUpgradeable,
