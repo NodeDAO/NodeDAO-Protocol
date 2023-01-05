@@ -32,8 +32,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         withdrawalCredentials = withdrawalCreds;
         // IVNFT vnft = IVNFT(_validatorNftAddress) ;
         // INETH iNETH = INETH(_nETHAddress) ;
-        // INodeOperatorRegistry iNETH =        
-         // INodeOperatorRegistry iNodeOperatorRegistry = INETH(_nodeOperatorRegistry) ;
+        // INodeOperatorRegistry iNodeOperatorRegistry = INETH(_nodeOperatorRegistry) ;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -44,7 +43,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         require(_referral != address(0x0), "Referral address must be provided");
 
         if (_node_operator == address(0)) {
-            _node_operator = getChainUp();
+            _node_operator = getChainUpFromNodeRegistry();
         }
 
         // require(iNodeOperatorRegistry.checkTrustOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
@@ -63,19 +62,21 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         emit DepositReceived(msg.sender, msg.value, _referral);
     }
 
-    function stakeNFT(address _referral, address _node_operator) external payable nonReentrant {
+    function mintNFT(bytes calldata data) external payable nonReentrant {
         require(msg.value >= DEPOSIT_SIZE , "Stake amount must be minimum 32 ether");
-        require(_referral != address(0x0), "Referral address must be provided");
+        // require(iNodeOperatorRegistry.checkOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
+        // eth32Route();
+     }
 
-        if (_node_operator == address(0)) {
-            _node_operator = getChainUp();
-        // require(iNodeOperatorRegistry.isOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
+    //  function unstake(){}
 
-    }
-    }
+    //  function wrapNFT(){}
 
+    //  function unwrapNFT(){}
 
-    function getChainUp() internal pure returns(address) {
+    //  function burnNFT(){}
+
+    function getChainUpFromNodeRegistry() internal pure returns(address) {
          return  address(0) ;
     }
 
@@ -95,5 +96,10 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         // require(iNodeOperatorRegistry.checkTrustOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
         operatorPoolBalances[operator] += amount;
     }
+
+    // function getFreeEther() returns(uint256){
+    //     // consider EL rewards, Buffered/Deposited Ether
+    // }
+
 
 }

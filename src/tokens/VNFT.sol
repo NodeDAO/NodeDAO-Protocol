@@ -15,6 +15,10 @@ contract VNFT is
     UUPSUpgradeable
 {
 
+  struct Validator{
+  bytes pubkey ;
+  uint256 tokenID ;
+  }
 
   // ILiquidStaking public iLiquidStaking;
 
@@ -156,6 +160,23 @@ contract VNFT is
 
     return validators;
   }
+
+
+  // function isLiquidStaking(uint256 tokenID) returns( bool) 
+  // { return  ownerOf(tokenID) == liqStakingAddress 
+  // } 
+
+  // function getAllTokensOfLiquidStaking( ) returns( bool) 
+  // {  for(){
+  // return uint256[] 
+  // }
+  // } 
+
+  // function validatorsandTokenOfOwner(address operator) returns(Validator[] memory ) {}
+
+  // function validatorsandTokenOfOperator(address operator) returns(Validator[] memory )  {}
+
+  // function tokensOfOwner(address operator) external returns(uint256[] memory )  {}
 
   /**
    * @notice Returns the gas height of the tokenId
