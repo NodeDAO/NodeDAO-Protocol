@@ -5,7 +5,7 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "../interfaces/INodeOperatorsRegistry.sol";
+import "src/interfaces/INodeOperatorsRegistry.sol";
 
 /**
   * @title Node Operator registry
@@ -65,7 +65,7 @@ contract NodeOperatorRegistry is
 
     function initialize(address _dao, address _daoValutAddress) public initializer {
         dao = _dao;
-        dao = _daoValutAddress;
+        daoValutAddress = _daoValutAddress;
          __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
     }
@@ -167,7 +167,7 @@ contract NodeOperatorRegistry is
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.controllerAddress, "AUTH_FAILED");
 
-        operators[_id].rewardAddress = _controllerAddress;
+        operators[_id].controllerAddress = _controllerAddress;
         emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
     }
 
@@ -176,7 +176,7 @@ contract NodeOperatorRegistry is
       * @param _id operator id
       * @param _fullInfo Get all information
       */
-    function getNodeOperator(uint256 _id, bool _fullInfo)external view
+    function getNodeOperator(uint256 _id, bool _fullInfo) external view
         operatorExists(_id)
         returns (
             bool trusted,
@@ -212,6 +212,13 @@ contract NodeOperatorRegistry is
     }
 
    /**
+      * @notice set dao valut address
+      */
+    function setDaoAddress(address _dao) external onlyDao {
+        dao = _dao;
+    }
+
+    /**
       * @notice set dao valut address
       */
     function setDaoValutAddress(address _daoValutAddress) external onlyDao {
