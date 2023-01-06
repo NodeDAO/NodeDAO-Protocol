@@ -66,11 +66,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         emit DepositReceived(msg.sender, msg.value, _referral);
     }
 
-    function mintNFT(bytes calldata data) external payable nonReentrant {
-        require(msg.value >= DEPOSIT_SIZE , "Stake amount must be minimum 32 ether");
-        // require(iNodeOperatorRegistry.getNodeOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
-        // eth32Route();
-     }
 
     //    function eth32Route(bytes calldata data) internal returns (bool) {
     //     bytes32 hash = precheck(data);
