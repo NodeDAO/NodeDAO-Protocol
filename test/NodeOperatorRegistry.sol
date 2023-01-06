@@ -211,21 +211,21 @@ contract NodeOperatorRegistryTest is Test {
 
     // -------------
 
-    function testIsTrusedOperatorNotExist() public {
+    function testIsTrustedOperatorNotExist() public {
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
-        operatorRegistry.isTrusedOperator(0);
+        operatorRegistry.isTrustedOperator(0);
     }
 
-    function testIsTrusedOperator() public {
+    function testTrustedOperator() public {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
         
-        bool trused = operatorRegistry.isTrusedOperator(0);
+        bool trused = operatorRegistry.isTrustedOperator(0);
         assertEq(trused, false);
 
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(0);
 
-        trused = operatorRegistry.isTrusedOperator(0);
+        trused = operatorRegistry.isTrustedOperator(0);
         assertEq(trused, true);
     }
 

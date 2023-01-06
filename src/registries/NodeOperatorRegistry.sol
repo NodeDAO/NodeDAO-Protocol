@@ -203,7 +203,7 @@ contract NodeOperatorRegistry is
    /**
       * @notice Returns whether an operator is trusted
       */
-    function isTrusedOperator(uint256 _id) external view
+    function isTrustedOperator(uint256 _id) external view
         operatorExists(_id)
         returns (bool)
     {
