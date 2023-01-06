@@ -45,7 +45,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
     function stakeETH(address _referral, uint256 _node_operator) external payable nonReentrant {
         
-        // require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
+        require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
         require(msg.value != 0, "Stake amount must not be Zero");
         require(msg.value >= 100 wei, "Stake amount must be minimum  100 wei");
         require(_referral != address(0x0), "Referral address must be provided") ;
@@ -72,9 +72,22 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
     //  function unstake()nonReentrant whenNotPaused {}
 
-    //  function wrapNFT(){}
+    /*  function wrapNFT(){
+        checkWrapNftIsValid
+        checkTransferredkETH
+        verifyNFTValue
+        addUserGasHeight
+        burnKETH
+        transferNFT
+    } */ 
 
-    //  function unwrapNFT(){}
+    /*  function unwrapNFT(){
+            require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
+            verifyNFTValue from Oracle
+            transferFromNFT from VNFT
+            removeUserGasHeight from EexceutionVault
+            mintKETH from NETH
+    }*/ 
 
     //  function burnNFT(){}
 
@@ -117,7 +130,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         beaconEtherPosition -= _amt ;
     }
 
-
     function setDepositFeeRate(uint256 _rate) external onlyOwner {
         depositFeeRate = _rate ;
     }
@@ -131,9 +143,14 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         operatorPoolBalances[operator] += amount;
     }
 
-    // function getFreeEther() returns(uint256){
-    //     // consider EL rewards, Buffered/Deposited Ether
-    // }
+    /* function getFreeEther() returns(uint256){
+    //  consider EL rewards, Buffered/Deposited Ether
+    return bufferedEtherPosition +  computeELRewards() ;
+    } */
+
+    /* function computeELRewards() internal returns (uint256) {
+          return 0;
+      }*/
 
 
 }
