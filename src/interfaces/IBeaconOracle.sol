@@ -9,7 +9,7 @@ pragma solidity ^0.8.7;
   */
 interface IBeaconOracle {
     // TODO:@renshiwei 2023/1/5 description: verifyNftValue function
-    function verifyNftValue(bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID) external returns (bool);
+    function verifyNftValue(bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID) external view returns (bool);
 
     // Is a member of the dao
     function isDaoMember(address _daoMember) external view returns (bool);

@@ -81,6 +81,10 @@ contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     }
 
     function isDaoMember(address _daoMember) external view returns (bool) {
+        return _isDaoMember(_daoMember);
+    }
+
+    function _isDaoMember(address _daoMember) internal view returns (bool) {
         //        return daoMembers.indexOf(_daoMember) >= 0;
         return false;
     }
@@ -90,11 +94,8 @@ contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         return 1 + n;
     }
 
-    // todo 重新设置 epochId  只要是operator成员就可以设置吗？  权限问题
+    // todo 权限问题：dao成员、报名单operator、合约所有者
     function resetExpectedEpochId() external onlyOwner {
-        // 判断是否是白名单Operator
-        // todo 权限是否冲突？
-        //        require(getNodeOperatorsContract().isTrustedOperator(msg.sender), "Not part of DAOs' trusted list of addresses");
         expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + EPOCHS_PER_FRAME;
     }
 
@@ -106,25 +107,15 @@ contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         return INodeOperatorsRegistry(nodeOperatorsContract);
     }
 
-    // getter
-    //    function getExpectedEpochId() public view returns (uint256) {
-    //        return expectedEpochId;
-    //    }
-
-    // todo 存在问题 一轮投票后 未满足quorum 需要清除一些基准数据：submittedReports hasSubmitted
-    // todo 需要提供一种方式，让oracle获得 isReported
     // todo 可以添加一些 emit 供oracle进行订阅
-    // todo 重新设置结构
     function reportBeacon(uint256 epochId, uint256 data, bytes32 nodeRankingCommitment) external {
-        // todo 判断是否为dao成员的地址
-        //        require(getNodeOperatorsContract().isTrusedOperator(msg.sender), "Not part of DAOs' trusted list of addresses");
+        require(isToQuorum, "Quorum has been reached.");
+        require(_isDaoMember(msg.sender), "Not part of DAOs' trusted list of addresses");
         require(epochId == expectedEpochId, "The epoch submitted is not expected.");
         require(hasSubmitted[msg.sender] == false, "This msg.sender has already submitted the vote.");
 
-        // 结果 hash 作为 k
         bytes32 hash = keccak256(abi.encode(data, nodeRankingCommitment));
         submittedReports[hash]++;
-
         hasSubmitted[msg.sender] = true;
 
         uint256 quorum = getQuorum();
@@ -133,17 +124,23 @@ contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         }
     }
 
-    // todo
     function pushReport(uint256 data, bytes32 nodeRankingCommitment) internal {
         ILiquidStaking liquidStaking = getLiquidStaking();
         liquidStaking.handleOracleReport(data, nodeRankingCommitment);
         uint256 nextExpectedEpoch = expectedEpochId + EPOCHS_PER_FRAME;
-        // todo report后会重新设置 epochId  如果当天report失败了，那么想让epochId加一天 只能手动  resetExpectedEpochId
         expectedEpochId = nextExpectedEpoch;
+        // The report passed on the same day
+        isToQuorum = true;
+
+        // todo
+        // Clear the map data that stores the report results
+        //        delete submittedReports;
+        //        delete hasSubmitted;
     }
 
     // todo
-    function verifyNftValue(bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID) external returns (bool){
+    function verifyNftValue(bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID) external view returns (bool){
+
         return false;
     }
 
@@ -169,7 +166,7 @@ contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     function reportDecode(uint256 input) internal {
         beaconBalances = input >> 64;
         // todo
-        //        beaconActiveValidators = input & 0xff;
+        //        beaconActiveValidators = input & 0xffffffff;
     }
 
 }
