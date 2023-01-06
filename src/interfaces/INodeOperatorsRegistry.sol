@@ -68,7 +68,7 @@ interface INodeOperatorsRegistry {
    /**
       * @notice Returns whether an operator is trusted
       */
-    function isTrusedOperator(uint256 _id) external view returns (bool);
+    function isTrustedOperator(uint256 _id) external view returns (bool);
 
     event NodeOperatorRegistered(uint256 id, string name, address rewardAddress, address controllerAddress);
     event NodeOperatorTrustedSet(uint256 id, string name, bool trusted);
