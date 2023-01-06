@@ -6,17 +6,19 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "src/interfaces/INEth.sol";
 
 contract NETH is
     Initializable,
     OwnableUpgradeable,
     UUPSUpgradeable,
-    ERC20Upgradeable
+    ERC20Upgradeable,
+    INEth
 {
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     // Calculate the amount of ETH backing an amount of nETH
-    function getEthValue(uint256 _nethAmount) public view returns (uint256) {
+    function getEthValue(uint256 _nethAmount) public view override returns (uint256) {
         // TODO: get total eth balance
         uint256 totalPooledEth = 10;
         uint256 nEthSupply = totalSupply();
@@ -29,7 +31,7 @@ contract NETH is
     }
 
     // Calculate the amount of nETH backing an amount of ETH
-    function getNethValue(uint256 _ethAmount) public view returns (uint256) {
+    function getNethValue(uint256 _ethAmount) public view override returns (uint256) {
         uint256 totalPooledEth = 10;
         uint256 nEthSupply = totalSupply();
 
@@ -43,7 +45,7 @@ contract NETH is
     }
 
     // Mint nETH
-    function mint(uint256 _ethAmount, address _to) internal returns (uint256) {
+    function mint(uint256 _ethAmount, address _to) external override returns (uint256) {
         // Get nETH amount
         uint256 nethAmount = getNethValue(_ethAmount);
 
@@ -59,7 +61,7 @@ contract NETH is
     }
 
     // Burn nETH for ETH
-    function burn(uint256 _nethAmount) external {
+    function burn(uint256 _nethAmount) external override{
         // Check nETH amount
         require(_nethAmount > 0, "Invalid token burn amount");
         require(balanceOf(msg.sender) >= _nethAmount, "Insufficient nETH balance");
