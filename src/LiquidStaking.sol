@@ -9,6 +9,7 @@ import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import "src/interfaces/INodeOperatorsRegistry.sol";
 import "src/interfaces/ILiquidStaking.sol";
+import "src/interfaces/INEth.sol";
 
 contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable, ILiquidStaking{
     
@@ -30,15 +31,16 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     event EtherDeposited(address from, uint256 balance, uint256 height);
 
     INodeOperatorsRegistry iNodeOperatorRegistry;
+    INEth iNETH;
     // function initialize( bytes memory withdrawalCreds, address _validatorNftAddress , address _nETHAddress, address _nodeOperatorRegistry  ) external initializer {
-    function initialize( bytes memory withdrawalCreds, address _nodeOperatorRegistry ) external initializer {
+    function initialize( bytes memory withdrawalCreds, address _nodeOperatorRegistry, address _nETHAddress ) external initializer {
         __Ownable_init(); 
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         withdrawalCredentials = withdrawalCreds;
         iNodeOperatorRegistry = INodeOperatorsRegistry(_nodeOperatorRegistry) ;
         // IVNFT vnft = IVNFT(_validatorNftAddress) ;
-        // INETH iNETH = INETH(_nETHAddress) ;
+         iNETH = INEth(_nETHAddress) ;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -59,25 +61,30 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         }
         addBufferedEtherPosition(depositNet) ;
         addToOperatorBalance(_node_operator, depositNet);
-        // iNETH.mint(msg.sender, depositNet);
+        iNETH.mint(depositNet, msg.sender);
 
         emit DepositReceived(msg.sender, msg.value, _referral);
     }
 
-    function mintNFT(bytes calldata data) external payable nonReentrant {
-        require(msg.value >= DEPOSIT_SIZE , "Stake amount must be minimum 32 ether");
-        // require(iNodeOperatorRegistry.checkOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
-        // eth32Route();
-     }
+
+    //    function eth32Route(bytes calldata data) internal returns (bool) {
+    //     bytes32 hash = precheck(data);
+    //     signercheck(bytes32(data[256:288]), bytes32(data[288:320]), uint8(bytes1(data[1])), hash, vault.authority());
+    //     deposit(data);
+    //     vault.settle(); // we can optimize this to settle only a particular vault
+    //     //nftContract.whiteListMint(data[16:64], msg.sender);
+    //     return true;
+    // }
+
 
     //  function unstake()nonReentrant whenNotPaused {}
 
     /*  function wrapNFT(){
-        checkWrapNftIsValid
-        checkTransferredkETH
-        verifyNFTValue
-        addUserGasHeight
-        burnKETH
+        checkWrapNftIsValid  from VNFT
+        checkTransferredkETH from ERC20
+        verifyNFTValue  from VNFT
+        addUserGasHeight from EexceutionVault
+        burnNETH  from NETH
         transferNFT
     } */ 
 
@@ -86,14 +93,23 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
             verifyNFTValue from Oracle
             transferFromNFT from VNFT
             removeUserGasHeight from EexceutionVault
-            mintKETH from NETH
+            mintNETH from NETH
     }*/ 
 
-    //  function burnNFT(){}
+    /*   function unstakeNFT(){
+        // require(iNodeOperatorRegistry.getNodeOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
+        // check caller nft , trasnfer this nft to protocoo ,check nodeOperatorRanking, take down validator
+    }*/
 
 
     function handleOracleReport(uint256 data, bytes32 nodeRankingCommitment) external override{
-       
+            //    require(msg.sender == getOracle(), "APP_AUTH_FAILED");
+        // (uint256 _beaconBalance, uint256 _beaconValidators) = decode(data);
+        // uint256 depositedValidators = DEPOSITED_VALIDATORS_POSITION.getStorageUint256();
+        // require(_beaconValidators <= depositedValidators, "REPORTED_MORE_DEPOSITED");
+        // uint256 beaconValidators = BEACON_VALIDATORS_POSITION.getStorageUint256();
+        // require(_beaconValidators >= beaconValidators, "REPORTED_LESS_VALIDATORS");
+        // uint256 appearedValidators = _beaconValidators.sub(beaconValidators);
     }
     
 
