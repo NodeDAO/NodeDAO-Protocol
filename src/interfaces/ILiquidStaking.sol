@@ -5,7 +5,7 @@ interface ILiquidStaking {
 
     function handleOracleReport(uint256  _data, bytes32 nodeRankingCommitment) external;
 
-    function totalPooledEther() external returns(uint256);
+    function getTotalPooledEther() external returns(uint256);
 
 
 }
