@@ -5,12 +5,12 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import "../interfaces/INodeOperatorsRegistry.sol";
-// import "../interfaces/IBeaconOracle.sol";
+import "src/interfaces/INodeOperatorsRegistry.sol";
+import "src/interfaces/ILiquidStaking.sol";
 
-contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable, INodeOperatorsRegistry, ILiquidStaking{
     
     bytes private withdrawalCredentials;
     uint256 private totalBeaconValidators ;
@@ -29,13 +29,14 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     event ELRewardsReceived(uint256 balance);
     event EtherDeposited(address from, uint256 balance, uint256 height);
 
+    INodeOperatorsRegistry iNodeOperatorRegistry;
     // function initialize( bytes memory withdrawalCreds, address _validatorNftAddress , address _nETHAddress, address _nodeOperatorRegistry  ) external initializer {
     function initialize( bytes memory withdrawalCreds, address _nodeOperatorRegistry ) external initializer {
         __Ownable_init(); 
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         withdrawalCredentials = withdrawalCreds;
-        INodeOperatorsRegistry iNodeOperatorRegistry = INodeOperatorsRegistry(_nodeOperatorRegistry) ;
+        iNodeOperatorRegistry = INodeOperatorsRegistry(_nodeOperatorRegistry) ;
         // IVNFT vnft = IVNFT(_validatorNftAddress) ;
         // INETH iNETH = INETH(_nETHAddress) ;
     }
@@ -44,7 +45,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
     function stakeETH(address _referral, uint256 _node_operator) external payable nonReentrant {
         
-        require(iNodeOperatorRegistry.isTrustedOperator(nodeOperatorID) == true , "The message sender is not part of Trusted KingHash Operators");
+        require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
         require(msg.value != 0, "Stake amount must not be Zero");
         require(msg.value >= 100 wei, "Stake amount must be minimum  100 wei");
         require(_referral != address(0x0), "Referral address must be provided") ;
@@ -77,7 +78,14 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
     //  function burnNFT(){}
 
-    function getTotalPooledEther() returns (uint256){
+
+    function handleOracleReport(uint256 data, bytes32 nodeRankingCommitment) external override{
+       
+    }
+    
+
+
+    function getTotalPooledEther() external override returns(uint256){
         return bufferedEtherPosition + transientEtherPosition + beaconEtherPosition ; 
     }
 
