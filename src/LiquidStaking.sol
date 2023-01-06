@@ -12,7 +12,7 @@ import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INEth.sol";
 
 contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable, ILiquidStaking{
-    
+
     bytes private withdrawalCredentials;
     uint256 private totalBeaconValidators ;
     bytes32 private nodeRankingCommitment ;
@@ -34,7 +34,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     INEth iNETH;
     // function initialize( bytes memory withdrawalCreds, address _validatorNftAddress , address _nETHAddress, address _nodeOperatorRegistry  ) external initializer {
     function initialize( bytes memory withdrawalCreds, address _nodeOperatorRegistry, address _nETHAddress ) external initializer {
-        __Ownable_init(); 
+        __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         withdrawalCredentials = withdrawalCreds;
@@ -46,7 +46,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function stakeETH(address _referral, uint256 _node_operator) external payable nonReentrant {
-        
+
         require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
         require(msg.value != 0, "Stake amount must not be Zero");
         require(msg.value >= 100 wei, "Stake amount must be minimum  100 wei");
@@ -56,7 +56,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         if(getDepositFeeRate() == 0 ){
             depositNet = msg.value;
         }
-        else {         
+        else {
             depositNet = getDepositFeeRate() / totalBasisPoints * msg.value ;
         }
         addBufferedEtherPosition(depositNet) ;
@@ -86,7 +86,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         addUserGasHeight from EexceutionVault
         burnNETH  from NETH
         transferNFT
-    } */ 
+    } */
 
     /*  function unwrapNFT(){
             require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
@@ -94,7 +94,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
             transferFromNFT from VNFT
             removeUserGasHeight from EexceutionVault
             mintNETH from NETH
-    }*/ 
+    }*/
 
     /*   function unstakeNFT(){
         // require(iNodeOperatorRegistry.getNodeOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
@@ -102,8 +102,8 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     }*/
 
 
-    function handleOracleReport(uint256 data, bytes32 nodeRankingCommitment) external override{
-            //    require(msg.sender == getOracle(), "APP_AUTH_FAILED");
+    function handleOracleReport(uint64 _beaconBalance, uint32 _beaconValidators, bytes32 nodeRankingCommitment) external override {
+        //    require(msg.sender == getOracle(), "APP_AUTH_FAILED");
         // (uint256 _beaconBalance, uint256 _beaconValidators) = decode(data);
         // uint256 depositedValidators = DEPOSITED_VALIDATORS_POSITION.getStorageUint256();
         // require(_beaconValidators <= depositedValidators, "REPORTED_MORE_DEPOSITED");
@@ -111,11 +111,11 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         // require(_beaconValidators >= beaconValidators, "REPORTED_LESS_VALIDATORS");
         // uint256 appearedValidators = _beaconValidators.sub(beaconValidators);
     }
-    
+
 
 
     function getTotalPooledEther() external override returns(uint256){
-        return bufferedEtherPosition + transientEtherPosition + beaconEtherPosition ; 
+        return bufferedEtherPosition + transientEtherPosition + beaconEtherPosition ;
     }
 
     function getChainUpFromNodeRegistry() internal pure returns(uint256) {
@@ -153,7 +153,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     function getDepositFeeRate() internal view returns(uint256) {
         return depositFeeRate ;
     }
-    
+
     function addToOperatorBalance(uint256 operator, uint256 amount) internal {
         // require(iNodeOperatorRegistry.checkTrustOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
         operatorPoolBalances[operator] += amount;

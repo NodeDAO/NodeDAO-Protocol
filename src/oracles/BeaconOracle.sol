@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
@@ -14,13 +15,20 @@ import "src/interfaces/INodeOperatorsRegistry.sol";
   * BeaconOracle data acquisition and verification
   * Dao management
   */
-contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable, UUPSUpgradeable, IBeaconOracle {
+contract BeaconOracle is
+Initializable,
+ReentrancyGuardUpgradeable,
+OwnableUpgradeable,
+UUPSUpgradeable,
+IBeaconOracle
+{
+    using MerkleProof for uint256;
 
-    // Dao member list
-    address[] public daoMembers;
+    // dao address
+    address public dao;
 
-    // The epoch of each frame (currently 24h for 225)
-    uint64 internal constant EPOCHS_PER_FRAME = 225;
+    // oracle committee members
+    mapping(address => bool) internal reporters;
 
     // Number of slots corresponding to each epoch
     uint64 internal constant SLOTS_PER_EPOCH = 32;
@@ -31,72 +39,88 @@ contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
     // Seconds for each slot
     uint64 internal constant SECONDS_PER_SLOT = 12;
 
+    // The epoch of each frame (currently 24h for 225)
+    uint32 public epochsPerFrame;
+
     // The expected epoch Id is required by oracle for report Beacon
     uint256 public expectedEpochId;
 
-    // k: hash of the uploaded result v: The number of times the same result has been uploaded
-    mapping(bytes32 => uint256) internal submittedReports;
+    // map(k:epochId v(k:Upload the resulting hash v:The number of times you get the same result))
+    mapping(uint256 => mapping(bytes32 => uint256)) internal submittedReports;
 
-    // k:operator address v: Whether to send
-    mapping(address => bool) internal hasSubmitted;
+    // map(k:epochId v(k:reporters address v:is reportBeacon))
+    mapping(uint256 => mapping(address => bool)) internal hasSubmitted;
+
+    // reporting storage
+    uint256[] private currentReportVariants;
 
     // Whether the current frame has reached Quorum
-    bool public isToQuorum;
+    bool public isQuorum;
 
     // current reportBeacon beaconBalances
     uint256 public beaconBalances;
 
     // current reportBeacon beaconValidators
-    uint32 public beaconActiveValidators;
+    uint64 public beaconActiveValidators;
+
+    // reportBeacon merkleTreeRoot storage
+    bytes32 private merkleTreeRoot;
 
     address public liquidStakingContract;
 
     address public nodeOperatorsContract;
 
-    function initalizeOracle(address _liquidStaking, address _nodeOperatorsContract, address[] memory _daoMembers) public initializer {
+    function initalizeOracle(address _liquidStaking, address _nodeOperatorsContract, address[] memory _reporters) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
         liquidStakingContract = _liquidStaking;
         nodeOperatorsContract = _nodeOperatorsContract;
-        daoMembers = _daoMembers;
+        _initReporters(_reporters);
+        epochsPerFrame = 225;
         // So the initial is the first epochId
-        expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + EPOCHS_PER_FRAME;
+        expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
     }
 
-    modifier onlyDaoMember {
-        require(daoMembers.length > 0, "DaoMembers is empty");
-        //        require(daoMembers.indexOf(msg.sender) >= 0, "Sender is not a Dao's member");
+    modifier onlyDao() {
+        require(msg.sender == dao, "AUTH_FAILED");
         _;
     }
 
-    function addDaoMember(address _daoMember) external onlyDaoMember {
-        daoMembers.push(_daoMember);
+    function _initReporters(address[] memory _reporters) internal {
+        for (uint i = 0; i < _reporters.length; i++) {
+            reporters[_reporters[i]] = true;
+        }
     }
 
-    function removeDaoMember(address _daoMember) external onlyDaoMember {
-        //        uint index = daoMembers.indexOf(_daoMember);
-        //        daoMembers.remove(index);
+    function addReporter(address _reporter) external onlyDao {
+        reporters[_reporter] = true;
     }
 
-    function isDaoMember(address _daoMember) external view returns (bool) {
-        return _isDaoMember(_daoMember);
+    function removeReporter(address _reporter) external onlyDao {
+        delete reporters[_reporter];
     }
 
-    function _isDaoMember(address _daoMember) internal view returns (bool) {
-        //        return daoMembers.indexOf(_daoMember) >= 0;
-        return false;
+    function isReporter(address _reporter) external view returns (bool) {
+        return _isReporter(_reporter);
+    }
+
+    function _isReporter(address _reporter) internal view returns (bool) {
+        return reporters[_reporter];
+    }
+
+    function resetExpectedEpochId() external onlyDao {
+        expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
+    }
+
+    function resetEpochsPerFrame(uint32 _epochsPerFrame) external onlyDao {
+        epochsPerFrame = _epochsPerFrame;
     }
 
     function getQuorum() public view returns (uint256) {
         uint256 n = getNodeOperatorsContract().getNodeOperatorsCount() * 2 / 3;
         return 1 + n;
-    }
-
-    // todo 权限问题：dao成员、报名单operator、合约所有者
-    function resetExpectedEpochId() external onlyOwner {
-        expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + EPOCHS_PER_FRAME;
     }
 
     function getLiquidStaking() public view returns (ILiquidStaking) {
@@ -107,47 +131,49 @@ contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
         return INodeOperatorsRegistry(nodeOperatorsContract);
     }
 
-    // todo 可以添加一些 emit 供oracle进行订阅
-    function reportBeacon(uint256 epochId, uint256 data, bytes32 nodeRankingCommitment) external {
-        require(isToQuorum, "Quorum has been reached.");
-        require(_isDaoMember(msg.sender), "Not part of DAOs' trusted list of addresses");
-        require(epochId == expectedEpochId, "The epoch submitted is not expected.");
-        require(hasSubmitted[msg.sender] == false, "This msg.sender has already submitted the vote.");
+    function reportBeacon(uint256 _epochId, uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) external {
+        require(isQuorum, "Quorum has been reached.");
+        require(_isReporter(msg.sender), "Not part of DAOs' trusted list of addresses");
+        require(_epochId == expectedEpochId, "The epoch submitted is not expected.");
+        require(hasSubmitted[_epochId][msg.sender], "This msg.sender has already submitted the vote.");
 
-        bytes32 hash = keccak256(abi.encode(data, nodeRankingCommitment));
-        submittedReports[hash]++;
-        hasSubmitted[msg.sender] = true;
+        bytes32 hash = keccak256(abi.encode(_beaconBalance, _beaconValidators, _nodeRankingCommitment));
+        submittedReports[_epochId][hash]++;
+        hasSubmitted[_epochId][msg.sender] = true;
 
         uint256 quorum = getQuorum();
-        if (submittedReports[hash] > quorum) {
-            pushReport(data, nodeRankingCommitment);
+        if (submittedReports[_epochId][hash] > quorum) {
+            _pushReport(_beaconBalance, _beaconValidators, _nodeRankingCommitment);
         }
     }
 
-    function pushReport(uint256 data, bytes32 nodeRankingCommitment) internal {
-        ILiquidStaking liquidStaking = getLiquidStaking();
-        liquidStaking.handleOracleReport(data, nodeRankingCommitment);
-        uint256 nextExpectedEpoch = expectedEpochId + EPOCHS_PER_FRAME;
-        expectedEpochId = nextExpectedEpoch;
-        // The report passed on the same day
-        isToQuorum = true;
-
-        // todo
-        // Clear the map data that stores the report results
-        //        delete submittedReports;
-        //        delete hasSubmitted;
+    function isReportBeacon(uint256 _epochId) external view returns (bool) {
+        return hasSubmitted[_epochId][msg.sender] == true;
     }
 
-    // todo
-    function verifyNftValue(bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID) external view returns (bool){
+    function _pushReport(uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) internal {
+        ILiquidStaking liquidStaking = getLiquidStaking();
+        liquidStaking.handleOracleReport(_beaconBalance, _beaconValidators, _nodeRankingCommitment);
+        uint256 nextExpectedEpoch = expectedEpochId + epochsPerFrame;
 
-        return false;
+        expectedEpochId = nextExpectedEpoch;
+        // The report passed on the same day
+        isQuorum = true;
+
+        // todo no delete
+        //        delete submittedReports[_epochId];
+        //        delete hasSubmitted[_epochId];
+    }
+
+    // byte32 memory pubkey, uint64 validatorBalance, uint256 nftTokenID
+    function verifyNftValue(bytes32[] memory proof, bytes32 leaf) external view returns (bool){
+        return MerkleProof.verify(proof, merkleTreeRoot, leaf);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function _getFirstEpochOfDay(uint256 _epochId) internal pure returns (uint256) {
-        return (_epochId / EPOCHS_PER_FRAME) * EPOCHS_PER_FRAME;
+    function _getFirstEpochOfDay(uint256 _epochId) internal view returns (uint256) {
+        return (_epochId / epochsPerFrame) * epochsPerFrame;
     }
 
     function _getCurrentEpochId() internal view returns (uint256) {
@@ -157,16 +183,6 @@ contract BeaconOracle is Initializable, ReentrancyGuardUpgradeable, OwnableUpgra
 
     function _getTime() internal view returns (uint256) {
         return block.timestamp;
-    }
-
-    function reportEncode(uint256 beaconBalances, uint32 beaconActiveValidators) internal returns (uint256) {
-        return (beaconBalances << 64) | beaconActiveValidators;
-    }
-
-    function reportDecode(uint256 input) internal {
-        beaconBalances = input >> 64;
-        // todo
-        //        beaconActiveValidators = input & 0xffffffff;
     }
 
 }
