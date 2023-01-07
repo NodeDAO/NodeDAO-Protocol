@@ -12,7 +12,18 @@ interface IBeaconOracle {
     // verifyNftValue
     function verifyNftValue(bytes32[] memory proof, bytes32 leaf) external view returns (bool);
 
-    // Is a reporter
-    function isOracleMember(address _oracleMember) external view returns (bool);
+    // Is a oracle member
+    function isOracleMember(address oracleMember) external view returns (bool);
+
+    function addOracleMember(address _oracleMember) external;
+
+    function removeOracleMember(address _oracleMember) external;
+
+    event AddOracleMember(address oracleMember);
+    event RemoveOracleMember(address oracleMember);
+    event ResetExpectedEpochId(uint256 expectedEpochId);
+    event ResetEpochsPerFrame(uint256 epochsPerFrame);
+    event ReportBeacon(uint256 epochId, address oracleMember, uint256 sameReportCount);
+    event ReportSuccess(uint256 epochId, uint32 sameReportCount, uint32 quorum);
 
 }

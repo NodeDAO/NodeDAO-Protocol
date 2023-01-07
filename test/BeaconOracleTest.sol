@@ -17,7 +17,7 @@ contract BeaconOracleTest is Test {
         _oracleMembers[1] = address(0x2345678923456789234567892345678923456789);
         _oracleMembers[2] = address(0x3456789034567890345678903456789034567890);
 
-        beaconOracle.initialize(_liquidStakingContract, _nodeOperatorsContract, _oracleMembers);
+        beaconOracle.initialize(_dao, _liquidStakingContract, _nodeOperatorsContract);
     }
 
     function setUp() public {
@@ -25,9 +25,31 @@ contract BeaconOracleTest is Test {
         initializer();
     }
 
+    function testDao() public {
+        assertEq(beaconOracle.dao(), _dao);
+    }
+
+    function testAddOracleMember() public {
+        beaconOracle.addOracleMember(address(0x1234567812345678123456781234567812345678));
+    }
+
+    function testGetOracleMemberCount() public {
+        assertEq(beaconOracle.oracleMemberCount(), 1);
+    }
+
     function testIsOracleMember() public {
         bool isOracleMember = beaconOracle.isOracleMember(address(0x1234567812345678123456781234567812345678));
         assertEq(isOracleMember, true);
+    }
+
+    function testRemoveOracleMember() public {
+        beaconOracle.removeOracleMember(address(0x1234567812345678123456781234567812345678));
+    }
+
+
+    function testGetQuorum() public {
+        uint32 quorum = beaconOracle.getQuorum();
+        assertEq(quorum, 0);
     }
 
 }

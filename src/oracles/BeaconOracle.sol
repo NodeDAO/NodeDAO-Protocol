@@ -30,7 +30,7 @@ IBeaconOracle
     // oracle committee members
     mapping(address => bool) internal oracleMembers;
 
-    //    uint32 public oracleMemberCount;
+    uint32 public oracleMemberCount;
 
     // Number of slots corresponding to each epoch
     uint64 internal constant SLOTS_PER_EPOCH = 32;
@@ -53,9 +53,6 @@ IBeaconOracle
     // map(k:epochId v(k:oracleMember address v:is reportBeacon))
     mapping(uint256 => mapping(address => bool)) internal hasSubmitted;
 
-    // reporting storage
-    //    uint256[] private currentReportVariants;
-
     // Whether the current frame has reached Quorum
     bool public isQuorum;
 
@@ -72,14 +69,13 @@ IBeaconOracle
 
     address public nodeOperatorsContract;
 
-    function initialize(address _liquidStaking, address _nodeOperatorsContract, address[] memory _oracleMembers) public initializer {
-        __Ownable_init();
+    function initialize(address _dao, address _liquidStaking, address _nodeOperatorsContract) public initializer {
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
+        dao = _dao;
         liquidStakingContract = _liquidStaking;
         nodeOperatorsContract = _nodeOperatorsContract;
-        _initOracleMembers(_oracleMembers);
         epochsPerFrame = 225;
         // So the initial is the first epochId
         expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
@@ -90,26 +86,19 @@ IBeaconOracle
         _;
     }
 
-    function _initOracleMembers(address[] memory _oracleMembers) internal {
-        for (uint i = 0; i < _oracleMembers.length; i++) {
-            oracleMembers[_oracleMembers[i]] = true;
-        }
-        //        oracleMemberCount += uint32(_oracleMembers.length);
-    }
-
     function addOracleMember(address _oracleMember) external onlyDao {
         oracleMembers[_oracleMember] = true;
-        //        oracleMemberCount ++;
+        oracleMemberCount ++;
+
+        emit AddOracleMember(_oracleMember);
     }
 
     function removeOracleMember(address _oracleMember) external onlyDao {
         delete oracleMembers[_oracleMember];
-        //        oracleMemberCount --;
-    }
+        oracleMemberCount --;
 
-    //    function getOracleMemberOfIndex(uint16 _index) external view returns (address) {
-    //        return oracleMembers[];
-    //    }
+        emit RemoveOracleMember(_oracleMember);
+    }
 
     function isOracleMember(address _oracleMember) external view returns (bool) {
         return _isOracleMember(_oracleMember);
@@ -119,15 +108,23 @@ IBeaconOracle
         return oracleMembers[_oracleMember] == true;
     }
 
+    // ExpectedEpochId is increased by one round
     function resetExpectedEpochId() external onlyDao {
         expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
+
+        emit ResetExpectedEpochId(expectedEpochId);
     }
 
+    // Example Reset the reporting frequency
     function resetEpochsPerFrame(uint32 _epochsPerFrame) external onlyDao {
         epochsPerFrame = _epochsPerFrame;
+
+        emit ResetEpochsPerFrame(_epochsPerFrame);
     }
 
-    function getQuorum() public view returns (uint256) {
+    // get Quorum
+    // Quorum = operatorCount * 2 / 3 +1
+    function getQuorum() public view returns (uint32) {
         uint256 n = getNodeOperatorsContract().getNodeOperatorsCount() * 2 / 3;
         return 1 + n;
     }
@@ -149,10 +146,12 @@ IBeaconOracle
         bytes32 hash = keccak256(abi.encode(_beaconBalance, _beaconValidators, _nodeRankingCommitment));
         submittedReports[_epochId][hash]++;
         hasSubmitted[_epochId][msg.sender] = true;
+        emit ReportBeacon(_epochId, msg.sender, submittedReports[_epochId][hash]);
 
-        uint256 quorum = getQuorum();
+        uint32 quorum = getQuorum();
         if (submittedReports[_epochId][hash] > quorum) {
             _pushReport(_beaconBalance, _beaconValidators, _nodeRankingCommitment);
+            emit ReportSuccess(_epochId, quorum, submittedReports[_epochId][hash]);
         }
     }
 
