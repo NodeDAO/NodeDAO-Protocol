@@ -13,6 +13,6 @@ interface IBeaconOracle {
     function verifyNftValue(bytes32[] memory proof, bytes32 leaf) external view returns (bool);
 
     // Is a reporter
-    function isReporter(address _daoMember) external view returns (bool);
+    function isOracleMember(address _oracleMember) external view returns (bool);
 
 }

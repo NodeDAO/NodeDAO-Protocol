@@ -52,7 +52,7 @@ IBeaconOracle
     mapping(uint256 => mapping(address => bool)) internal hasSubmitted;
 
     // reporting storage
-    uint256[] private currentReportVariants;
+//    uint256[] private currentReportVariants;
 
     // Whether the current frame has reached Quorum
     bool public isQuorum;
@@ -77,7 +77,7 @@ IBeaconOracle
 
         liquidStakingContract = _liquidStaking;
         nodeOperatorsContract = _nodeOperatorsContract;
-        _initoracleMembers(_oracleMembers);
+        _initOracleMembers(_oracleMembers);
         epochsPerFrame = 225;
         // So the initial is the first epochId
         expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
@@ -88,25 +88,25 @@ IBeaconOracle
         _;
     }
 
-    function _initoracleMembers(address[] memory _oracleMembers) internal {
+    function _initOracleMembers(address[] memory _oracleMembers) internal {
         for (uint i = 0; i < _oracleMembers.length; i++) {
             oracleMembers[_oracleMembers[i]] = true;
         }
     }
 
-    function addReporter(address _oracleMember) external onlyDao {
+    function addOracleMember(address _oracleMember) external onlyDao {
         oracleMembers[_oracleMember] = true;
     }
 
-    function removeReporter(address _oracleMember) external onlyDao {
+    function removeOracleMember(address _oracleMember) external onlyDao {
         delete oracleMembers[_oracleMember];
     }
 
-    function isReporter(address _oracleMember) external view returns (bool) {
-        return _isReporter(_oracleMember);
+    function isOracleMember(address _oracleMember) external view returns (bool) {
+        return _isOracleMember(_oracleMember);
     }
 
-    function _isReporter(address _oracleMember) internal view returns (bool) {
+    function _isOracleMember(address _oracleMember) internal view returns (bool) {
         return oracleMembers[_oracleMember];
     }
 
@@ -133,7 +133,7 @@ IBeaconOracle
 
     function reportBeacon(uint256 _epochId, uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) external {
         require(isQuorum, "Quorum has been reached.");
-        require(_isReporter(msg.sender), "Not part of DAOs' trusted list of addresses");
+        require(_isOracleMember(msg.sender), "Not part of DAOs' trusted list of addresses");
         require(_epochId == expectedEpochId, "The epoch submitted is not expected.");
         require(hasSubmitted[_epochId][msg.sender], "This msg.sender has already submitted the vote.");
 
