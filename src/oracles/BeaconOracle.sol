@@ -30,6 +30,8 @@ IBeaconOracle
     // oracle committee members
     mapping(address => bool) internal oracleMembers;
 
+    //    uint32 public oracleMemberCount;
+
     // Number of slots corresponding to each epoch
     uint64 internal constant SLOTS_PER_EPOCH = 32;
 
@@ -52,7 +54,7 @@ IBeaconOracle
     mapping(uint256 => mapping(address => bool)) internal hasSubmitted;
 
     // reporting storage
-//    uint256[] private currentReportVariants;
+    //    uint256[] private currentReportVariants;
 
     // Whether the current frame has reached Quorum
     bool public isQuorum;
@@ -70,7 +72,7 @@ IBeaconOracle
 
     address public nodeOperatorsContract;
 
-    function initalizeOracle(address _liquidStaking, address _nodeOperatorsContract, address[] memory _oracleMembers) public initializer {
+    function initialize(address _liquidStaking, address _nodeOperatorsContract, address[] memory _oracleMembers) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
@@ -92,22 +94,29 @@ IBeaconOracle
         for (uint i = 0; i < _oracleMembers.length; i++) {
             oracleMembers[_oracleMembers[i]] = true;
         }
+        //        oracleMemberCount += uint32(_oracleMembers.length);
     }
 
     function addOracleMember(address _oracleMember) external onlyDao {
         oracleMembers[_oracleMember] = true;
+        //        oracleMemberCount ++;
     }
 
     function removeOracleMember(address _oracleMember) external onlyDao {
         delete oracleMembers[_oracleMember];
+        //        oracleMemberCount --;
     }
+
+    //    function getOracleMemberOfIndex(uint16 _index) external view returns (address) {
+    //        return oracleMembers[];
+    //    }
 
     function isOracleMember(address _oracleMember) external view returns (bool) {
         return _isOracleMember(_oracleMember);
     }
 
     function _isOracleMember(address _oracleMember) internal view returns (bool) {
-        return oracleMembers[_oracleMember];
+        return oracleMembers[_oracleMember] == true;
     }
 
     function resetExpectedEpochId() external onlyDao {
