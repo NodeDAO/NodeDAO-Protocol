@@ -48,7 +48,7 @@ IBeaconOracle
     uint256 public expectedEpochId;
 
     // map(k:epochId v(k:Upload the resulting hash v:The number of times you get the same result))
-    mapping(uint256 => mapping(bytes32 => uint256)) internal submittedReports;
+    mapping(uint256 => mapping(bytes32 => uint32)) internal submittedReports;
 
     // map(k:epochId v(k:oracleMember address v:is reportBeacon))
     mapping(uint256 => mapping(address => bool)) internal hasSubmitted;
@@ -123,10 +123,10 @@ IBeaconOracle
     }
 
     // get Quorum
-    // Quorum = operatorCount * 2 / 3 +1
+    // Quorum = operatorCount * 2 / 3 + 1
     function getQuorum() public view returns (uint32) {
-        uint256 n = getNodeOperatorsContract().getNodeOperatorsCount() * 2 / 3;
-        return 1 + n;
+        uint32 n = uint32(getNodeOperatorsContract().getNodeOperatorsCount()) * 2 / 3;
+        return uint32(n + 1);
     }
 
     function getLiquidStaking() public view returns (ILiquidStaking) {
@@ -173,8 +173,14 @@ IBeaconOracle
         //        delete hasSubmitted[_epochId];
     }
 
-    // byte32 memory pubkey, uint64 validatorBalance, uint256 nftTokenID
-    function verifyNftValue(bytes32[] memory proof, bytes32 leaf) external view returns (bool){
+    // leaf: bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID
+    function verifyNftValue(
+        bytes32[] memory proof,
+        bytes memory pubkey,
+        uint256 validatorBalance,
+        uint256 nftTokenID
+    ) external view returns (bool){
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(pubkey, validatorBalance, nftTokenID))));
         return MerkleProof.verify(proof, merkleTreeRoot, leaf);
     }
 

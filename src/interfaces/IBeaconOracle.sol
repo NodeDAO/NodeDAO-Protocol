@@ -10,7 +10,12 @@ pragma solidity ^0.8.7;
 interface IBeaconOracle {
 
     // verifyNftValue
-    function verifyNftValue(bytes32[] memory proof, bytes32 leaf) external view returns (bool);
+    function verifyNftValue(
+        bytes32[] memory proof,
+        bytes memory pubkey,
+        uint256 validatorBalance,
+        uint256 nftTokenID
+    ) external view returns (bool);
 
     // Is a oracle member
     function isOracleMember(address oracleMember) external view returns (bool);
