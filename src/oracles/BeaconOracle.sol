@@ -28,7 +28,7 @@ IBeaconOracle
     address public dao;
 
     // oracle committee members
-    mapping(address => bool) internal reporters;
+    mapping(address => bool) internal oracleMembers;
 
     // Number of slots corresponding to each epoch
     uint64 internal constant SLOTS_PER_EPOCH = 32;
@@ -48,7 +48,7 @@ IBeaconOracle
     // map(k:epochId v(k:Upload the resulting hash v:The number of times you get the same result))
     mapping(uint256 => mapping(bytes32 => uint256)) internal submittedReports;
 
-    // map(k:epochId v(k:reporters address v:is reportBeacon))
+    // map(k:epochId v(k:oracleMember address v:is reportBeacon))
     mapping(uint256 => mapping(address => bool)) internal hasSubmitted;
 
     // reporting storage
@@ -70,14 +70,14 @@ IBeaconOracle
 
     address public nodeOperatorsContract;
 
-    function initalizeOracle(address _liquidStaking, address _nodeOperatorsContract, address[] memory _reporters) public initializer {
+    function initalizeOracle(address _liquidStaking, address _nodeOperatorsContract, address[] memory _oracleMembers) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
         liquidStakingContract = _liquidStaking;
         nodeOperatorsContract = _nodeOperatorsContract;
-        _initReporters(_reporters);
+        _initoracleMembers(_oracleMembers);
         epochsPerFrame = 225;
         // So the initial is the first epochId
         expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
@@ -88,26 +88,26 @@ IBeaconOracle
         _;
     }
 
-    function _initReporters(address[] memory _reporters) internal {
-        for (uint i = 0; i < _reporters.length; i++) {
-            reporters[_reporters[i]] = true;
+    function _initoracleMembers(address[] memory _oracleMembers) internal {
+        for (uint i = 0; i < _oracleMembers.length; i++) {
+            oracleMembers[_oracleMembers[i]] = true;
         }
     }
 
-    function addReporter(address _reporter) external onlyDao {
-        reporters[_reporter] = true;
+    function addReporter(address _oracleMember) external onlyDao {
+        oracleMembers[_oracleMember] = true;
     }
 
-    function removeReporter(address _reporter) external onlyDao {
-        delete reporters[_reporter];
+    function removeReporter(address _oracleMember) external onlyDao {
+        delete oracleMembers[_oracleMember];
     }
 
-    function isReporter(address _reporter) external view returns (bool) {
-        return _isReporter(_reporter);
+    function isReporter(address _oracleMember) external view returns (bool) {
+        return _isReporter(_oracleMember);
     }
 
-    function _isReporter(address _reporter) internal view returns (bool) {
-        return reporters[_reporter];
+    function _isReporter(address _oracleMember) internal view returns (bool) {
+        return oracleMembers[_oracleMember];
     }
 
     function resetExpectedEpochId() external onlyDao {
