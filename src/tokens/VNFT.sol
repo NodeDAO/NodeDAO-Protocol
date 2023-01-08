@@ -6,6 +6,7 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "lib/ERC721A-Upgradeable/contracts/ERC721AUpgradeable.sol";
+import "src/interfaces/ILiquidStaking.sol";
 
 contract VNFT is
     Initializable,
@@ -14,25 +15,17 @@ contract VNFT is
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable
 {
+  address public liquidStakingAddress;
 
-  struct Validator{
-  bytes pubkey ;
-  uint256 tokenID ;
-  }
-
-  // ILiquidStaking public iLiquidStaking;
-
-  address constant public OPENSEA_PROXY_ADDRESS = 0x1E0049783F008A0085193E00003D00cd54003c71;
+  address constant public OPENSEA_PROXY_ADDRESS = 0x1E0049783F008A0085193E00003D00cd54003c71; // todo 0x1E0049783F008A0085193E00003D00cd54003c71 ?
   uint256 constant public MAX_SUPPLY = 6942069420;
 
-  mapping(bytes => address) public validatorRecords;
+  mapping(bytes => uint256) public validatorRecords; // operator_id
   mapping(uint256 => address) public lastOwners;
 
   bytes[] public _validators;
-  uint256[] public _gasHeights;
-  uint256[] public _nodeCapital;
-  uint256 public _activationDelay = 3600;
-  address private liquidStakingAddress;
+
+  uint256[] public _initHeights;
 
   bool private _isOpenSeaProxyActive = false;
 
@@ -40,22 +33,19 @@ contract VNFT is
   event Transferred(address _to, uint256 _amount);
   event LiquidStakingChanged(address _before, address _after);
   event OpenSeaState(bool _isActive);
+
   function _authorizeUpgrade(address) internal override onlyOwner {}
 
   function initialize() public initializer initializerERC721A {
-        __Ownable_init();
-        __UUPSUpgradeable_init();
-        __ReentrancyGuard_init();
-        __ERC721A_init("Validator Nft", "vNFT");
-    }
+      __Ownable_init();
+      __UUPSUpgradeable_init();
+      __ReentrancyGuard_init();
+      __ERC721A_init("Validator Nft", "vNFT");
+  }
 
   modifier onlyLiquidStaking() {
     require(liquidStakingAddress == msg.sender, "Not allowed to mint/burn nft");
     _;
-  }
-
-  function liquidStakingProxyAddress() external view returns (address) {
-    return liquidStakingAddress;
   }
 
   /**
@@ -84,7 +74,7 @@ contract VNFT is
    * @param pubkey - A 48 bytes representing the validator's public key
    */
   function validatorExists(bytes calldata pubkey) external view returns (bool) {
-    return validatorRecords[pubkey] != address(0);
+    return validatorRecords[pubkey] != 0; // operator 从1开始
   }
 
   /**
@@ -128,7 +118,7 @@ contract VNFT is
    * @notice Finds the tokenId of a validator
    * @dev Returns MAX_SUPPLY if not found
    * @param pubkey - A 48 bytes representing the validator's public key
-   */
+   */ 
   function tokenOfValidator(bytes calldata pubkey) external view returns (uint256) {
     for (uint256 i = 0; i < _validators.length; i++) {
       if (keccak256(_validators[i]) == keccak256(pubkey) && _exists(i)) {
@@ -140,9 +130,9 @@ contract VNFT is
 
   /**
    * @notice Finds all the validator's public key of a particular operator
-   * @param operator - The particular address of the operator
+   * @param _operatorId - The particular address of the operator
    */
-  function validatorsOfOperator(address operator) external view returns (bytes[] memory) {
+  function validatorsOfOperator(uint256 _operatorId) external view returns (bytes[] memory) {
     uint256 total = _nextTokenId();
     uint256 tokenIdsIdx;
     bytes[] memory validators = new bytes[](total);
@@ -153,7 +143,7 @@ contract VNFT is
         if (ownership.burned) { 
           continue;
         }
-        if (validatorRecords[_validators[i]] == operator) {
+        if (validatorRecords[_validators[i]] == _operatorId) {
           validators[tokenIdsIdx++] = _validators[i];
         }
     }
@@ -162,30 +152,14 @@ contract VNFT is
   }
 
 
-  // function isLiquidStaking(uint256 tokenID) returns( bool) 
-  // { return  ownerOf(tokenID) == liqStakingAddress 
-  // } 
-
-  // function getAllTokensOfLiquidStaking( ) returns( bool) 
-  // {  for(){
-  // return uint256[] 
-  // }
-  // } 
-
-  // function validatorsandTokenOfOwner(address operator) returns(Validator[] memory ) {}
-
-  // function validatorsandTokenOfOperator(address operator) returns(Validator[] memory )  {}
-
-  // function tokensOfOwner(address operator) external returns(uint256[] memory )  {}
-
   /**
-   * @notice Returns the gas height of the tokenId
+   * @notice Returns the init height of the tokenId
    * @param tokenId - tokenId of the validator nft
    */
-  function gasHeightOf(uint256 tokenId) external view returns (uint256) {
+  function initHeightOf(uint256 tokenId) external view returns (uint256) {
     require(_exists(tokenId), "Token does not exist");
 
-    return _gasHeights[tokenId];
+    return _initHeights[tokenId];
   }
 
   /**
@@ -196,6 +170,10 @@ contract VNFT is
     require(_ownershipAt(tokenId).burned, "Token not burned yet");
     
     return lastOwners[tokenId];
+  }
+
+  function getLatestTokenId() external view returns (uint256) {
+    return _nextTokenId()
   }
 
   /**
@@ -209,13 +187,13 @@ contract VNFT is
       totalSupply() + 1 <= MAX_SUPPLY,
       "not enough remaining reserved for auction to support desired mint amount"
     );
-    require(validatorRecords[_pubkey] == address(0), "Pub key already in used");
+    require(validatorRecords[_pubkey] == 0, "Pub key already in used");
 
     validatorRecords[_pubkey] = _operator;
 
     _validators.push(_pubkey);
-    _gasHeights.push(block.number + _activationDelay);
-    _nodeCapital.push(32 ether);
+    _gasHeights.push(block.number);
+
     _safeMint(_to, 1);
   }
 
@@ -225,29 +203,7 @@ contract VNFT is
    */
   function whiteListBurn(uint256 tokenId) external onlyLiquidStaking {
     lastOwners[tokenId] = ownerOf(tokenId);
-    _nodeCapital[tokenId] = 0;
     _burn(tokenId);
-  }
-
-  /**
-   * @notice Updates the capital value of a node as the node accrue validator rewards
-   * @param tokenId - tokenId of the validator nft
-   * @param value - The new cpaital value
-   */
-  function updateNodeCapital(uint256 tokenId, uint256 value) external onlyLiquidStaking {
-    if (value > _nodeCapital[tokenId]) {
-        _nodeCapital[tokenId] = value;
-    }
-  }
-
-  /**
-   * @notice Returns the node capital value of a validator nft
-   * @param tokenId - tokenId of the validator nft
-   */
-  function nodeCapitalOf(uint256 tokenId)  external view returns (uint256) {
-    require(_exists(tokenId), "Token does not exist");
-
-    return _nodeCapital[tokenId];
   }
 
   // // metadata URI
@@ -262,26 +218,20 @@ contract VNFT is
     _baseTokenURI = baseURI;
   }
 
-  function withdrawMoney() external nonReentrant onlyOwner {
-    emit Transferred(owner(), address(this).balance);
-    payable(owner()).transfer(address(this).balance);
-  }
-
   function setLiquidStaking(address _liqStakingAddress) external onlyOwner {
     require(_liqStakingAddress != address(0), "LiquidStaking address provided invalid");
     emit LiquidStakingChanged(liquidStakingAddress, _liqStakingAddress);
     liquidStakingAddress = _liqStakingAddress;
-    // iLiquidStaking = ILiquidStaking(_liquidStakingAddress);
   }
 
-  function setGasHeight(uint256 tokenId, uint256 value) external onlyLiquidStaking {
-    if (value > _gasHeights[tokenId]) {
-      _gasHeights[tokenId] = value;
-    }
-  }
-
-  function setActivationDelay(uint256 delay) external onlyOwner {
-    _activationDelay = delay;
+  // function to disable gasless listings for security in case
+  // opensea ever shuts down or is compromised
+  function setIsOpenSeaProxyActive(bool isOpenSeaProxyActive_)
+      external
+      onlyOwner
+  {
+    emit OpenSeaState(isOpenSeaProxyActive_);
+    _isOpenSeaProxyActive = isOpenSeaProxyActive_;
   }
 
   function numberMinted(address owner) external view returns (uint256) {
@@ -298,10 +248,6 @@ contract VNFT is
     // no need to claim reward if user is minting nft
     if (from == address(0) || from == to) {
       return;
-    }
-
-    for (uint256 i = 0; i < quantity; i++) {
-      // iLiquidStaking.disperseRewards(startTokenId + i);
     }
   }
 
@@ -327,19 +273,4 @@ contract VNFT is
 
       return super.isApprovedForAll(owner, operator);
   }
-
-  // function to disable gasless listings for security in case
-  // opensea ever shuts down or is compromised
-  function setIsOpenSeaProxyActive(bool isOpenSeaProxyActive_)
-      external
-      onlyOwner
-  {
-    emit OpenSeaState(isOpenSeaProxyActive_);
-    _isOpenSeaProxyActive = isOpenSeaProxyActive_;
-  }
-
-
-  receive() external payable{}
-
-
 }
