@@ -78,8 +78,7 @@ IBeaconOracle
         nodeOperatorsContract = _nodeOperatorsContract;
         epochsPerFrame = 225;
         // So the initial is the first epochId
-        // todo test failed
-        //        expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
+        expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
     }
 
     modifier onlyDao() {
@@ -131,11 +130,12 @@ IBeaconOracle
         return INodeOperatorsRegistry(nodeOperatorsContract);
     }
 
+    // todo reportBeacon 本轮投票失败 清空数据出现问题 影响再次投票
     function reportBeacon(uint256 _epochId, uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) external {
-        require(isQuorum, "Quorum has been reached.");
+        require(isQuorum == false, "Quorum has been reached.");
         require(_isOracleMember(msg.sender), "Not part of DAOs' trusted list of addresses");
         require(_epochId == expectedEpochId, "The epoch submitted is not expected.");
-        require(hasSubmitted[_epochId][msg.sender], "This msg.sender has already submitted the vote.");
+        require(hasSubmitted[_epochId][msg.sender] == false, "This msg.sender has already submitted the vote.");
 
         bytes32 hash = keccak256(abi.encode(_beaconBalance, _beaconValidators, _nodeRankingCommitment));
         submittedReports[_epochId][hash]++;
@@ -143,7 +143,8 @@ IBeaconOracle
         emit ReportBeacon(_epochId, msg.sender, submittedReports[_epochId][hash]);
 
         uint32 quorum = getQuorum();
-        if (submittedReports[_epochId][hash] > quorum) {
+        //        uint32 quorum = 3;
+        if (submittedReports[_epochId][hash] >= quorum) {
             _pushReport(_beaconBalance, _beaconValidators, _nodeRankingCommitment);
             emit ReportSuccess(_epochId, quorum, submittedReports[_epochId][hash]);
         }
@@ -161,6 +162,9 @@ IBeaconOracle
         expectedEpochId = nextExpectedEpoch;
         // The report passed on the same day
         isQuorum = true;
+        beaconBalances = _beaconBalance;
+        beaconActiveValidators = _beaconValidators;
+        merkleTreeRoot = _nodeRankingCommitment;
 
         // todo no delete
         //        delete submittedReports[_epochId];

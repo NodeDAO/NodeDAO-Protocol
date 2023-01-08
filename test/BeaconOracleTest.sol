@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 import "forge-std/Test.sol";
 import "src/oracles/BeaconOracle.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
+//import "src/registries/NodeOperatorRegistry.sol";
 
 contract BeaconOracleTest is Test {
     //    event AddOracleMember(address oracleMember);
@@ -14,17 +15,33 @@ contract BeaconOracleTest is Test {
     //    event ReportSuccess(uint256 epochId, uint32 sameReportCount, uint32 quorum);
 
     BeaconOracle beaconOracle;
+    //    NodeOperatorRegistry operatorRegistry;
     address _dao = address(1);
     address _liquidStakingContract = address(2);
     address _nodeOperatorsContract = address(3);
 
+    //    address _daoValutAddress = address(2);
+
     function initializer() private {
+        //        operatorRegistry.initialize(_dao, _daoValutAddress);
         beaconOracle.initialize(_dao, _liquidStakingContract, _nodeOperatorsContract);
     }
 
+    //    function registerOperator() private {
+    //        operatorRegistry.registerOperator{value : 0.1 ether}("one", address(21), address(4));
+    //        operatorRegistry.registerOperator{value : 0.1 ether}("two", address(22), address(4));
+    //        operatorRegistry.registerOperator{value : 0.1 ether}("three", address(23), address(4));
+    //        operatorRegistry.registerOperator{value : 0.1 ether}("four", address(24), address(4));
+    //        operatorRegistry.registerOperator{value : 0.1 ether}("five", address(25), address(4));
+    //        operatorRegistry.setTrustedOperator(0);
+    //        operatorRegistry.setTrustedOperator(1);
+    //        operatorRegistry.setTrustedOperator(2);
+    //        operatorRegistry.setTrustedOperator(3);
+    //        operatorRegistry.setTrustedOperator(4);
+    //    }
+
     function setUp() public {
-        vm.warp(1606824300);
-        //        vm.warp(beaconOracle.GENESIS_TIME);
+        vm.warp(1673161943);
         beaconOracle = new BeaconOracle();
         initializer();
     }
@@ -85,9 +102,36 @@ contract BeaconOracleTest is Test {
         assertFalse(beaconOracle.isReportBeacon(172531));
     }
 
+    // todo 合约之间的测试调用
     function testReportBeacon() public {
-        //        vm.expectEmit(172531, 1, 1);
-        //        beaconOracle.reportBeacon(172531, 123456789, 12345, "0xc0bbb890aaa33eb4af83ab649b89d8a3c1ba3f3b2814da0b676b66171274ddc3");
+        vm.startPrank(address(1));
+        beaconOracle.addOracleMember(address(11));
+        beaconOracle.addOracleMember(address(12));
+        beaconOracle.addOracleMember(address(13));
+        //        registerOperator();
+        //        assertEq(beaconOracle.getQuorum(), 3);
+        vm.stopPrank();
+        beaconOracle.oracleMemberCount();
+
+
+        assertEq(beaconOracle.beaconBalances(), 0);
+        assertEq(beaconOracle.beaconActiveValidators(), 0);
+        assertFalse(beaconOracle.isReportBeacon(172800));
+
+        bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
+
+        vm.prank(address(11));
+        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
+        vm.prank(address(12));
+        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
+        vm.prank(address(13));
+        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
+
+
+        assertEq(beaconOracle.beaconBalances(), 123456789);
+        assertEq(beaconOracle.beaconActiveValidators(), 12345);
+        assertEq(beaconOracle.isQuorum(), true);
+
     }
 
     //    function convertHexStringToBytes32Array(string memory _hexString) public pure returns (bytes32[] memory) {
@@ -108,9 +152,20 @@ contract BeaconOracleTest is Test {
     }
 
     function testVerifyNftValue() public {
-        bytes32 leaf = 0x2be8989c2d18158d2de1becacd0c9088ebe623f7b82d22adfc88a5d8ce455656;
-        //        bytes32[] memory proof = ;
-        //        assertEq(beaconOracle.verifyNftValue(172531), false);
+        bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
+        bytes memory pubkey = hex"80000001677f23a227dfed6f61b132d114be83b8ad0aa5f3c5d1d77e6ee0bf5f73b0af750cc34e8f2dae73c21dc36f4a";
+        uint256 validatorBalance = 32000000000000000000;
+        uint256 nftTokenID = 1;
+
+        bytes32[] memory proof = new bytes32[](2);
+        proof[0] = 0x877794ba7ca53549ef847bec0cf7a76f50f7f2c3a192f8daf952583741b8580e;
+        proof[1] = 0xab2e0accab37b2e656021ad27eb3c7b975672f09b9c5e94ec87e50acad3373ec;
+
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(pubkey, validatorBalance, nftTokenID))));
+        assertEq(leaf, 0x10e799df87265a6e1c8b5d60ce37fbca4a02c93b5a6a9f5895eeb41a209620f6);
+
+        bool isVerify = MerkleProof.verify(proof, root, leaf);
+        assertEq(isVerify, true);
     }
 
 }
