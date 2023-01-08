@@ -19,29 +19,26 @@ contract BeaconOracleTest is Test {
     address _nodeOperatorsContract = address(3);
 
     function initializer() private {
-        address[] memory _oracleMembers = new address[](3);
-        _oracleMembers[0] = address(0x1234567812345678123456781234567812345678);
-        _oracleMembers[1] = address(0x2345678923456789234567892345678923456789);
-        _oracleMembers[2] = address(0x3456789034567890345678903456789034567890);
-
         beaconOracle.initialize(_dao, _liquidStakingContract, _nodeOperatorsContract);
     }
 
-    //    function setUp() public {
-    //        beaconOracle = new BeaconOracle();
-    //        initializer();
-    //    }
+    function setUp() public {
+        //        vm.warp(GENESIS_TIME);
+        beaconOracle = new BeaconOracle();
+        initializer();
+    }
 
     function testDao() public {
         assertEq(beaconOracle.dao(), _dao);
     }
 
     function testAddOracleMember() public {
+        //        vm.
         beaconOracle.addOracleMember(address(0x1234567812345678123456781234567812345678));
     }
 
     function testGetOracleMemberCount() public {
-        assertEq(beaconOracle.oracleMemberCount(), 1);
+        assertEq(beaconOracle.oracleMemberCount(), 0);
     }
 
     function testIsOracleMember() public {
@@ -78,10 +75,10 @@ contract BeaconOracleTest is Test {
         //        beaconOracle.reportBeacon(172531, 123456789, 12345, "0xc0bbb890aaa33eb4af83ab649b89d8a3c1ba3f3b2814da0b676b66171274ddc3");
     }
 
-    function convertHexStringToBytes32Array(string memory _hexString) public pure returns (bytes32[] memory) {
-        bytes memory hexString = abi.encodePacked(_hexString);
-        return abi.decode(hexString, (bytes32[]));
-    }
+//    function convertHexStringToBytes32Array(string memory _hexString) public pure returns (bytes32[] memory) {
+//        bytes memory hexString = abi.encodePacked(_hexString);
+//        return abi.decode(hexString, (bytes32[]));
+//    }
 
     function testMerkle() public {
         bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
