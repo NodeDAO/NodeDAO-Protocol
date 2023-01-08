@@ -173,7 +173,7 @@ contract VNFT is
   }
 
   function getLatestTokenId() external view returns (uint256) {
-    return _nextTokenId()
+    return _nextTokenId() ;
   }
 
   /**
