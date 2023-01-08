@@ -7,6 +7,7 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "src/interfaces/INEth.sol";
+import "src/interfaces/ILiquidStaking.sol";
 
 contract NETH is
     Initializable,
@@ -15,6 +16,16 @@ contract NETH is
     ERC20Upgradeable,
     INEth
 {
+
+    event TokensMinted(address indexed to, uint256 amount, uint256 ethAmount, uint256 time);
+    event TokensBurned(address indexed from, uint256 amount, uint256 ethAmount, uint256 time);
+    event EtherDeposited(address indexed from, uint256 amount, uint256 time);
+
+    ILiquidStaking iLiqStaking;
+    function initialize(  address _liqStakingAddress ) external initializer {
+        iLiqStaking = ILiquidStaking(_liqStakingAddress);
+    }
+
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     // Calculate the amount of ETH backing an amount of nETH
@@ -56,12 +67,12 @@ contract NETH is
         _mint(_to, nethAmount);
 
         // TODO: Emit tokens minted event
-        // emit TokensMinted(_to, nethAmount, _ethAmount, block.timestamp);
+        emit TokensMinted(_to, nethAmount, _ethAmount, block.timestamp);
         return nethAmount;
     }
 
     // Burn nETH for ETH
-    function burn(uint256 _nethAmount) external override{
+    function burn(uint256 _nethAmount) external override returns(uint256){
         // Check nETH amount
         require(_nethAmount > 0, "Invalid token burn amount");
         require(balanceOf(msg.sender) >= _nethAmount, "Insufficient nETH balance");
@@ -69,21 +80,19 @@ contract NETH is
         // Get ETH amount
         uint256 ethAmount = getEthValue(_nethAmount);
 
-        // Get & check ETH balance
-        // TODO: getTotalCollateral()
-        uint256 ethBalance = 10;
-
-        require(ethBalance >= ethAmount, "Insufficient ETH balance for exchange");
-
         // Update balance & supply
         _burn(msg.sender, _nethAmount);
 
-        // TODO: Withdraw ETH from deposit pool if required
-        // withdrawDepositCollateral(ethAmount);
-
-        // UNSURE: Transfer ETH to sender
-        // payable(msg.sender).transfer(ethAmount);
         // Emit tokens burned event
-        // TODO: emit TokensBurned(msg.sender, _nethAmount, ethAmount, block.timestamp);
+        emit TokensBurned(msg.sender, _nethAmount, ethAmount, block.timestamp);
+
+        return ethAmount ;
     }
+
+    // Receive an ETH deposit from a generous individual
+    receive() external payable {
+        // Emit ether deposited event
+        emit EtherDeposited(msg.sender, msg.value, block.timestamp);
+    }
+
 }

@@ -159,14 +159,14 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         operatorPoolBalances[operator] += amount;
     }
 
-    /* function getFreeEther() returns(uint256){
+    function computeWithdrawableEther() external view returns(uint256){
     //  consider EL rewards, Buffered/Deposited Ether
     return bufferedEtherPosition +  computeELRewards() ;
-    } */
+    }
 
-    /* function computeELRewards() internal returns (uint256) {
+    function computeELRewards() internal pure returns (uint256) {
           return 0;
-      }*/
+    }
 
 
 }

@@ -7,5 +7,6 @@ interface ILiquidStaking {
 
     function getTotalPooledEther() external returns (uint256);
 
+    function computeWithdrawableEther() external view returns(uint256) ;
 
 }
