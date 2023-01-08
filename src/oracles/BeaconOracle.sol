@@ -36,7 +36,7 @@ IBeaconOracle
     uint64 internal constant SLOTS_PER_EPOCH = 32;
 
     // Base time (default beacon creation time)
-    uint64 internal constant GENESIS_TIME = 1606824023;
+    uint64 public constant GENESIS_TIME = 1606824023;
 
     // Seconds for each slot
     uint64 internal constant SECONDS_PER_SLOT = 12;
@@ -107,13 +107,6 @@ IBeaconOracle
 
     function _isOracleMember(address _oracleMember) internal view returns (bool) {
         return oracleMembers[_oracleMember] == true;
-    }
-
-    // ExpectedEpochId is increased by one round
-    function resetExpectedEpochId() external onlyDao {
-        expectedEpochId = _getFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
-
-        emit ResetExpectedEpochId(expectedEpochId);
     }
 
     // Example Reset the reporting frequency

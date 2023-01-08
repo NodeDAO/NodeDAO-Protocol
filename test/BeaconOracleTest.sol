@@ -23,7 +23,8 @@ contract BeaconOracleTest is Test {
     }
 
     function setUp() public {
-        //        vm.warp(GENESIS_TIME);
+        vm.warp(1606824300);
+        //        vm.warp(beaconOracle.GENESIS_TIME);
         beaconOracle = new BeaconOracle();
         initializer();
     }
@@ -33,21 +34,33 @@ contract BeaconOracleTest is Test {
     }
 
     function testAddOracleMember() public {
-        //        vm.
+        vm.prank(address(1));
         beaconOracle.addOracleMember(address(0x1234567812345678123456781234567812345678));
     }
 
+    function testFailAuthOracleMember() public {
+        beaconOracle.addOracleMember(address(0x1234567812345678123456781234567812345678));
+        vm.expectRevert("AUTH_FAILED");
+    }
+
     function testGetOracleMemberCount() public {
-        assertEq(beaconOracle.oracleMemberCount(), 0);
+        testAddOracleMember();
+        assertEq(beaconOracle.oracleMemberCount(), 1);
     }
 
     function testIsOracleMember() public {
+        testAddOracleMember();
         bool isOracleMember = beaconOracle.isOracleMember(address(0x1234567812345678123456781234567812345678));
         assertEq(isOracleMember, true);
     }
 
     function testRemoveOracleMember() public {
+        vm.prank(address(1));
+        beaconOracle.addOracleMember(address(0x1234567812345678123456781234567812345678));
+        assertEq(beaconOracle.oracleMemberCount(), 1);
+        vm.prank(address(1));
         beaconOracle.removeOracleMember(address(0x1234567812345678123456781234567812345678));
+        assertEq(beaconOracle.oracleMemberCount(), 0);
     }
 
     function testGetQuorum() public {
@@ -55,19 +68,21 @@ contract BeaconOracleTest is Test {
         assertEq(quorum, 0);
     }
 
+
     function testGetConfig() public {
-        //        print(beaconOracle.expectedEpochId());
+        console.log(beaconOracle.expectedEpochId());
         assertEq(beaconOracle.epochsPerFrame(), 225);
-        assertEq(beaconOracle.isQuorum(), false);
+        assertFalse(beaconOracle.isQuorum());
     }
 
     function testResetEpochsPerFrame() public {
-        //        vm.expectEmit(450);
+        vm.prank(address(1));
         beaconOracle.resetEpochsPerFrame(450);
+        assertEq(beaconOracle.epochsPerFrame(), 450);
     }
 
     function testIsReportBeacon() public {
-        assertEq(beaconOracle.isReportBeacon(172531), false);
+        assertFalse(beaconOracle.isReportBeacon(172531));
     }
 
     function testReportBeacon() public {
@@ -75,10 +90,10 @@ contract BeaconOracleTest is Test {
         //        beaconOracle.reportBeacon(172531, 123456789, 12345, "0xc0bbb890aaa33eb4af83ab649b89d8a3c1ba3f3b2814da0b676b66171274ddc3");
     }
 
-//    function convertHexStringToBytes32Array(string memory _hexString) public pure returns (bytes32[] memory) {
-//        bytes memory hexString = abi.encodePacked(_hexString);
-//        return abi.decode(hexString, (bytes32[]));
-//    }
+    //    function convertHexStringToBytes32Array(string memory _hexString) public pure returns (bytes32[] memory) {
+    //        bytes memory hexString = abi.encodePacked(_hexString);
+    //        return abi.decode(hexString, (bytes32[]));
+    //    }
 
     function testMerkle() public {
         bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
