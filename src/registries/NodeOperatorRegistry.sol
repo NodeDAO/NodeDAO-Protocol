@@ -24,6 +24,7 @@ contract NodeOperatorRegistry is
         bool trusted;   // Trusted operator approved by dao
         address rewardAddress;  // Ethereum 1 address which receives steth rewards for this operator
         address controllerAddress; // Ethereum 1 address for the operator's management authority
+        address valutContractAddress; // Ethereum 1 contract address for the operator's valut
         string name; // operator name, Human-readable name
     }
 
@@ -77,7 +78,7 @@ contract NodeOperatorRegistry is
     * @param _controllerAddress Ethereum 1 address for the operator's management authority
     * @return id a unique key of the added operator
     */
-    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress) external payable
+    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress, address _valutContractAddress) external payable
         nonReentrant
         validAddress(_rewardAddress)
         validAddress(_controllerAddress)
@@ -85,13 +86,14 @@ contract NodeOperatorRegistry is
     {
         require(msg.value >= registrationFee, "Insufficient registration operator fee");
 
-        id = totalOperators;
+        id = totalOperators + 1;
 
-        totalOperators = id + 1;
+        totalOperators = id;
         operators[id] = NodeOperator({
             trusted: false,
             rewardAddress: _rewardAddress,
             controllerAddress: _controllerAddress,
+            valutContractAddress: _valutContractAddress,
             name: _name
         });
 
@@ -191,6 +193,7 @@ contract NodeOperatorRegistry is
         name = _fullInfo ? operator.name : "";
         rewardAddress = operator.rewardAddress;
         controllerAddress = operator.controllerAddress;
+        // todo vault 合约地址 // factory
     }
 
     /**
@@ -232,9 +235,13 @@ contract NodeOperatorRegistry is
         registrationFee = _fee;
     }
 
-     function transfer(uint256 amount, address to) private {
+    function transfer(uint256 amount, address to) private {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);
+    }
+
+    receive() external payable{
+        transfer(msg.value, msg.sender);
     }
 }
