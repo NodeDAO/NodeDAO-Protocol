@@ -46,9 +46,8 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function stakeETH(address _referral, uint256 _node_operator) external payable nonReentrant {
-
-        require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
         require(msg.value != 0, "Stake amount must not be Zero");
+        require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
         require(msg.value >= 100 wei, "Stake amount must be minimum  100 wei");
         require(_referral != address(0x0), "Referral address must be provided") ;
 
