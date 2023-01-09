@@ -10,6 +10,7 @@ import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INEth.sol";
+import "src/interfaces/IBeaconOracle.sol";
 
 contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable, ILiquidStaking{
 
@@ -23,6 +24,9 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     uint256 private bufferedEtherPosition ;
     uint256 private transientEtherPosition ;
     uint256 private beaconEtherPosition ;
+    address oracleAddress ;
+    address nodeOperatorRegistryAddress ;
+    address nETHAddress ;
 
     mapping(uint256 => uint256) public operatorPoolBalances;
 
@@ -32,15 +36,31 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
     INodeOperatorsRegistry iNodeOperatorRegistry;
     INEth iNETH;
-    // function initialize( bytes memory withdrawalCreds, address _validatorNftAddress , address _nETHAddress, address _nodeOperatorRegistry  ) external initializer {
-    function initialize( bytes memory withdrawalCreds, address _nodeOperatorRegistry, address _nETHAddress ) external initializer {
+    IBeaconOracle iOracle ;
+
+    function initialize( bytes memory withdrawalCreds, address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress ) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         withdrawalCredentials = withdrawalCreds;
+        _setProtocolContracts(_nodeOperatorRegistry, _nETHAddress, _oracleAddress);
+    }
+
+    function _setProtocolContracts(  address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress ) internal {
+        require(_nodeOperatorRegistry != address(0), "The Oracle Contract Address must be zero");
+        require(_nETHAddress != address(0), "The Oracle Contract Address must be zero");
+        require(_oracleAddress != address(0), "The Oracle Contract Address must be zero");
+        oracleAddress= _oracleAddress ;
+        nodeOperatorRegistryAddress = _nodeOperatorRegistry ;
+        nETHAddress = _nETHAddress ;
         iNodeOperatorRegistry = INodeOperatorsRegistry(_nodeOperatorRegistry) ;
+        iNETH = INEth(_nETHAddress) ;
+        iOracle = IBeaconOracle(_oracleAddress);
         // IVNFT vnft = IVNFT(_validatorNftAddress) ;
-         iNETH = INEth(_nETHAddress) ;
+    }
+
+    function setProtocolContracts(  address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress ) external onlyOwner {
+        _setProtocolContracts(_nodeOperatorRegistry, _nETHAddress, _oracleAddress); 
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
