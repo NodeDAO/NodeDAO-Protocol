@@ -7,13 +7,15 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "lib/ERC721A-Upgradeable/contracts/ERC721AUpgradeable.sol";
 import "src/interfaces/ILiquidStaking.sol";
+import "src/interfaces/IVNFT.sol";
 
 contract VNFT is
     Initializable,
     OwnableUpgradeable,
     ERC721AUpgradeable,
     ReentrancyGuardUpgradeable,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    IVNFT
 {
   address public liquidStakingAddress;
 
@@ -51,7 +53,7 @@ contract VNFT is
   /**
    * @notice Returns the validators that are active (may contain validator that are yet active on beacon chain)
    */
-  function activeValidators() external view returns (bytes[] memory) {
+  function activeValidators() external view override returns (bytes[] memory)  {
     uint256 total = _nextTokenId();
     uint256 tokenIdsIdx;
     bytes[] memory validators = new bytes[](total);
