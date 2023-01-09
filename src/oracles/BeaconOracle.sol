@@ -5,6 +5,7 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
+import "openzeppelin-contracts/utils/structs/EnumerableMap.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
@@ -22,7 +23,8 @@ OwnableUpgradeable,
 UUPSUpgradeable,
 IBeaconOracle
 {
-    using MerkleProof for uint256;
+    using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
+    using EnumerableMap for EnumerableMap.AddressToUintMap;
 
     // dao address
     address public dao;
@@ -47,11 +49,11 @@ IBeaconOracle
     // The expected epoch Id is required by oracle for report Beacon
     uint256 public expectedEpochId;
 
-    // map(k:epochId v(k:Upload the resulting hash v:The number of times you get the same result))
-    mapping(uint256 => mapping(bytes32 => uint32)) internal submittedReports;
+    // map(k:Upload the resulting hash v:The number of times you get the same result)
+    EnumerableMap.Bytes32ToUintMap internal submittedReports;
 
-    // map(k:epochId v(k:oracleMember address v:is reportBeacon))
-    mapping(uint256 => mapping(address => bool)) internal hasSubmitted;
+    // map(k:oracleMember address v:is reportBeacon)
+    EnumerableMap.AddressToUintMap internal hasSubmitted;
 
     // Whether the current frame has reached Quorum
     bool public isQuorum;
@@ -130,31 +132,41 @@ IBeaconOracle
         return INodeOperatorsRegistry(nodeOperatorsContract);
     }
 
-    // todo reportBeacon 本轮投票失败 清空数据出现问题 影响再次投票
     function reportBeacon(uint256 _epochId, uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) external {
         require(isQuorum == false, "Quorum has been reached.");
         require(_isOracleMember(msg.sender), "Not part of DAOs' trusted list of addresses");
         require(_epochId == expectedEpochId, "The epoch submitted is not expected.");
-        require(hasSubmitted[_epochId][msg.sender] == false, "This msg.sender has already submitted the vote.");
+        if (EnumerableMap.contains(hasSubmitted, msg.sender)) {
+            require(EnumerableMap.get(hasSubmitted, msg.sender) == 0, "This msg.sender has already submitted the vote.");
+        }
 
         bytes32 hash = keccak256(abi.encode(_beaconBalance, _beaconValidators, _nodeRankingCommitment));
-        submittedReports[_epochId][hash]++;
-        hasSubmitted[_epochId][msg.sender] = true;
-        emit ReportBeacon(_epochId, msg.sender, submittedReports[_epochId][hash]);
+        uint256 sameCount;
+        if (EnumerableMap.contains(submittedReports, hash)) {
+            sameCount = EnumerableMap.get(submittedReports, hash);
+        }
+        sameCount++;
+        EnumerableMap.set(submittedReports, hash, sameCount);
+
+        EnumerableMap.set(hasSubmitted, msg.sender, 1);
+        emit ReportBeacon(_epochId, msg.sender, sameCount);
 
         uint32 quorum = getQuorum();
         //        uint32 quorum = 3;
-        if (submittedReports[_epochId][hash] >= quorum) {
+        if (sameCount >= quorum) {
             _pushReport(_beaconBalance, _beaconValidators, _nodeRankingCommitment);
-            emit ReportSuccess(_epochId, quorum, submittedReports[_epochId][hash]);
+            emit ReportSuccess(_epochId, quorum, sameCount);
         }
     }
 
-    function isReportBeacon(uint256 _epochId) external view returns (bool) {
-        return hasSubmitted[_epochId][msg.sender] == true;
+    function isReportBeacon() external view returns (bool) {
+        if (EnumerableMap.contains(hasSubmitted, msg.sender)) {
+            return EnumerableMap.get(hasSubmitted, msg.sender) == 1;
+        }
+        return false;
     }
 
-    function _pushReport(uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) internal {
+    function _pushReport(uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) private {
         ILiquidStaking liquidStaking = getLiquidStaking();
         liquidStaking.handleOracleReport(_beaconBalance, _beaconValidators, _nodeRankingCommitment);
         uint256 nextExpectedEpoch = expectedEpochId + epochsPerFrame;
@@ -166,9 +178,26 @@ IBeaconOracle
         beaconActiveValidators = _beaconValidators;
         merkleTreeRoot = _nodeRankingCommitment;
 
-        // todo no delete
-        //        delete submittedReports[_epochId];
-        //        delete hasSubmitted[_epochId];
+        // clear map
+        _clearReportedMap();
+    }
+
+    function _clearReportedMap() private {
+        bytes32[] memory submittedReportKeys = EnumerableMap.keys(submittedReports);
+        uint256 submittedLen = submittedReportKeys.length;
+        if (submittedLen > 0) {
+            for (uint256 i = 0; i < submittedLen; i++) {
+                EnumerableMap.remove(submittedReports, submittedReportKeys[i]);
+            }
+        }
+
+        address[] memory hasSubmittedKeys = EnumerableMap.keys(hasSubmitted);
+        uint256 hasSubmittedLen = hasSubmittedKeys.length;
+        if (hasSubmittedLen > 0) {
+            for (uint256 i = 0; i < hasSubmittedLen; i++) {
+                EnumerableMap.remove(hasSubmitted, hasSubmittedKeys[i]);
+            }
+        }
     }
 
     // leaf: bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID

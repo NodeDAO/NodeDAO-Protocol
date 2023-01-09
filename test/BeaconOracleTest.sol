@@ -2,6 +2,7 @@
 pragma solidity ^0.8.7;
 
 import "forge-std/Test.sol";
+//import "forge-std/console.sol";
 import "src/oracles/BeaconOracle.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
 //import "src/registries/NodeOperatorRegistry.sol";
@@ -99,11 +100,12 @@ contract BeaconOracleTest is Test {
     }
 
     function testIsReportBeacon() public {
-        assertFalse(beaconOracle.isReportBeacon(172531));
+        assertFalse(beaconOracle.isReportBeacon());
     }
 
     // todo 合约之间的测试调用
     function testReportBeacon() public {
+
         vm.startPrank(address(1));
         beaconOracle.addOracleMember(address(11));
         beaconOracle.addOracleMember(address(12));
@@ -116,29 +118,38 @@ contract BeaconOracleTest is Test {
 
         assertEq(beaconOracle.beaconBalances(), 0);
         assertEq(beaconOracle.beaconActiveValidators(), 0);
-        assertFalse(beaconOracle.isReportBeacon(172800));
+        assertFalse(beaconOracle.isReportBeacon());
 
         bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
 
-        vm.prank(address(11));
+        vm.startPrank(address(11));
+        assertFalse(beaconOracle.isReportBeacon());
         beaconOracle.reportBeacon(172800, 123456789, 12345, root);
-        vm.prank(address(12));
-        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
-        vm.prank(address(13));
-        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
+        assertEq(beaconOracle.isReportBeacon(), true);
+        vm.stopPrank();
 
+        vm.startPrank(address(12));
+        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
+        assertEq(beaconOracle.isReportBeacon(), true);
+        vm.stopPrank();
+
+        vm.startPrank(address(13));
+        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
+        vm.stopPrank();
 
         assertEq(beaconOracle.beaconBalances(), 123456789);
         assertEq(beaconOracle.beaconActiveValidators(), 12345);
         assertEq(beaconOracle.isQuorum(), true);
 
+        vm.prank(address(11));
+        assertFalse(beaconOracle.isReportBeacon());
+        vm.prank(address(12));
+        assertFalse(beaconOracle.isReportBeacon());
+        vm.prank(address(13));
+        assertFalse(beaconOracle.isReportBeacon());
+
     }
-
-    //    function convertHexStringToBytes32Array(string memory _hexString) public pure returns (bytes32[] memory) {
-    //        bytes memory hexString = abi.encodePacked(_hexString);
-    //        return abi.decode(hexString, (bytes32[]));
-    //    }
-
+    
     function testMerkle() public {
         bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
         bytes32 leaf = 0x10e799df87265a6e1c8b5d60ce37fbca4a02c93b5a6a9f5895eeb41a209620f6;
