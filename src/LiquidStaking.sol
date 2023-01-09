@@ -52,12 +52,12 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         require(msg.value >= 100 wei, "Stake amount must be minimum  100 wei");
         require(_referral != address(0x0), "Referral address must be provided") ;
 
-        uint256 depositNet ;
-        if(getDepositFeeRate() == 0 ){
+        uint256 depositNet;
+        if(getDepositFeeRate() == 0) {
             depositNet = msg.value;
         }
         else {
-            depositNet = getDepositFeeRate() / totalBasisPoints * msg.value ;
+            depositNet = msg.value - (getDepositFeeRate() / totalBasisPoints * msg.value);
         }
         addBufferedEtherPosition(depositNet) ;
         addToOperatorBalance(_node_operator, depositNet);
