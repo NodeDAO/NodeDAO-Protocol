@@ -28,7 +28,8 @@ interface IBeaconOracle {
     event RemoveOracleMember(address oracleMember);
     event ResetExpectedEpochId(uint256 expectedEpochId);
     event ResetEpochsPerFrame(uint256 epochsPerFrame);
-    event ReportBeacon(uint256 epochId, address oracleMember, uint256 sameReportCount);
-    event ReportSuccess(uint256 epochId, uint256 sameReportCount, uint256 quorum);
+    event ReportBeacon(uint256 epochId, address oracleMember, uint32 sameReportCount);
+    event ReportSuccess(uint256 epochId, uint256 sameReportCount, uint32 quorum);
+    event achieveQuorum(uint256 epochId, bool isQuorum, uint32 quorum);
 
 }

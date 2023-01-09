@@ -155,7 +155,10 @@ IBeaconOracle
         uint32 _beaconValidators,
         bytes32 _nodeRankingCommitment
     ) external {
-        require(isQuorum == false, "Quorum has been reached.");
+        if (isQuorum) {
+            emit achieveQuorum(_epochId, isQuorum, getQuorum());
+            return;
+        }
         require(
             _isOracleMember(msg.sender),
             "Not part of DAOs' trusted list of addresses"
@@ -178,9 +181,9 @@ IBeaconOracle
                 _nodeRankingCommitment
             )
         );
-        uint256 sameCount;
+        uint32 sameCount;
         if (EnumerableMap.contains(submittedReports, hash)) {
-            sameCount = EnumerableMap.get(submittedReports, hash);
+            sameCount = uint32(EnumerableMap.get(submittedReports, hash));
         }
         sameCount++;
         EnumerableMap.set(submittedReports, hash, sameCount);
@@ -213,10 +216,7 @@ IBeaconOracle
         bytes32 _nodeRankingCommitment
     ) private {
         ILiquidStaking liquidStaking = getLiquidStaking();
-        liquidStaking.handleOracleReport(
-            _beaconBalance,
-            _beaconValidators
-        );
+        liquidStaking.handleOracleReport(_beaconBalance, _beaconValidators);
         uint256 nextExpectedEpoch = expectedEpochId + epochsPerFrame;
 
         expectedEpochId = nextExpectedEpoch;

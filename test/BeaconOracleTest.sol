@@ -2,49 +2,44 @@
 pragma solidity ^0.8.7;
 
 import "forge-std/Test.sol";
-//import "forge-std/console.sol";
 import "src/oracles/BeaconOracle.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
-//import "src/registries/NodeOperatorRegistry.sol";
+import "src/registries/NodeOperatorRegistry.sol";
+import "src/LiquidStaking.sol";
 
 contract BeaconOracleTest is Test {
-    //    event AddOracleMember(address oracleMember);
-    //    event RemoveOracleMember(address oracleMember);
-    //    event ResetExpectedEpochId(uint256 expectedEpochId);
-    //    event ResetEpochsPerFrame(uint256 epochsPerFrame);
-    //    event ReportBeacon(uint256 epochId, address oracleMember, uint256 sameReportCount);
-    //    event ReportSuccess(uint256 epochId, uint32 sameReportCount, uint32 quorum);
 
     BeaconOracle beaconOracle;
-    //    NodeOperatorRegistry operatorRegistry;
+    NodeOperatorRegistry operatorRegistry;
+    LiquidStaking liquidStaking;
+
     address _dao = address(1);
-    address _liquidStakingContract = address(2);
-    address _nodeOperatorsContract = address(3);
-
-    //    address _daoValutAddress = address(2);
-
-    function initializer() private {
-        //        operatorRegistry.initialize(_dao, _daoValutAddress);
-        beaconOracle.initialize(_dao, _liquidStakingContract, _nodeOperatorsContract);
-    }
-
-    //    function registerOperator() private {
-    //        operatorRegistry.registerOperator{value : 0.1 ether}("one", address(21), address(4));
-    //        operatorRegistry.registerOperator{value : 0.1 ether}("two", address(22), address(4));
-    //        operatorRegistry.registerOperator{value : 0.1 ether}("three", address(23), address(4));
-    //        operatorRegistry.registerOperator{value : 0.1 ether}("four", address(24), address(4));
-    //        operatorRegistry.registerOperator{value : 0.1 ether}("five", address(25), address(4));
-    //        operatorRegistry.setTrustedOperator(0);
-    //        operatorRegistry.setTrustedOperator(1);
-    //        operatorRegistry.setTrustedOperator(2);
-    //        operatorRegistry.setTrustedOperator(3);
-    //        operatorRegistry.setTrustedOperator(4);
-    //    }
+    address _daoValutAddress = address(2);
 
     function setUp() public {
         vm.warp(1673161943);
         beaconOracle = new BeaconOracle();
-        initializer();
+
+        operatorRegistry = new NodeOperatorRegistry();
+        operatorRegistry.initialize(_dao, _daoValutAddress);
+        //        vm.prank(address(1));
+        operatorRegistry.registerOperator{value : 0.1 ether}("one", address(3), address(4));
+        operatorRegistry.registerOperator{value : 0.1 ether}("one", address(3), address(4));
+        operatorRegistry.registerOperator{value : 0.1 ether}("one", address(3), address(4));
+        operatorRegistry.registerOperator{value : 0.1 ether}("one", address(3), address(4));
+        operatorRegistry.registerOperator{value : 0.1 ether}("one", address(3), address(4));
+
+        vm.startPrank(_dao);
+        operatorRegistry.setTrustedOperator(1);
+        operatorRegistry.setTrustedOperator(2);
+        operatorRegistry.setTrustedOperator(3);
+        operatorRegistry.setTrustedOperator(4);
+        operatorRegistry.setTrustedOperator(0);
+        vm.stopPrank();
+
+        liquidStaking = new LiquidStaking();
+
+        beaconOracle.initialize(_dao, address(liquidStaking), address(operatorRegistry));
     }
 
     function testDao() public {
@@ -83,7 +78,7 @@ contract BeaconOracleTest is Test {
 
     function testGetQuorum() public {
         uint32 quorum = beaconOracle.getQuorum();
-        assertEq(quorum, 0);
+        assertEq(quorum, 4);
     }
 
 
@@ -94,7 +89,7 @@ contract BeaconOracleTest is Test {
     }
 
     function testResetEpochsPerFrame() public {
-        vm.prank(address(1));
+        vm.prank(_dao);
         beaconOracle.resetEpochsPerFrame(450);
         assertEq(beaconOracle.epochsPerFrame(), 450);
     }
@@ -103,15 +98,13 @@ contract BeaconOracleTest is Test {
         assertFalse(beaconOracle.isReportBeacon());
     }
 
-    // todo 合约之间的测试调用
     function testReportBeacon() public {
-
-        vm.startPrank(address(1));
+        vm.startPrank(_dao);
         beaconOracle.addOracleMember(address(11));
         beaconOracle.addOracleMember(address(12));
         beaconOracle.addOracleMember(address(13));
-        //        registerOperator();
-        //        assertEq(beaconOracle.getQuorum(), 3);
+        beaconOracle.addOracleMember(address(14));
+        beaconOracle.addOracleMember(address(15));
         vm.stopPrank();
         beaconOracle.oracleMemberCount();
 
@@ -137,6 +130,16 @@ contract BeaconOracleTest is Test {
         beaconOracle.reportBeacon(172800, 123456789, 12345, root);
         vm.stopPrank();
 
+        vm.startPrank(address(14));
+        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
+        assertEq(beaconOracle.isReportBeacon(), false);
+        vm.stopPrank();
+
+        vm.startPrank(address(15));
+        beaconOracle.reportBeacon(172800, 123456789, 12345, root);
+        assertEq(beaconOracle.isReportBeacon(), false);
+        vm.stopPrank();
+
         assertEq(beaconOracle.beaconBalances(), 123456789);
         assertEq(beaconOracle.beaconActiveValidators(), 12345);
         assertEq(beaconOracle.isQuorum(), true);
@@ -149,7 +152,7 @@ contract BeaconOracleTest is Test {
         assertFalse(beaconOracle.isReportBeacon());
 
     }
-    
+
     function testMerkle() public {
         bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
         bytes32 leaf = 0x10e799df87265a6e1c8b5d60ce37fbca4a02c93b5a6a9f5895eeb41a209620f6;
