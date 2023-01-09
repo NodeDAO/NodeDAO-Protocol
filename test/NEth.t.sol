@@ -26,6 +26,8 @@ contract NEthTest is Test {
     string name;
     address rewardAddress;
     address controllerAddress;
+    address oracleAdd;
+    address validatorNftAdd;
     LiquidStaking liqStakingContract;
     NodeOperatorRegistry nodeOperatorRegistry;
 
@@ -40,6 +42,8 @@ contract NEthTest is Test {
         operator3Add = address(3);
         nethAddress = address(4);
         referral = address(5);
+        oracleAdd = address(6);
+        validatorNftAdd = address(7);
 
         nodeOperatorRegistry = new NodeOperatorRegistry();
         nodeOperatorRegistry.initialize(address(this), operatorDaoVaultAdd);
@@ -60,7 +64,7 @@ contract NEthTest is Test {
         console.log("@@@@@@@");
         console.log(nodeOperatorRegistry.isTrustedOperator(0));
 
-        liqStakingContract.initialize(withdrawalCreds, operator1Add, nethAddress);
+        liqStakingContract.initialize(withdrawalCreds, operator1Add, nethAddress, oracleAdd, validatorNftAdd);
         liqStakingContract.setDepositFeeRate(0);
         liqStakingContract.stakeETH{value: 0.1 ether}(referral, 0);
         neth = new NETH();
@@ -72,12 +76,7 @@ contract NEthTest is Test {
         uint256 ethValue;
         ethValue = neth.getEthValue(100);
         assertEq(ethValue, 100);
-        // counter.increment();`
-        // assertEq(counter.number(), 1);
     }
 
-    // function testSetNumber(uint256 x) public {
-    //     counter.setNumber(x);
-    //     assertEq(counter.number(), x);
-    // }
+
 }

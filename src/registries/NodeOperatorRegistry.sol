@@ -78,6 +78,7 @@ contract NodeOperatorRegistry is
     * @param _controllerAddress Ethereum 1 address for the operator's management authority
     * @return id a unique key of the added operator
     */
+    // Questions: _rewardAddress is the operator's personal wallet address? What is a operator's management authority and why do we need it? Why and How do we determine trusted or not trusted?
     function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress) external payable
         nonReentrant
         validAddress(_rewardAddress)

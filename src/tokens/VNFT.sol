@@ -153,6 +153,30 @@ contract VNFT is
     return validators;
   }
 
+  // function mintNFT(uint256 tokenID) returns( bool) 
+  // { 
+  //   return  ownerOf(tokenID) == liqStakingAddress;
+  // }
+
+  // function isLiquidStaking(uint256 tokenID) returns( bool) 
+  // { return  ownerOf(tokenID) == liqStakingAddress 
+  // } 
+
+  // info: need liqStakingAddress get all toekn id, call validatorsOfOwner to get all pub keys, for loop and pass tokenOfValidator to get back liqstackingcontract
+  // function getAllTokensOfLiquidStaking( ) returns( bool) 
+  // {  for(){
+  // return uint256[] 
+  // }
+  // } 
+
+  // call validatorsOfOperator, call tokenOfValidator return in a struct array
+  // function validatorsandTokenOfOwner(address operator) returns(Validator[] memory ) {}
+
+  // suspect is the same
+  // function validatorsandTokenOfOperator(address operator) returns(Validator[] memory )  {}
+
+  // call validatorsOfOwner and pass tokenOfValidator to get back token id in an array
+  // function tokensOfOwner(address operator) external returns(uint256[] memory )  {}
 
   /**
    * @notice Returns the init height of the tokenId
