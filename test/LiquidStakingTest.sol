@@ -26,11 +26,6 @@ contract LiquidStakingTest is Test {
         initializer();
     }
 
-    function testETH() public {
-         vm.prank(address(1));
-        liqStaking.testETH( );
-    }
-
     function testStakeETH2() public { //check for zero msg.value
         vm.prank(address(1));
         vm.expectRevert("Stake amount must not be Zero");
