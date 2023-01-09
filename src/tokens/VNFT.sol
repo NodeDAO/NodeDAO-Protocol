@@ -7,13 +7,15 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "lib/ERC721A-Upgradeable/contracts/ERC721AUpgradeable.sol";
 import "src/interfaces/ILiquidStaking.sol";
+import "src/interfaces/IVNFT.sol";
 
 contract VNFT is
     Initializable,
     OwnableUpgradeable,
     ERC721AUpgradeable,
     ReentrancyGuardUpgradeable,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    IVNFT
 {
   address public liquidStakingAddress;
 
@@ -51,7 +53,7 @@ contract VNFT is
   /**
    * @notice Returns the validators that are active (may contain validator that are yet active on beacon chain)
    */
-  function activeValidators() external view returns (bytes[] memory) {
+  function activeValidators() external view override returns (bytes[] memory)  {
     uint256 total = _nextTokenId();
     uint256 tokenIdsIdx;
     bytes[] memory validators = new bytes[](total);
@@ -151,6 +153,30 @@ contract VNFT is
     return validators;
   }
 
+  // function mintNFT(uint256 tokenID) returns( bool) 
+  // { 
+  //   return  ownerOf(tokenID) == liqStakingAddress;
+  // }
+
+  // function isLiquidStaking(uint256 tokenID) returns( bool) 
+  // { return  ownerOf(tokenID) == liqStakingAddress 
+  // } 
+
+  // info: need liqStakingAddress get all toekn id, call validatorsOfOwner to get all pub keys, for loop and pass tokenOfValidator to get back liqstackingcontract
+  // function getAllTokensOfLiquidStaking( ) returns( bool) 
+  // {  for(){
+  // return uint256[] 
+  // }
+  // } 
+
+  // call validatorsOfOperator, call tokenOfValidator return in a struct array
+  // function validatorsandTokenOfOwner(address operator) returns(Validator[] memory ) {}
+
+  // suspect is the same
+  // function validatorsandTokenOfOperator(address operator) returns(Validator[] memory )  {}
+
+  // call validatorsOfOwner and pass tokenOfValidator to get back token id in an array
+  // function tokensOfOwner(address operator) external returns(uint256[] memory )  {}
 
   /**
    * @notice Returns the init height of the tokenId

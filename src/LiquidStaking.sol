@@ -11,6 +11,7 @@ import "src/interfaces/INodeOperatorsRegistry.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INEth.sol";
 import "src/interfaces/IBeaconOracle.sol";
+import "src/interfaces/IVNFT.sol";
 
 contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable, ILiquidStaking {
 
@@ -37,16 +38,17 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     INodeOperatorsRegistry iNodeOperatorRegistry;
     INEth iNETH;
     IBeaconOracle iOracle;
+    IVNFT iVNFT;
 
-    function initialize(bytes memory withdrawalCreds, address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress) external initializer {
+    function initialize(bytes memory withdrawalCreds, address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress, address _validatorNftAddress) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         withdrawalCredentials = withdrawalCreds;
-        _setProtocolContracts(_nodeOperatorRegistry, _nETHAddress, _oracleAddress);
+        _setProtocolContracts(_nodeOperatorRegistry, _nETHAddress, _oracleAddress, _validatorNftAddress);
     }
 
-    function _setProtocolContracts(address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress) internal {
+    function _setProtocolContracts(  address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress, address _validatorNftAddress) internal {
         require(_nodeOperatorRegistry != address(0), "The Oracle Contract Address must be zero");
         require(_nETHAddress != address(0), "The Oracle Contract Address must be zero");
         require(_oracleAddress != address(0), "The Oracle Contract Address must be zero");
@@ -56,18 +58,18 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         iNodeOperatorRegistry = INodeOperatorsRegistry(_nodeOperatorRegistry);
         iNETH = INEth(_nETHAddress);
         iOracle = IBeaconOracle(_oracleAddress);
-        // IVNFT vnft = IVNFT(_validatorNftAddress) ;
+        iVNFT = IVNFT(_validatorNftAddress) ;
     }
 
-    function setProtocolContracts(address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress) external onlyOwner {
-        _setProtocolContracts(_nodeOperatorRegistry, _nETHAddress, _oracleAddress);
+    function setProtocolContracts(  address _nodeOperatorRegistry, address _nETHAddress, address _oracleAddress, address _validatorNftAddress ) external onlyOwner {
+        _setProtocolContracts(_nodeOperatorRegistry, _nETHAddress, _oracleAddress, _validatorNftAddress); 
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function stakeETH(address _referral, uint256 _node_operator) external payable nonReentrant {
         require(msg.value != 0, "Stake amount must not be Zero");
-        require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true, "The message sender is not part of Trusted KingHash Operators");
+        // require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
         require(msg.value >= 100 wei, "Stake amount must be minimum  100 wei");
         require(_referral != address(0x0), "Referral address must be provided");
 
@@ -122,17 +124,25 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
 
     function handleOracleReport(uint64 _beaconBalance, uint32 _beaconValidators) external override {
-        //    require(msg.sender == getOracle(), "APP_AUTH_FAILED");
-        // (uint256 _beaconBalance, uint256 _beaconValidators) = decode(data);
-        // uint256 depositedValidators = DEPOSITED_VALIDATORS_POSITION.getStorageUint256();
-        // require(_beaconValidators <= depositedValidators, "REPORTED_MORE_DEPOSITED");
-        // uint256 beaconValidators = BEACON_VALIDATORS_POSITION.getStorageUint256();
-        // require(_beaconValidators >= beaconValidators, "REPORTED_LESS_VALIDATORS");
-        // uint256 appearedValidators = _beaconValidators.sub(beaconValidators);
+        require(msg.sender == oracleAddress , "The msg.sender is not from BeaconOracle");
+       
+        uint256 depositedValidators = iVNFT.activeValidators().length ;
+        require(_beaconValidators <= depositedValidators, "More Validators than Reported ");
+        require(_beaconValidators >= totalBeaconValidators, "Less Validators than Reported ");
+
+        // Save the current _beaconBalance, transientBalance , _beaconValidators  
+        setBeaconEtherPosition(_beaconBalance) ;
+        uint256 appearedValidators = _beaconValidators- totalBeaconValidators;
+        uint256 transientEther = appearedValidators * 32 ether;
+        setTransientEtherPosition(transientEther);
+        setTotalBeaconValidators(depositedValidators);
+        //check for EL Rewards
+        // uint256 executionLayerRewards =  computeELRewards() ;
+
     }
 
 
-    function getTotalPooledEther() external override returns (uint256){
+    function getTotalPooledEther() external view override returns (uint256){
         return bufferedEtherPosition + transientEtherPosition + beaconEtherPosition;
     }
 
@@ -144,24 +154,20 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         bufferedEtherPosition += _amt;
     }
 
+    function setTotalBeaconValidators(uint256 _beaconValidators) internal {
+        totalBeaconValidators = _beaconValidators;
+    }
+
     function subtractBufferedEtherPosition(uint256 _amt) internal {
         bufferedEtherPosition -= _amt;
     }
 
-    function addTransientEtherPosition(uint256 _amt) internal {
-        transientEtherPosition += _amt;
+    function setTransientEtherPosition(uint256 _amt) internal {
+        transientEtherPosition = _amt;
     }
 
-    function subtractTransientEtherPosition(uint256 _amt) internal {
-        transientEtherPosition -= _amt;
-    }
-
-    function addBeaconEtherPosition(uint256 _amt) internal {
-        beaconEtherPosition += _amt;
-    }
-
-    function subtractBeaconEtherPosition(uint256 _amt) internal {
-        beaconEtherPosition -= _amt;
+    function setBeaconEtherPosition(uint256 _amt) internal {
+        beaconEtherPosition = _amt;
     }
 
     function setDepositFeeRate(uint256 _rate) external onlyOwner {
@@ -179,10 +185,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
     function checkOperatorBalance(uint256 operator) external view returns (uint256)  {
         return operatorPoolBalances[operator];
-    }
-
-    function check32ETHOperatorBalance(uint256 operator) external view override returns (uint256)  {
-        return operatorPoolBalances[operator] / 32 ether;
     }
 
     function computeWithdrawableEther() external view returns (uint256){

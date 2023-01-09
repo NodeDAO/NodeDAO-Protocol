@@ -9,6 +9,4 @@ interface ILiquidStaking {
 
     function computeWithdrawableEther() external view returns (uint256);
 
-    function check32ETHOperatorBalance(uint256 operator) external view returns(uint256);
-
 }
