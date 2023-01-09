@@ -29,6 +29,6 @@ interface IBeaconOracle {
     event ResetExpectedEpochId(uint256 expectedEpochId);
     event ResetEpochsPerFrame(uint256 epochsPerFrame);
     event ReportBeacon(uint256 epochId, address oracleMember, uint256 sameReportCount);
-    event ReportSuccess(uint256 epochId, uint32 sameReportCount, uint32 quorum);
+    event ReportSuccess(uint256 epochId, uint256 sameReportCount, uint256 quorum);
 
 }
