@@ -78,7 +78,7 @@ contract NodeOperatorRegistry is
     * @param _controllerAddress Ethereum 1 address for the operator's management authority
     * @return id a unique key of the added operator
     */
-    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress, address _valutContractAddress) external payable
+    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress) external payable
         nonReentrant
         validAddress(_rewardAddress)
         validAddress(_controllerAddress)
@@ -89,6 +89,9 @@ contract NodeOperatorRegistry is
         id = totalOperators + 1;
 
         totalOperators = id;
+
+        // todo create a vault address
+        address _valutContractAddress = address(0);
         operators[id] = NodeOperator({
             trusted: false,
             rewardAddress: _rewardAddress,

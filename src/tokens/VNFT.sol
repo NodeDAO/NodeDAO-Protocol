@@ -180,19 +180,18 @@ contract VNFT is
    * @notice Mints a Validator nft (vNFT)
    * @param _pubkey -  A 48 bytes representing the validator's public key
    * @param _to - The recipient of the nft
-   * @param _operator - The operator repsonsible for operating the physical node
+   * @param _operatorId - The operator repsonsible for operating the physical node
    */
-  function whiteListMint(bytes calldata _pubkey, address _to, address _operator) external onlyLiquidStaking {
+  function whiteListMint(bytes calldata _pubkey, address _to, uint256 _operatorId) external onlyLiquidStaking {
     require(
       totalSupply() + 1 <= MAX_SUPPLY,
       "not enough remaining reserved for auction to support desired mint amount"
     );
     require(validatorRecords[_pubkey] == 0, "Pub key already in used");
 
-    validatorRecords[_pubkey] = _operator;
+    validatorRecords[_pubkey] = _operatorId;
 
     _validators.push(_pubkey);
-    _gasHeights.push(block.number);
 
     _safeMint(_to, 1);
   }
