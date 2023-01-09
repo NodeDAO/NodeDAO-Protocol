@@ -29,21 +29,20 @@ contract NETH is
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     // Calculate the amount of ETH backing an amount of nETH
-    function getEthValue(uint256 _nethAmount) public view override returns (uint256) {
-        // TODO: get total eth balance
-        uint256 totalPooledEth = 10;
+    function getEthValue(uint256 _nethAmount) public payable override returns (uint256) {
+        uint256 totalPooledEth = iLiqStaking.getTotalPooledEther();
         uint256 nEthSupply = totalSupply();
 
         // Use 1:1 ratio if no nETH is minted
         if (nEthSupply == 0) { return _nethAmount; }
 
         // Calculate and return
-        return _nethAmount *  totalPooledEth / (nEthSupply);
+        return _nethAmount * (totalPooledEth / nEthSupply);
     }
 
     // Calculate the amount of nETH backing an amount of ETH
-    function getNethValue(uint256 _ethAmount) public view override returns (uint256) {
-        uint256 totalPooledEth = 10;
+    function getNethValue(uint256 _ethAmount) public payable override returns (uint256) {
+        uint256 totalPooledEth = iLiqStaking.getTotalPooledEther();
         uint256 nEthSupply = totalSupply();
 
         // Use 1:1 ratio if no nETH is minted
