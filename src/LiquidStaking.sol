@@ -62,6 +62,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     event EthStake(address indexed from, uint256 amount, address indexed _referral, uint256 amountOut);
     event EthUnstake(address indexed from, uint256 amount, address indexed _referral, uint256 amountOut);
     event NftStake(address indexed from, uint256 count);
+    event Eth32Deposit(bytes _pubkey, bytes _withdrawal, address _owner);
     event ValidatorRegistered(uint256 operator, uint256 tokenId);
     event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
@@ -203,7 +204,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         // 7.mint nft，铸造nft，存放在质押池合约，不能再铸造neth，因为已经在用户deposit时完成铸造
         // 8.更新_liquidNfts
         require(data.length == 352, "Invalid Data Length");
-        
+
         uint256 _operatorId = uint256(bytes32(data[320:352]));
         require(address(this).balance >= unstakePoolSize, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId) == true, "The operator must be trusted");
@@ -247,9 +248,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
      */
     function precheck(bytes calldata data) private view returns (bytes32) {
         bytes calldata withdrawalCredentials = data[64:96];
-        // todo 判断是否相等
-        // require(withdrawalCredentials == liquidStakingWithdrawalCredentials, "withdrawal credentials does not match");
-
+        require(keccak256(abi.encodePacked(withdrawalCredentials)) == keccak256(abi.encodePacked(liquidStakingWithdrawalCredentials)), "withdrawal credentials does not match");
         bytes calldata pubkey = data[16:64];
         bytes calldata signature = data[96:192];
         bytes32 depositDataRoot = bytes32(data[192:224]);
