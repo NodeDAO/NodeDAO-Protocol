@@ -29,7 +29,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
-    mapping(uint256 => NodeOperator) internal operators;
+    NodeOperator[] internal operators;
 
     // @dev Total number of operators
     uint256 internal totalOperators;
@@ -82,26 +82,31 @@ contract NodeOperatorRegistry is
         nonReentrant
         validAddress(_rewardAddress)
         validAddress(_controllerAddress)
+        validAddress(_valutContractAddress)
         returns (uint256 id)
     {
         require(msg.value >= registrationFee, "Insufficient registration operator fee");
 
-        id = totalOperators + 1;
+        id = totalOperators;
 
-        totalOperators = id;
-        operators[id] = NodeOperator({
+        totalOperators = id + 1;
+        operators.push(NodeOperator({
             trusted: false,
             rewardAddress: _rewardAddress,
             controllerAddress: _controllerAddress,
             valutContractAddress: _valutContractAddress,
             name: _name
-        });
+        }));
 
-        transfer(registrationFee, daoValutAddress);
+        if (registrationFee != 0) {
+            transfer(registrationFee, daoValutAddress);
+        }
 
         if (msg.value > registrationFee) {
             transfer(msg.value - registrationFee, daoValutAddress);
         }
+
+        // todo 调用工厂合约
 
         emit NodeOperatorRegistered(id, _name, _rewardAddress, _controllerAddress);
     }
@@ -184,7 +189,8 @@ contract NodeOperatorRegistry is
             bool trusted,
             string memory name,
             address rewardAddress,
-            address controllerAddress
+            address controllerAddress,
+            address valutContractAddress
         )
     {
         NodeOperator memory operator = operators[_id];
@@ -193,7 +199,7 @@ contract NodeOperatorRegistry is
         name = _fullInfo ? operator.name : "";
         rewardAddress = operator.rewardAddress;
         controllerAddress = operator.controllerAddress;
-        // todo vault 合约地址 // factory
+        valutContractAddress = operator.valutContractAddress;
     }
 
     /**
