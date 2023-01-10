@@ -56,13 +56,13 @@ contract NEthTest is Test {
             controllerAddress
         ) = nodeOperatorRegistry.getNodeOperator(0, true);
         
-        console.log(trusted);
-        console.log(name);
-        console.log(rewardAddress);
-        console.log(controllerAddress);
+        // console.log(trusted);
+        // console.log(name);
+        // console.log(rewardAddress);
+        // console.log(controllerAddress);
 
-        console.log("@@@@@@@");
-        console.log(nodeOperatorRegistry.isTrustedOperator(0));
+        // console.log("@@@@@@@");
+        // console.log(nodeOperatorRegistry.isTrustedOperator(0));
 
         liqStakingContract.initialize(withdrawalCreds, operator1Add, nethAddress, oracleAdd, validatorNftAdd);
         liqStakingContract.setDepositFeeRate(0);
@@ -72,11 +72,39 @@ contract NEthTest is Test {
         neth.initialize(address(liqStakingContract));
     }
 
-    function testEthValue() public {
+    function testGetEthValue(uint256 nethAmount) public {
+        vm.assume(nethAmount > 100 wei);
+        vm.assume(nethAmount < 0.1 ether);
         uint256 ethValue;
-        ethValue = neth.getEthValue(100);
-        assertEq(ethValue, 100);
+        ethValue = neth.getEthValue(nethAmount);
+        assertEq(ethValue, nethAmount);
     }
 
+    function testGetNethValue(uint256 ethAmount) public {
+        vm.assume(ethAmount > 100 wei);
+        vm.assume(ethAmount < 0.1 ether);
+        uint256 nethValue;
+        nethValue = neth.getNethValue(ethAmount);
+        assertEq(nethValue, ethAmount);
+    }
 
+    function testMint(uint256 ethAmount) public {
+        vm.assume(ethAmount > 100 wei);
+        vm.assume(ethAmount < 0.1 ether);
+        uint256 nethValue;
+        nethValue = neth.mint(ethAmount, operator1Add);
+        assertEq(nethValue, ethAmount);
+    }
+
+    function testBurn(uint256 ethAmount) public {
+        vm.assume(ethAmount > 100 wei);
+        vm.assume(ethAmount < 0.1 ether);
+        uint256 ethValue;
+        uint256 nethValue;
+        nethValue = neth.mint(ethAmount, operator1Add);
+        vm.prank(address(1));
+        ethValue = neth.burn(nethValue);
+    
+        assertEq(nethValue, ethAmount);
+    }
 }
