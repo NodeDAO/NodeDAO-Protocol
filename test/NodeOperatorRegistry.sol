@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "src/registries/NodeOperatorRegistry.sol";
 
 contract NodeOperatorRegistryTest is Test {
-    event NodeOperatorRegistered(uint256 id, string name, address rewardAddress, address controllerAddress);
+    event NodeOperatorRegistered(uint256 id, string name, address rewardAddress, address controllerAddress, address _valutContractAddress);
     event NodeOperatorTrustedSet(uint256 id, string name, bool trusted);
     event NodeOperatorTrustedRemove(uint256 id, string name, bool trusted);
     event NodeOperatorNameSet(uint256 id, string name);
@@ -21,17 +21,18 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.initialize(_dao, _daoValutAddress);
     }
 
-    function checkOperator(bool _trusted, string memory _name, address _rewardAddress, address _controllerAddress) public {
+    function checkOperator(bool _trusted, string memory _name, address _rewardAddress, address _controllerAddress, address _valutContractAddress) public {
         bool trusted;
         string memory name;
         address rewardAddress;
         address controllerAddress;
-        address valutContractAddress; // todo
-        (trusted, name, rewardAddress, controllerAddress, valutContractAddress) = operatorRegistry.getNodeOperator(0, true);
+        address valutContractAddress;
+        (trusted, name, rewardAddress, controllerAddress, valutContractAddress) = operatorRegistry.getNodeOperator(1, true);
         assertEq(trusted, _trusted);
         assertEq(name, _name);
         assertEq(rewardAddress, _rewardAddress);
         assertEq(controllerAddress, _controllerAddress);
+        assertEq(valutContractAddress, _valutContractAddress);
     }
 
     function setUp() public {
@@ -78,15 +79,15 @@ contract NodeOperatorRegistryTest is Test {
 
     function testSetTrustedOperator() public {
         vm.expectEmit(true, true, false, true);
-        emit NodeOperatorRegistered(0, "one", address(3), address(4));
+        emit NodeOperatorRegistered(1, "one", address(3), address(4), address(5));
         emit Transferred(address(1), 0.1 ether);
-        emit NodeOperatorTrustedSet(0, "one", true);
+        emit NodeOperatorTrustedSet(1, "one", true);
 
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
         vm.prank(_dao);
-        operatorRegistry.setTrustedOperator(0);
+        operatorRegistry.setTrustedOperator(1);
 
-        checkOperator(true, "one", address(3), address(4));
+        checkOperator(true, "one", address(3), address(4), address(5));
     }
 
     // -------------
@@ -106,15 +107,18 @@ contract NodeOperatorRegistryTest is Test {
 
     function testRemoveTrustedOperator() public {
         vm.expectEmit(true, true, false, true);
-        emit NodeOperatorRegistered(0, "one", address(3), address(4));
+        emit NodeOperatorRegistered(1, "one", address(3), address(4), address(5));
         emit Transferred(address(1), 0.1 ether);
-        emit NodeOperatorTrustedRemove(0, "one", false);
+        emit NodeOperatorTrustedSet(1, "one", true);
+        emit NodeOperatorTrustedRemove(1, "one", false);
         
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
         vm.prank(_dao);
-        operatorRegistry.removeTrustedOperator(0);
+        operatorRegistry.setTrustedOperator(1);
+        vm.prank(_dao);
+        operatorRegistry.removeTrustedOperator(1);
 
-        checkOperator(false, "one", address(3), address(4));
+        checkOperator(false, "one", address(3), address(4), address(5));
     }
 
     // -------------
@@ -123,25 +127,25 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
 
         vm.expectRevert("AUTH_FAILED");
-        operatorRegistry.setNodeOperatorName(0, "two");
+        operatorRegistry.setNodeOperatorName(1, "two");
     }
 
     function testSetNodeOperatorNameNotExist() public {
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
-        operatorRegistry.setNodeOperatorName(0, "two");
+        operatorRegistry.setNodeOperatorName(1, "two");
     }
 
     function testSetNodeOperatorName() public {
         vm.expectEmit(true, true, false, true);
-        emit NodeOperatorRegistered(0, "one", address(3), address(4));
+        emit NodeOperatorRegistered(1, "one", address(3), address(4), address(5));
         emit Transferred(address(1), 0.1 ether);
-        emit NodeOperatorNameSet(0, "two");
+        emit NodeOperatorNameSet(1, "two");
 
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
         vm.prank(address(4));
-        operatorRegistry.setNodeOperatorName(0, "two");
+        operatorRegistry.setNodeOperatorName(1, "two");
         
-        checkOperator(false, "two", address(3), address(4));
+        checkOperator(false, "two", address(3), address(4), address(5));
     }
 
     // -------------
@@ -150,25 +154,25 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
 
         vm.expectRevert("AUTH_FAILED");
-        operatorRegistry.setNodeOperatorRewardAddress(0, address(5));
+        operatorRegistry.setNodeOperatorRewardAddress(1, address(5));
     }
 
     function testSetNodeOperatorRewardAddressNotExist() public {
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
-        operatorRegistry.setNodeOperatorRewardAddress(0, address(5));
+        operatorRegistry.setNodeOperatorRewardAddress(1, address(5));
     }
 
     function testSetNodeOperatorRewardAddressName() public {
         vm.expectEmit(true, true, false, true);
-        emit NodeOperatorRegistered(0, "one", address(3), address(4));
+        emit NodeOperatorRegistered(1, "one", address(3), address(4), address(5));
         emit Transferred(address(1), 0.1 ether);
         emit NodeOperatorNameSet(0, "two");
 
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
         vm.prank(address(4));
-        operatorRegistry.setNodeOperatorRewardAddress(0, address(5));
+        operatorRegistry.setNodeOperatorRewardAddress(1, address(5));
         
-        checkOperator(false, "one", address(5), address(4));
+        checkOperator(false, "one", address(5), address(4), address(5));
     }
 
     // -------------
@@ -177,25 +181,25 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
 
         vm.expectRevert("AUTH_FAILED");
-        operatorRegistry.setNodeOperatorControllerAddress(0, address(5));
+        operatorRegistry.setNodeOperatorControllerAddress(1, address(5));
     }
 
     function testSetNodeOperatorControllerAddressNotExist() public {
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
-        operatorRegistry.setNodeOperatorControllerAddress(0, address(5));
+        operatorRegistry.setNodeOperatorControllerAddress(1, address(5));
     }
 
     function testSetNodeOperatorControllerAddressName() public {
         vm.expectEmit(true, true, false, true);
-        emit NodeOperatorRegistered(0, "one", address(3), address(4));
+        emit NodeOperatorRegistered(1, "one", address(3), address(4), address(5));
         emit Transferred(address(1), 0.1 ether);
-        emit NodeOperatorNameSet(0, "two");
+        emit NodeOperatorNameSet(1, "two");
 
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
         vm.prank(address(4));
-        operatorRegistry.setNodeOperatorControllerAddress(0, address(5));
+        operatorRegistry.setNodeOperatorControllerAddress(1, address(5));
         
-        checkOperator(false, "one", address(3), address(5));
+        checkOperator(false, "one", address(3), address(5), address(5));
     }
 
     function testGetNodeOperatorsCount() public {
@@ -220,13 +224,13 @@ contract NodeOperatorRegistryTest is Test {
     function testTrustedOperator() public {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
         
-        bool trused = operatorRegistry.isTrustedOperator(0);
+        bool trused = operatorRegistry.isTrustedOperator(1);
         assertEq(trused, false);
 
         vm.prank(_dao);
-        operatorRegistry.setTrustedOperator(0);
+        operatorRegistry.setTrustedOperator(1);
 
-        trused = operatorRegistry.isTrustedOperator(0);
+        trused = operatorRegistry.isTrustedOperator(1);
         assertEq(trused, true);
     }
 

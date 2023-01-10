@@ -29,10 +29,11 @@ contract NodeOperatorRegistry is
     }
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
-    NodeOperator[] internal operators;
+    mapping(uint256 => NodeOperator) internal operators;
 
     // @dev Total number of operators
     uint256 internal totalOperators;
+    uint256 internal totalTrustedOperators;
 
     // dao address
     address public dao;
@@ -55,7 +56,7 @@ contract NodeOperatorRegistry is
     }
 
     modifier operatorExists(uint256 _id) {
-        require(_id < totalOperators, "NODE_OPERATOR_NOT_FOUND");
+        require(_id != 0 && _id <= totalOperators, "NODE_OPERATOR_NOT_FOUND");
         _;
     }
 
@@ -87,16 +88,17 @@ contract NodeOperatorRegistry is
     {
         require(msg.value >= registrationFee, "Insufficient registration operator fee");
 
-        id = totalOperators;
+        id = totalOperators + 1;
 
-        totalOperators = id + 1;
-        operators.push(NodeOperator({
+        totalOperators = id;
+
+        operators[id] = NodeOperator({
             trusted: false,
             rewardAddress: _rewardAddress,
             controllerAddress: _controllerAddress,
             valutContractAddress: _valutContractAddress,
             name: _name
-        }));
+        });
 
         if (registrationFee != 0) {
             transfer(registrationFee, daoValutAddress);
@@ -106,9 +108,7 @@ contract NodeOperatorRegistry is
             transfer(msg.value - registrationFee, daoValutAddress);
         }
 
-        // todo 调用工厂合约
-
-        emit NodeOperatorRegistered(id, _name, _rewardAddress, _controllerAddress);
+        emit NodeOperatorRegistered(id, _name, _rewardAddress, _controllerAddress, _valutContractAddress);
     }
 
     /**
@@ -121,7 +121,7 @@ contract NodeOperatorRegistry is
     {
         NodeOperator memory operator = operators[_id];
         operators[_id].trusted = true;
-
+        totalTrustedOperators += 1;
         emit NodeOperatorTrustedSet(_id, operator.name, true);
     }
 
@@ -135,7 +135,7 @@ contract NodeOperatorRegistry is
     {
         NodeOperator memory operator = operators[_id];
         operators[_id].trusted = false;
-
+        totalTrustedOperators -= 1;
         emit NodeOperatorTrustedRemove(_id, operator.name, false);
     }
 
@@ -207,6 +207,13 @@ contract NodeOperatorRegistry is
       */
     function getNodeOperatorsCount() external view returns (uint256) {
         return totalOperators;
+    }
+
+    /**
+      * @notice Returns total number of trusted operators
+      */
+    function getTrustedOperatorsCount() external view returns (uint256) {
+        return totalTrustedOperators;
     }
 
    /**

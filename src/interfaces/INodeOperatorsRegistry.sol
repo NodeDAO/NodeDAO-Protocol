@@ -61,17 +61,23 @@ interface INodeOperatorsRegistry {
         address controllerAddress,
         address valutContractAddress);
 
+    // function getTrustedOperatorVaultContracts() external view returns (uint256[] memory, address[] memory);
     /**
       * @notice Returns total number of node operators
       */
     function getNodeOperatorsCount() external view returns (uint256);
+
+    /**
+      * @notice Returns total number of trusted operators
+      */
+    function getTrustedOperatorsCount() external view returns (uint256);
 
    /**
       * @notice Returns whether an operator is trusted
       */
     function isTrustedOperator(uint256 _id) external view returns (bool);
 
-    event NodeOperatorRegistered(uint256 id, string name, address rewardAddress, address controllerAddress);
+    event NodeOperatorRegistered(uint256 id, string name, address rewardAddress, address controllerAddress, address _valutContractAddress);
     event NodeOperatorTrustedSet(uint256 id, string name, bool trusted);
     event NodeOperatorTrustedRemove(uint256 id, string name, bool trusted);
     event NodeOperatorNameSet(uint256 id, string name);
