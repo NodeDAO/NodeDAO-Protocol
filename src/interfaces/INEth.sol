@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.7;
+import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
-interface INEth {
-    function getEthValue(uint256 _nethAmount) external view returns (uint256);
-    function getNethValue(uint256 _ethAmount) external view returns (uint256);
-    function mint(uint256 _ethAmount, address _to) external  returns (uint256);
-    function burn(uint256 _nethAmount) external;
+interface INETH is IERC20{
+    function whiteListMint(uint256 amount, address account) external;
+    function whiteListBurn(uint256 amount, address account) external;
 }
