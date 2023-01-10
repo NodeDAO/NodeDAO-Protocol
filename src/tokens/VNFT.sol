@@ -85,6 +85,11 @@ contract VNFT is
     return _validators[tokenId];
   }
 
+  function operatorOf(uint256 tokenId) external view returns (uint256) {
+    bytes memory _pubkey =  _validators[tokenId];
+    return validatorRecords[_pubkey];
+  }
+
   /**
    * @notice Finds all the validator's public key of a particular address
    * @param owner - The particular address
@@ -173,7 +178,7 @@ contract VNFT is
   }
 
   function getLatestTokenId() external view returns (uint256) {
-    return _nextTokenId()
+    return _nextTokenId();
   }
 
   /**
@@ -182,7 +187,7 @@ contract VNFT is
    * @param _to - The recipient of the nft
    * @param _operator - The operator repsonsible for operating the physical node
    */
-  function whiteListMint(bytes calldata _pubkey, address _to, address _operator) external onlyLiquidStaking {
+  function whiteListMint(bytes calldata _pubkey, address _to, uint256 _operator) external onlyLiquidStaking {
     require(
       totalSupply() + 1 <= MAX_SUPPLY,
       "not enough remaining reserved for auction to support desired mint amount"
@@ -190,9 +195,8 @@ contract VNFT is
     require(validatorRecords[_pubkey] == 0, "Pub key already in used");
 
     validatorRecords[_pubkey] = _operator;
-
     _validators.push(_pubkey);
-    _gasHeights.push(block.number);
+    _initHeights.push(block.number);
 
     _safeMint(_to, 1);
   }
@@ -236,19 +240,6 @@ contract VNFT is
 
   function numberMinted(address owner) external view returns (uint256) {
     return _numberMinted(owner);
-  }
-
-  function _beforeTokenTransfers(
-        address from,
-        address to,
-        uint256 startTokenId,
-        uint256 quantity
-    ) internal virtual override 
-  {
-    // no need to claim reward if user is minting nft
-    if (from == address(0) || from == to) {
-      return;
-    }
   }
 
   ////////below is the new code//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
