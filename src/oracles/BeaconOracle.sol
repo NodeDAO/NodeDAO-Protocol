@@ -17,22 +17,21 @@ import "src/interfaces/INodeOperatorsRegistry.sol";
  * Dao management
  */
 contract BeaconOracle is
-Initializable,
-ReentrancyGuardUpgradeable,
-OwnableUpgradeable,
-UUPSUpgradeable,
-IBeaconOracle
+    Initializable,
+    ReentrancyGuardUpgradeable,
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    IBeaconOracle
 {
     using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
     using EnumerableMap for EnumerableMap.AddressToUintMap;
 
-    // dao address
-    address public dao;
+    // Use the maximum value of uint256 as the index that does not exist
+    uint256 internal constant MEMBER_NOT_FOUND = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
-    // oracle committee members
-    mapping(address => bool) internal oracleMembers;
-
-    uint32 public oracleMemberCount;
+    /// The bitmask of the oracle members that pushed their reports
+    // keccak256("oracle.reportsBitMask")
+    uint256 internal reportBitMaskPosition = 0xc25c9b62b6d0f24f0d2ed8730d23f158f481aba9a9521a1d67014c7fa19a1ccd;
 
     // Number of slots corresponding to each epoch
     uint64 internal constant SLOTS_PER_EPOCH = 32;
@@ -43,23 +42,26 @@ IBeaconOracle
     // Seconds for each slot
     uint64 internal constant SECONDS_PER_SLOT = 12;
 
+    // dao address
+    address public dao;
+
+    // oracle committee members
+    address[] private oracleMembers;
+
+    // Maximum number of oracle committee members
+    uint256 public constant MAX_MEMBERS = 256;
+
     // The epoch of each frame (currently 24h for 225)
     uint32 public epochsPerFrame;
 
     // The expected epoch Id is required by oracle for report Beacon
     uint256 public expectedEpochId;
 
-    // map(k:Upload the resulting hash v:The number of times you get the same result)
-    EnumerableMap.Bytes32ToUintMap internal submittedReports;
-
-    // map(k:oracleMember address v:is reportBeacon)
-    EnumerableMap.AddressToUintMap internal hasSubmitted;
-
     // Whether the current frame has reached Quorum
     bool public isQuorum;
 
     // current reportBeacon beaconBalances
-    uint256 public beaconBalances;
+    uint128 public beaconBalances;
 
     // current reportBeacon beaconValidators
     uint64 public beaconActiveValidators;
@@ -67,26 +69,19 @@ IBeaconOracle
     // reportBeacon merkleTreeRoot storage
     bytes32 private merkleTreeRoot;
 
-    address public liquidStakingContract;
+    bytes32[] private currentReportVariants;
 
     address public nodeOperatorsContract;
 
-    function initialize(
-        address _dao,
-        address _liquidStaking,
-        address _nodeOperatorsContract
-    ) public initializer {
+    function initialize(address _dao, address _nodeOperatorsContract) public initializer {
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
         dao = _dao;
-        liquidStakingContract = _liquidStaking;
         nodeOperatorsContract = _nodeOperatorsContract;
         epochsPerFrame = 225;
         // So the initial is the first epochId
-        expectedEpochId =
-        _getFirstEpochOfDay(_getCurrentEpochId()) +
-        epochsPerFrame;
+        expectedEpochId = _getFrameFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
     }
 
     modifier onlyDao() {
@@ -94,31 +89,32 @@ IBeaconOracle
         _;
     }
 
-    //增加oracle成员
     function addOracleMember(address _oracleMember) external onlyDao {
-        oracleMembers[_oracleMember] = true;
-        oracleMemberCount++;
+        require(address(0) != _oracleMember, "BAD_ARGUMENT");
+        require(oracleMembers.length < MAX_MEMBERS, "TOO_MANY_MEMBERS");
+        require(MEMBER_NOT_FOUND == _getMemberId(_oracleMember), "MEMBER_EXISTS");
+
+        oracleMembers.push(_oracleMember);
 
         emit AddOracleMember(_oracleMember);
     }
 
     function removeOracleMember(address _oracleMember) external onlyDao {
-        delete oracleMembers[_oracleMember];
-        oracleMemberCount--;
+        uint256 index = _getMemberId(_oracleMember);
+        require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
+
+        delete oracleMembers[index];
 
         emit RemoveOracleMember(_oracleMember);
     }
 
-    function isOracleMember(
-        address _oracleMember
-    ) external view returns (bool) {
+    function isOracleMember(address _oracleMember) external view returns (bool) {
         return _isOracleMember(_oracleMember);
     }
 
-    function _isOracleMember(
-        address _oracleMember
-    ) internal view returns (bool) {
-        return oracleMembers[_oracleMember] == true;
+    function _isOracleMember(address _oracleMember) internal view returns (bool) {
+        uint256 index = _getMemberId(_oracleMember);
+        return index != MEMBER_NOT_FOUND;
     }
 
     // Example Reset the reporting frequency
@@ -128,95 +124,81 @@ IBeaconOracle
         emit ResetEpochsPerFrame(_epochsPerFrame);
     }
 
-    // get Quorum
-    // Quorum = operatorCount * 2 / 3 + 1
+    /**
+     * description: get Quorum
+     * @return {uint32} Quorum = operatorCount * 2 / 3 + 1
+     */
     function getQuorum() public view returns (uint32) {
-        uint32 n = (uint32(getNodeOperatorsContract().getNodeOperatorsCount()) *
-        2) / 3;
+        uint32 n = (uint32(getNodeOperatorsContract().getNodeOperatorsCount()) * 2) / 3;
         return uint32(n + 1);
     }
 
-    function getLiquidStaking() public view returns (ILiquidStaking) {
-        return ILiquidStaking(liquidStakingContract);
-    }
-
-    function getNodeOperatorsContract()
-    public
-    view
-    returns (INodeOperatorsRegistry)
-    {
+    function getNodeOperatorsContract() public view returns (INodeOperatorsRegistry) {
         return INodeOperatorsRegistry(nodeOperatorsContract);
     }
 
-    // oracle
+    /**
+     * description: The oracle service reports beacon chain data to the contract
+     * @param _epochId The epoch Id expected by the current frame
+     * @param _beaconBalance Beacon chain balance
+     * @param _beaconValidators Number of beacon chain validators
+     * @param _commitNonce 提交时stake pool对应的nonce
+     * @param _nodeRankingCommitment merkle root
+     */
     function reportBeacon(
         uint256 _epochId,
-        uint64 _beaconBalance,
+        uint128 _beaconBalance,
         uint32 _beaconValidators,
+        uint256 _commitNonce,
         bytes32 _nodeRankingCommitment
     ) external {
         if (isQuorum) {
             emit achieveQuorum(_epochId, isQuorum, getQuorum());
             return;
         }
-        require(
-            _isOracleMember(msg.sender),
-            "Not part of DAOs' trusted list of addresses"
-        );
-        require(
-            _epochId == expectedEpochId,
-            "The epoch submitted is not expected."
-        );
-        if (EnumerableMap.contains(hasSubmitted, msg.sender)) {
-            require(
-                EnumerableMap.get(hasSubmitted, msg.sender) == 0,
-                "This msg.sender has already submitted the vote."
-            );
-        }
+        // make sure the oracle is from members list and has not yet voted
+        uint256 index = _getMemberId(msg.sender);
+        require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
 
-        bytes32 hash = keccak256(
-            abi.encode(
-                _beaconBalance,
-                _beaconValidators,
-                _nodeRankingCommitment
-            )
-        );
-        uint32 sameCount;
-        if (EnumerableMap.contains(submittedReports, hash)) {
-            sameCount = uint32(EnumerableMap.get(submittedReports, hash));
-        }
-        sameCount++;
-        EnumerableMap.set(submittedReports, hash, sameCount);
+        uint256 bitMask = reportBitMaskPosition;
+        uint256 mask = 1 << index;
+        require(bitMask & mask == 0, "ALREADY_SUBMITTED");
+        // reported, set the bitmask to the specified bit
+        reportBitMaskPosition = bitMask | mask;
 
-        EnumerableMap.set(hasSubmitted, msg.sender, 1);
-        emit ReportBeacon(_epochId, msg.sender, sameCount);
+        require(_epochId == expectedEpochId, "The epoch submitted is not expected.");
+        // if (EnumerableMap.contains(hasSubmitted, msg.sender)) {
+        //     require(EnumerableMap.get(hasSubmitted, msg.sender) == 0, "This msg.sender has already submitted the vote.");
+        // }
 
-        uint32 quorum = getQuorum();
-        //        uint32 quorum = 3;
-        if (sameCount >= quorum) {
-            _pushReport(
-                _beaconBalance,
-                _beaconValidators,
-                _nodeRankingCommitment
-            );
-            emit ReportSuccess(_epochId, quorum, sameCount);
-        }
+        // bytes32 hash = keccak256(abi.encode(_beaconBalance, _beaconValidators, _nodeRankingCommitment));
+        // uint32 sameCount;
+        // if (EnumerableMap.contains(submittedReports, hash)) {
+        //     sameCount = uint32(EnumerableMap.get(submittedReports, hash));
+        // }
+        // sameCount++;
+        // EnumerableMap.set(submittedReports, hash, sameCount);
+
+        // EnumerableMap.set(hasSubmitted, msg.sender, 1);
+        // emit ReportBeacon(_epochId, msg.sender, sameCount);
+
+        // uint32 quorum = getQuorum();
+        // if (sameCount >= quorum) {
+        //     _pushReport(_beaconBalance, _beaconValidators, _nodeRankingCommitment);
+        //     emit ReportSuccess(_epochId, quorum, sameCount);
+        // }
     }
 
     function isReportBeacon() external view returns (bool) {
-        if (EnumerableMap.contains(hasSubmitted, msg.sender)) {
-            return EnumerableMap.get(hasSubmitted, msg.sender) == 1;
-        }
+        // if (EnumerableMap.contains(hasSubmitted, msg.sender)) {
+        //     return EnumerableMap.get(hasSubmitted, msg.sender) == 1;
+        // }
         return false;
     }
 
-    function _pushReport(
-        uint64 _beaconBalance,
-        uint32 _beaconValidators,
-        bytes32 _nodeRankingCommitment
-    ) private {
-        ILiquidStaking liquidStaking = getLiquidStaking();
-        liquidStaking.handleOracleReport(_beaconBalance, _beaconValidators);
+    function _pushReport(uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) private {
+        // ILiquidStaking liquidStaking = getLiquidStaking();
+        // liquidStaking.handleOracleReport(_beaconBalance, _beaconValidators);
         uint256 nextExpectedEpoch = expectedEpochId + epochsPerFrame;
 
         expectedEpochId = nextExpectedEpoch;
@@ -227,58 +209,74 @@ IBeaconOracle
         merkleTreeRoot = _nodeRankingCommitment;
 
         // clear map
-        _clearReportedMap();
+        // _clearReportedMap();
     }
 
-    function _clearReportedMap() private {
-        bytes32[] memory submittedReportKeys = EnumerableMap.keys(
-            submittedReports
-        );
-        uint256 submittedLen = submittedReportKeys.length;
-        if (submittedLen > 0) {
-            for (uint256 i = 0; i < submittedLen; i++) {
-                EnumerableMap.remove(submittedReports, submittedReportKeys[i]);
-            }
-        }
+    // function _clearReportedMap() private {
+    //     bytes32[] memory submittedReportKeys = EnumerableMap.keys(submittedReports);
+    //     uint256 submittedLen = submittedReportKeys.length;
+    //     if (submittedLen > 0) {
+    //         for (uint256 i = 0; i < submittedLen; i++) {
+    //             EnumerableMap.remove(submittedReports, submittedReportKeys[i]);
+    //         }
+    //     }
 
-        address[] memory hasSubmittedKeys = EnumerableMap.keys(hasSubmitted);
-        uint256 hasSubmittedLen = hasSubmittedKeys.length;
-        if (hasSubmittedLen > 0) {
-            for (uint256 i = 0; i < hasSubmittedLen; i++) {
-                EnumerableMap.remove(hasSubmitted, hasSubmittedKeys[i]);
-            }
-        }
-    }
+    //     address[] memory hasSubmittedKeys = EnumerableMap.keys(hasSubmitted);
+    //     uint256 hasSubmittedLen = hasSubmittedKeys.length;
+    //     if (hasSubmittedLen > 0) {
+    //         for (uint256 i = 0; i < hasSubmittedLen; i++) {
+    //             EnumerableMap.remove(hasSubmitted, hasSubmittedKeys[i]);
+    //         }
+    //     }
+    // }
 
-    // leaf: bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID
-    function verifyNftValue(
-        bytes32[] memory proof,
-        bytes memory pubkey,
-        uint256 validatorBalance,
-        uint256 nftTokenID
-    ) external view returns (bool) {
-        bytes32 leaf = keccak256(
-            bytes.concat(
-                keccak256(abi.encode(pubkey, validatorBalance, nftTokenID))
-            )
-        );
+    /**
+     * description: Verify the value of nft
+     * leaf: bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID
+     * @return {bool} Whether the verification is successful
+     */
+    function verifyNftValue(bytes32[] memory proof, bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID)
+        external
+        view
+        returns (bool)
+    {
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(pubkey, validatorBalance, nftTokenID))));
         return MerkleProof.verify(proof, merkleTreeRoot, leaf);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function _getFirstEpochOfDay(
-        uint256 _epochId
-    ) internal view returns (uint256) {
+    /**
+     * @notice Return `_member` index in the members list or MEMBER_NOT_FOUND
+     */
+    function _getMemberId(address _member) internal view returns (uint256) {
+        uint256 length = oracleMembers.length;
+        for (uint256 i = 0; i < length; ++i) {
+            if (oracleMembers[i] == _member) {
+                return i;
+            }
+        }
+        return MEMBER_NOT_FOUND;
+    }
+
+    /**
+     * description: Return the first epoch of the frame that `_epochId` belongs to
+     */
+    function _getFrameFirstEpochOfDay(uint256 _epochId) internal view returns (uint256) {
         return (_epochId / epochsPerFrame) * epochsPerFrame;
     }
 
+    /**
+     * description: Return the epoch calculated from current timestamp
+     */
     function _getCurrentEpochId() internal view returns (uint256) {
         // The number of epochs after the base time
-        return
-        (_getTime() - GENESIS_TIME) / (SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
+        return (_getTime() - GENESIS_TIME) / (SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
     }
 
+    /**
+     * description Return the current timestamp
+     */
     function _getTime() internal view returns (uint256) {
         return block.timestamp;
     }

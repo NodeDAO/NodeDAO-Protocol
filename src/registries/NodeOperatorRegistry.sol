@@ -8,10 +8,10 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
 import "src/interfaces/INodeOperatorsRegistry.sol";
 
 /**
-  * @title Node Operator registry
-  *
-  * Registration and management of Node Operator
-  */
+ * @title Node Operator registry
+ *
+ * Registration and management of Node Operator
+ */
 contract NodeOperatorRegistry is
     Initializable,
     OwnableUpgradeable,
@@ -21,8 +21,8 @@ contract NodeOperatorRegistry is
 {
     /// @dev Node Operator parameters
     struct NodeOperator {
-        bool trusted;   // Trusted operator approved by dao
-        address rewardAddress;  // Ethereum 1 address which receives steth rewards for this operator
+        bool trusted; // Trusted operator approved by dao
+        address rewardAddress; // Ethereum 1 address which receives steth rewards for this operator
         address controllerAddress; // Ethereum 1 address for the operator's management authority
         address valutContractAddress; // Ethereum 1 contract address for the operator's valut
         string name; // operator name, Human-readable name
@@ -67,19 +67,21 @@ contract NodeOperatorRegistry is
     function initialize(address _dao, address _daoValutAddress) public initializer {
         dao = _dao;
         daoValutAddress = _daoValutAddress;
-         __UUPSUpgradeable_init();
+        __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
     }
 
     /**
-    * @notice Add node operator named `name` with reward address `rewardAddress` and staking limit = 0 validators
-    * @param _name Human-readable name
-    * @param _rewardAddress Ethereum 1 address which receives ETH rewards for this operator
-    * @param _controllerAddress Ethereum 1 address for the operator's management authority
-    * @return id a unique key of the added operator
-    */
+     * @notice Add node operator named `name` with reward address `rewardAddress` and staking limit = 0 validators
+     * @param _name Human-readable name
+     * @param _rewardAddress Ethereum 1 address which receives ETH rewards for this operator
+     * @param _controllerAddress Ethereum 1 address for the operator's management authority
+     * @return id a unique key of the added operator
+     */
     // Questions: _rewardAddress is the operator's personal wallet address? What is a operator's management authority and why do we need it? Why and How do we determine trusted or not trusted?
-    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress) external payable
+    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress)
+        external
+        payable
         nonReentrant
         validAddress(_rewardAddress)
         validAddress(_controllerAddress)
@@ -111,13 +113,10 @@ contract NodeOperatorRegistry is
     }
 
     /**
-      * @notice Set an operator as trusted
-      * @param _id operator id
-      */
-    function setTrustedOperator(uint256 _id) external
-        onlyDao
-        operatorExists(_id)
-    {
+     * @notice Set an operator as trusted
+     * @param _id operator id
+     */
+    function setTrustedOperator(uint256 _id) external onlyDao operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         operators[_id].trusted = true;
 
@@ -125,13 +124,10 @@ contract NodeOperatorRegistry is
     }
 
     /**
-      * @notice Remove an operator as trusted
-      * @param _id operator id
-      */
-    function removeTrustedOperator(uint256 _id) external
-        onlyDao
-        operatorExists(_id)
-    {
+     * @notice Remove an operator as trusted
+     * @param _id operator id
+     */
+    function removeTrustedOperator(uint256 _id) external onlyDao operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         operators[_id].trusted = false;
 
@@ -139,10 +135,10 @@ contract NodeOperatorRegistry is
     }
 
     /**
-      * @notice Set the name of the operator
-      * @param _id operator id
-      * @param _name operator new name
-      */
+     * @notice Set the name of the operator
+     * @param _id operator id
+     * @param _name operator new name
+     */
     function setNodeOperatorName(uint256 _id, string memory _name) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.controllerAddress, "AUTH_FAILED");
@@ -152,10 +148,10 @@ contract NodeOperatorRegistry is
     }
 
     /**
-      * @notice Set the rewardAddress of the operator
-      * @param _id operator id
-      * @param _rewardAddress Ethereum 1 address which receives ETH rewards for this operator
-      */
+     * @notice Set the rewardAddress of the operator
+     * @param _id operator id
+     * @param _rewardAddress Ethereum 1 address which receives ETH rewards for this operator
+     */
     function setNodeOperatorRewardAddress(uint256 _id, address _rewardAddress) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.controllerAddress, "AUTH_FAILED");
@@ -165,10 +161,10 @@ contract NodeOperatorRegistry is
     }
 
     /**
-      * @notice Set the controllerAddress of the operator
-      * @param _id operator id
-      * @param _controllerAddress Ethereum 1 address for the operator's management authority
-      */
+     * @notice Set the controllerAddress of the operator
+     * @param _id operator id
+     * @param _controllerAddress Ethereum 1 address for the operator's management authority
+     */
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.controllerAddress, "AUTH_FAILED");
@@ -178,18 +174,15 @@ contract NodeOperatorRegistry is
     }
 
     /**
-      * @notice Get information about an operator
-      * @param _id operator id
-      * @param _fullInfo Get all information
-      */
-    function getNodeOperator(uint256 _id, bool _fullInfo) external view
+     * @notice Get information about an operator
+     * @param _id operator id
+     * @param _fullInfo Get all information
+     */
+    function getNodeOperator(uint256 _id, bool _fullInfo)
+        external
+        view
         operatorExists(_id)
-        returns (
-            bool trusted,
-            string memory name,
-            address rewardAddress,
-            address controllerAddress
-        )
+        returns (bool trusted, string memory name, address rewardAddress, address controllerAddress)
     {
         NodeOperator memory operator = operators[_id];
 
@@ -201,40 +194,37 @@ contract NodeOperatorRegistry is
     }
 
     /**
-      * @notice Returns total number of node operators
-      */
+     * @notice Returns total number of node operators
+     */
     function getNodeOperatorsCount() external view returns (uint256) {
         return totalOperators;
     }
 
-   /**
-      * @notice Returns whether an operator is trusted
-      */
-    function isTrustedOperator(uint256 _id) external view
-        operatorExists(_id)
-        returns (bool)
-    {
+    /**
+     * @notice Returns whether an operator is trusted
+     */
+    function isTrustedOperator(uint256 _id) external view operatorExists(_id) returns (bool) {
         NodeOperator memory operator = operators[_id];
         return operator.trusted;
     }
 
-   /**
-      * @notice set dao valut address
-      */
+    /**
+     * @notice set dao valut address
+     */
     function setDaoAddress(address _dao) external onlyDao {
         dao = _dao;
     }
 
     /**
-      * @notice set dao valut address
-      */
+     * @notice set dao valut address
+     */
     function setDaoValutAddress(address _daoValutAddress) external onlyDao {
         daoValutAddress = _daoValutAddress;
     }
 
-   /**
-      * @notice set operator registration fee
-      */
+    /**
+     * @notice set operator registration fee
+     */
     function setRegistrationFee(uint256 _fee) external onlyDao {
         registrationFee = _fee;
     }
@@ -245,7 +235,7 @@ contract NodeOperatorRegistry is
         emit Transferred(to, amount);
     }
 
-    receive() external payable{
+    receive() external payable {
         transfer(msg.value, msg.sender);
     }
 }

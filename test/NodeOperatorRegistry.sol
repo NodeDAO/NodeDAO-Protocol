@@ -21,7 +21,9 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.initialize(_dao, _daoValutAddress);
     }
 
-    function checkOperator(bool _trusted, string memory _name, address _rewardAddress, address _controllerAddress) public {
+    function checkOperator(bool _trusted, string memory _name, address _rewardAddress, address _controllerAddress)
+        public
+    {
         bool trusted;
         string memory name;
         address rewardAddress;
@@ -108,7 +110,7 @@ contract NodeOperatorRegistryTest is Test {
         emit NodeOperatorRegistered(0, "one", address(3), address(4));
         emit Transferred(address(1), 0.1 ether);
         emit NodeOperatorTrustedRemove(0, "one", false);
-        
+
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
         vm.prank(_dao);
         operatorRegistry.removeTrustedOperator(0);
@@ -139,7 +141,7 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
         vm.prank(address(4));
         operatorRegistry.setNodeOperatorName(0, "two");
-        
+
         checkOperator(false, "two", address(3), address(4));
     }
 
@@ -166,7 +168,7 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
         vm.prank(address(4));
         operatorRegistry.setNodeOperatorRewardAddress(0, address(5));
-        
+
         checkOperator(false, "one", address(5), address(4));
     }
 
@@ -193,7 +195,7 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
         vm.prank(address(4));
         operatorRegistry.setNodeOperatorControllerAddress(0, address(5));
-        
+
         checkOperator(false, "one", address(3), address(5));
     }
 
@@ -218,7 +220,7 @@ contract NodeOperatorRegistryTest is Test {
 
     function testTrustedOperator() public {
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
-        
+
         bool trused = operatorRegistry.isTrustedOperator(0);
         assertEq(trused, false);
 
@@ -230,7 +232,7 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testSetDaoAuthFailed() public {
-         vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("AUTH_FAILED");
         operatorRegistry.setDaoAddress(address(10));
     }
 
@@ -261,5 +263,4 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.setDaoValutAddress(address(10));
         assertEq(operatorRegistry.daoValutAddress(), address(10));
     }
-
 }

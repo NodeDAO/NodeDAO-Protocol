@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="aa38fe62-0e3d-4e38-bb7f-de7c9f1bef1f" name="变更" comment="">
+      <change beforePath="$PROJECT_DIR$/src/oracles/BeaconOracle.sol" beforeDir="false" afterPath="$PROJECT_DIR$/src/oracles/BeaconOracle.sol" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FormatOnSaveOptions">
+    <option name="mySelectedFileTypes">
+      <set>
+        <option value="Go" />
+        <option value="JavaScript" />
+        <option value="Solidity file" />
+        <option value="TypeScript" />
+      </set>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
+  </component>
+  <component name="GitToolBoxStore">
+    <option name="projectConfigVersion" value="5" />
+    <option name="recentBranches">
+      <RecentBranches>
+        <option name="branchesForRepo">
+          <list>
+            <RecentBranchesForRepo>
+              <option name="branches">
+                <list>
+                  <RecentBranch>
+                    <option name="branchName" value="feature-liquid_staking" />
+                    <option name="lastUsedInstant" value="1672917509" />
+                  </RecentBranch>
+                  <RecentBranch>
+                    <option name="branchName" value="main" />
+                    <option name="lastUsedInstant" value="1672917508" />
+                  </RecentBranch>
+                </list>
+              </option>
+              <option name="repositoryRootUrl" value="file://$PROJECT_DIR$" />
+            </RecentBranchesForRepo>
+          </list>
+        </option>
+      </RecentBranches>
+    </option>
+  </component>
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="false" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="localRepository" value="$USER_HOME$/software/maven/maven_repository" />
+        <option name="userSettingsFile" value="/opt/homebrew/Cellar/maven/3.8.5/libexec/conf/settings.xml" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectId" id="2JtaFoGdfQ6yqaDPcGESjotPliU" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="Git.Branch.Popup.ShowAllRepositories" value="true" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="configurable.GoLibrariesConfigurable.is.expanded" value="true" />
+    <property name="go.format.on.save.advertiser.fired" value="true" />
+    <property name="go.formatter.settings.were.checked" value="true" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.vendoring.notification.had.been.shown" value="true" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="settings.editor.selected.configurable" value="actions.on.save" />
+    <property name="vue.rearranger.settings.migration" value="true" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="应用程序级" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="aa38fe62-0e3d-4e38-bb7f-de7c9f1bef1f" name="变更" comment="" />
+      <created>1672899736734</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1672899736734</updated>
+    </task>
+    <task id="LOCAL-00001" summary="Beacon Oracle init and todo">
+      <created>1672923434887</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1672923434887</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Beacon Oracle and Dao &#10;undone">
+      <created>1672987284149</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1672987284149</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Beacon Oracle and Dao &#10;undone">
+      <created>1672988841206</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1672988841206</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Beacon Oracle and Dao &#10;status: need test">
+      <created>1673011603051</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1673011603051</updated>
+    </task>
+    <task id="LOCAL-00005" summary="reporter rename oracleMember">
+      <created>1673068653635</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1673068653635</updated>
+    </task>
+    <task id="LOCAL-00006" summary="reporter rename oracleMember">
+      <created>1673068799597</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1673068799597</updated>
+    </task>
+    <task id="LOCAL-00007" summary="test&#10;FAIL. Reason: Setup failed: Arithmetic over/underflow">
+      <created>1673071842865</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1673071842865</updated>
+    </task>
+    <task id="LOCAL-00008" summary="perfect IBeaconOracle">
+      <created>1673076079176</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1673076079176</updated>
+    </task>
+    <task id="LOCAL-00009" summary="oracle merkle test pass">
+      <created>1673082860911</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1673082860911</updated>
+    </task>
+    <task id="LOCAL-00010" summary="oracle test part of pass">
+      <created>1673155213791</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1673155213791</updated>
+    </task>
+    <task id="LOCAL-00011" summary="oracle test part of pass">
+      <created>1673162913287</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1673162913287</updated>
+    </task>
+    <task id="LOCAL-00012" summary="oracle test pass&#10;&#10;// todo reportBeacon res delete">
+      <created>1673168883223</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1673168883223</updated>
+    </task>
+    <task id="LOCAL-00013" summary="oracle reportBeacon finsh">
+      <created>1673249665411</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1673249665412</updated>
+    </task>
+    <task id="LOCAL-00014" summary="oracle reportBeacon finsh">
+      <created>1673255975429</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1673255975429</updated>
+    </task>
+    <task id="LOCAL-00015" summary="oracle test&#10;todo: report res map-&gt;array">
+      <created>1673266604903</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1673266604903</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Beacon Oracle init and todo" />
+    <MESSAGE value="Beacon Oracle and Dao &#10;undone" />
+    <MESSAGE value="Beacon Oracle and Dao &#10;status: need test" />
+    <MESSAGE value="reporter rename oracleMember" />
+    <MESSAGE value="test&#10;FAIL. Reason: Setup failed: Arithmetic over/underflow" />
+    <MESSAGE value="perfect IBeaconOracle" />
+    <MESSAGE value="oracle merkle test pass" />
+    <MESSAGE value="oracle test part of pass" />
+    <MESSAGE value="oracle test pass&#10;&#10;// todo reportBeacon res delete" />
+    <MESSAGE value="oracle reportBeacon finsh" />
+    <MESSAGE value="oracle test&#10;todo: report res map-&gt;array" />
+    <option name="LAST_COMMIT_MESSAGE" value="oracle test&#10;todo: report res map-&gt;array" />
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

@@ -9,7 +9,6 @@ import "../src/tokens/NETH.sol";
 import "../src/LiquidStaking.sol";
 import "../src/registries/NodeOperatorRegistry.sol";
 
-
 contract NEthTest is Test {
     NETH public neth;
     // Create mock contracts for iLiqStaking and totalSupply
@@ -49,13 +48,8 @@ contract NEthTest is Test {
         nodeOperatorRegistry.initialize(address(this), operatorDaoVaultAdd);
         nodeOperatorRegistry.registerOperator{value: 0.1 ether}("operator1", operator1Add, operatorAuthAdd);
         nodeOperatorRegistry.setTrustedOperator(0);
-        ( 
-            trusted,
-            name,
-            rewardAddress,
-            controllerAddress
-        ) = nodeOperatorRegistry.getNodeOperator(0, true);
-        
+        (trusted, name, rewardAddress, controllerAddress) = nodeOperatorRegistry.getNodeOperator(0, true);
+
         console.log(trusted);
         console.log(name);
         console.log(rewardAddress);
@@ -77,6 +71,4 @@ contract NEthTest is Test {
         ethValue = neth.getEthValue(100);
         assertEq(ethValue, 100);
     }
-
-
 }

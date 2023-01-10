@@ -2,13 +2,13 @@ import "forge-std/Test.sol";
 import "src/LiquidStaking.sol";
 
 pragma solidity ^0.8.7;
+
 contract LiquidStakingTest is Test {
     event DepositReceived(address indexed from, uint256 amount, address indexed _referral);
     event ELRewardsReceived(uint256 balance);
     event EtherDeposited(address from, uint256 balance, uint256 height);
 
     LiquidStaking liqStaking;
-
 
     // address _nethContract = address(1);
     // address _liquidStakingContract = address(2);
@@ -32,5 +32,4 @@ contract LiquidStakingTest is Test {
     //     vm.expectRevert("Stake amount must not be Zero");
     //     liqStaking.stakeETH(_referral1, 12);
     // }
-
 }

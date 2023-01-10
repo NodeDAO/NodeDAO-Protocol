@@ -9,20 +9,14 @@ import "openzeppelin-contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "src/interfaces/INEth.sol";
 import "src/interfaces/ILiquidStaking.sol";
 
-contract NETH is
-    Initializable,
-    OwnableUpgradeable,
-    UUPSUpgradeable,
-    ERC20Upgradeable,
-    INEth
-{
-
+contract NETH is Initializable, OwnableUpgradeable, UUPSUpgradeable, ERC20Upgradeable, INEth {
     event TokensMinted(address indexed to, uint256 amount, uint256 ethAmount, uint256 time);
     event TokensBurned(address indexed from, uint256 amount, uint256 ethAmount, uint256 time);
     event EtherDeposited(address indexed from, uint256 amount, uint256 time);
 
     ILiquidStaking iLiqStaking;
-    function initialize(  address _liqStakingAddress ) external initializer {
+
+    function initialize(address _liqStakingAddress) external initializer {
         iLiqStaking = ILiquidStaking(_liqStakingAddress);
     }
 
@@ -34,7 +28,7 @@ contract NETH is
         uint256 nEthSupply = totalSupply();
 
         // Use 1:1 ratio if no nETH is minted
-        if (nEthSupply == 0) { return _nethAmount; }
+        if (nEthSupply == 0) return _nethAmount;
 
         // Calculate and return
         return _nethAmount * (totalPooledEth / nEthSupply);
@@ -46,12 +40,12 @@ contract NETH is
         uint256 nEthSupply = totalSupply();
 
         // Use 1:1 ratio if no nETH is minted
-        if (nEthSupply == 0) { return _ethAmount; }
+        if (nEthSupply == 0) return _ethAmount;
 
         require(totalPooledEth > 0, "Cannot calculate nETH token amount while total network balance is zero");
 
         // Calculate and return
-        return _ethAmount * nEthSupply/ totalPooledEth;
+        return _ethAmount * nEthSupply / totalPooledEth;
     }
 
     // Mint nETH
@@ -71,7 +65,7 @@ contract NETH is
     }
 
     // Burn nETH for ETH
-    function burn(uint256 _nethAmount) external override returns(uint256){
+    function burn(uint256 _nethAmount) external override returns (uint256) {
         // Check nETH amount
         require(_nethAmount > 0, "Invalid token burn amount");
         require(balanceOf(msg.sender) >= _nethAmount, "Insufficient nETH balance");
@@ -85,7 +79,7 @@ contract NETH is
         // Emit tokens burned event
         emit TokensBurned(msg.sender, _nethAmount, ethAmount, block.timestamp);
 
-        return ethAmount ;
+        return ethAmount;
     }
 
     // Receive an ETH deposit from a generous individual
@@ -93,5 +87,4 @@ contract NETH is
         // Emit ether deposited event
         emit EtherDeposited(msg.sender, msg.value, block.timestamp);
     }
-
 }
