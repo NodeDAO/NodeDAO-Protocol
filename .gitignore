@@ -11,3 +11,4 @@ out/
 .env
 .history/
 .vscode/
+.idea/

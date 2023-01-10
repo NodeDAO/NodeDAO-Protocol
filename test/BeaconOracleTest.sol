@@ -6,8 +6,12 @@ import "src/oracles/BeaconOracle.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
 import "src/registries/NodeOperatorRegistry.sol";
 import "src/LiquidStaking.sol";
+import "src/oracles/ReportUtils.sol";
+import "src/interfaces/INodeOperatorsRegistry.sol";
 
 contract BeaconOracleTest is Test {
+    using ReportUtils for bytes;
+
     BeaconOracle beaconOracle;
     NodeOperatorRegistry operatorRegistry;
 
@@ -91,56 +95,60 @@ contract BeaconOracleTest is Test {
         assertFalse(beaconOracle.isReportBeacon());
     }
 
-    // function testReportBeacon() public {
-    //     vm.startPrank(_dao);
-    //     beaconOracle.addOracleMember(address(11));
-    //     beaconOracle.addOracleMember(address(12));
-    //     beaconOracle.addOracleMember(address(13));
-    //     beaconOracle.addOracleMember(address(14));
-    //     beaconOracle.addOracleMember(address(15));
-    //     vm.stopPrank();
+    function testReportBeacon() public {
+        vm.startPrank(_dao);
+        beaconOracle.addOracleMember(address(11));
+        beaconOracle.addOracleMember(address(12));
+        beaconOracle.addOracleMember(address(13));
+        beaconOracle.addOracleMember(address(14));
+        beaconOracle.addOracleMember(address(15));
+        vm.stopPrank();
 
-    //     assertEq(beaconOracle.beaconBalances(), 0);
-    //     assertEq(beaconOracle.beaconActiveValidators(), 0);
-    //     assertFalse(beaconOracle.isReportBeacon());
+        assertEq(beaconOracle.beaconBalances(), 0);
+        assertEq(beaconOracle.beaconValidators(), 0);
+        assertFalse(beaconOracle.isReportBeacon());
 
-    //     bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
+        bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
 
-    //     vm.startPrank(address(11));
-    //     assertFalse(beaconOracle.isReportBeacon());
-    //     beaconOracle.reportBeacon(172800, 123456789, 12345, root);
-    //     assertEq(beaconOracle.isReportBeacon(), true);
-    //     vm.stopPrank();
+        vm.startPrank(address(11));
+        assertFalse(beaconOracle.isReportBeacon());
+        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        assertEq(beaconOracle.isReportBeacon(), true);
+        vm.stopPrank();
 
-    //     vm.startPrank(address(12));
-    //     beaconOracle.reportBeacon(172800, 123456789, 12345, root);
-    //     assertEq(beaconOracle.isReportBeacon(), true);
-    //     vm.stopPrank();
+        vm.startPrank(address(12));
+        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        assertEq(beaconOracle.isReportBeacon(), true);
+        vm.stopPrank();
 
-    //     vm.startPrank(address(13));
-    //     beaconOracle.reportBeacon(172800, 123456789, 12345, root);
-    //     vm.stopPrank();
+        vm.startPrank(address(13));
+        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        vm.stopPrank();
 
-    //     vm.startPrank(address(14));
-    //     beaconOracle.reportBeacon(172800, 123456789, 12345, root);
-    //     assertEq(beaconOracle.isReportBeacon(), false);
-    //     vm.stopPrank();
+        vm.startPrank(address(14));
+        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        assertEq(beaconOracle.isReportBeacon(), false);
+        vm.stopPrank();
 
-    //     vm.startPrank(address(15));
-    //     beaconOracle.reportBeacon(172800, 123456789, 12345, root);
-    //     assertEq(beaconOracle.isReportBeacon(), false);
-    //     vm.stopPrank();
+        vm.startPrank(address(15));
+        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        assertEq(beaconOracle.isReportBeacon(), false);
+        vm.stopPrank();
 
-    //     assertEq(beaconOracle.beaconBalances(), 123456789);
-    //     assertEq(beaconOracle.beaconActiveValidators(), 12345);
-    //     assertEq(beaconOracle.isQuorum(), true);
+        assertEq(beaconOracle.beaconBalances(), 123456789);
+        assertEq(beaconOracle.beaconValidators(), 12345);
+        assertEq(beaconOracle.isQuorum(), true);
 
-    //     vm.prank(address(11));
-    //     assertFalse(beaconOracle.isReportBeacon());
-    //     vm.prank(address(12));
-    //     assertFalse(beaconOracle.isReportBeacon());
-    //     vm.prank(address(13));
-    //     assertFalse(beaconOracle.isReportBeacon());
+        vm.prank(address(11));
+        assertFalse(beaconOracle.isReportBeacon());
+        vm.prank(address(12));
+        assertFalse(beaconOracle.isReportBeacon());
+        vm.prank(address(13));
+        assertFalse(beaconOracle.isReportBeacon());
+    }
+
+    // function testExEpochId() public {
+    //     console.log(beaconOracle._getFrameFirstEpochOfDay(beaconOracle._getCurrentEpochId()));
     // }
 
     function testMerkle() public {

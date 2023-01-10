@@ -9,6 +9,7 @@ import "openzeppelin-contracts/utils/structs/EnumerableMap.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
+import "src/oracles/ReportUtils.sol";
 
 /**
  * @title Beacon Oracle and Dao
@@ -25,13 +26,15 @@ contract BeaconOracle is
 {
     using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
     using EnumerableMap for EnumerableMap.AddressToUintMap;
+    using ReportUtils for bytes;
 
     // Use the maximum value of uint256 as the index that does not exist
     uint256 internal constant MEMBER_NOT_FOUND = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
     /// The bitmask of the oracle members that pushed their reports
     // keccak256("oracle.reportsBitMask")
-    uint256 internal reportBitMaskPosition = 0xc25c9b62b6d0f24f0d2ed8730d23f158f481aba9a9521a1d67014c7fa19a1ccd;
+    // uint256 internal reportBitMaskPosition = 0xea6fa022365e4737a3bb52facb00ddc693a656fb51ffb2b4bd24fb85bdc888be;
+    uint256 internal reportBitMaskPosition = 0;
 
     // Number of slots corresponding to each epoch
     uint64 internal constant SLOTS_PER_EPOCH = 32;
@@ -64,12 +67,12 @@ contract BeaconOracle is
     uint128 public beaconBalances;
 
     // current reportBeacon beaconValidators
-    uint64 public beaconActiveValidators;
+    uint64 public beaconValidators;
 
     // reportBeacon merkleTreeRoot storage
     bytes32 private merkleTreeRoot;
 
-    bytes32[] private currentReportVariants;
+    bytes[] private currentReportVariants;
 
     address public nodeOperatorsContract;
 
@@ -81,7 +84,7 @@ contract BeaconOracle is
         nodeOperatorsContract = _nodeOperatorsContract;
         epochsPerFrame = 225;
         // So the initial is the first epochId
-        expectedEpochId = _getFrameFirstEpochOfDay(_getCurrentEpochId()) + epochsPerFrame;
+        expectedEpochId = _getFrameFirstEpochOfDay(_getCurrentEpochId());
     }
 
     modifier onlyDao() {
@@ -124,6 +127,14 @@ contract BeaconOracle is
         emit ResetEpochsPerFrame(_epochsPerFrame);
     }
 
+    function getBeaconBalances() external view returns (uint128) {
+        return beaconBalances;
+    }
+
+    function getBeaconValidators() external view returns (uint64) {
+        return beaconValidators;
+    }
+
     /**
      * description: get Quorum
      * @return {uint32} Quorum = operatorCount * 2 / 3 + 1
@@ -137,25 +148,34 @@ contract BeaconOracle is
         return INodeOperatorsRegistry(nodeOperatorsContract);
     }
 
+    event testReport(uint256 i, uint256 l);
+
     /**
      * description: The oracle service reports beacon chain data to the contract
      * @param _epochId The epoch Id expected by the current frame
      * @param _beaconBalance Beacon chain balance
      * @param _beaconValidators Number of beacon chain validators
-     * @param _commitNonce 提交时stake pool对应的nonce
-     * @param _nodeRankingCommitment merkle root
+     * @param _validatorRankingRoot merkle root
      */
     function reportBeacon(
         uint256 _epochId,
         uint128 _beaconBalance,
         uint32 _beaconValidators,
-        uint256 _commitNonce,
-        bytes32 _nodeRankingCommitment
+        bytes32 _validatorRankingRoot
     ) external {
         if (isQuorum) {
             emit achieveQuorum(_epochId, isQuorum, getQuorum());
             return;
         }
+        require(_epochId >= expectedEpochId, "EPOCH_IS_TOO_OLD");
+
+        // if expected epoch has advanced, check that this is the first epoch of the current frame
+        // and clear the last unsuccessful reporting
+        if (_epochId > expectedEpochId) {
+            require(_epochId == _getFrameFirstEpochOfDay(_getCurrentEpochId()), "UNEXPECTED_EPOCH");
+            _clearReportingAndAdvanceTo(_epochId);
+        }
+
         // make sure the oracle is from members list and has not yet voted
         uint256 index = _getMemberId(msg.sender);
         require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
@@ -166,69 +186,94 @@ contract BeaconOracle is
         // reported, set the bitmask to the specified bit
         reportBitMaskPosition = bitMask | mask;
 
-        require(_epochId == expectedEpochId, "The epoch submitted is not expected.");
-        // if (EnumerableMap.contains(hasSubmitted, msg.sender)) {
-        //     require(EnumerableMap.get(hasSubmitted, msg.sender) == 0, "This msg.sender has already submitted the vote.");
-        // }
+        // push this report to the matching kind
+        uint256 quorum = getQuorum();
 
-        // bytes32 hash = keccak256(abi.encode(_beaconBalance, _beaconValidators, _nodeRankingCommitment));
-        // uint32 sameCount;
-        // if (EnumerableMap.contains(submittedReports, hash)) {
-        //     sameCount = uint32(EnumerableMap.get(submittedReports, hash));
-        // }
-        // sameCount++;
-        // EnumerableMap.set(submittedReports, hash, sameCount);
+        uint256 i = 0;
+        uint16 sameCount;
+        uint256 nextEpochId = _epochId + epochsPerFrame;
 
-        // EnumerableMap.set(hasSubmitted, msg.sender, 1);
-        // emit ReportBeacon(_epochId, msg.sender, sameCount);
+        // iterate on all report variants we already have, limited by the oracle members maximum
+        while (i < currentReportVariants.length) {
+            (bool isDifferent, uint16 count) = ReportUtils.isReportDifferentAndCount(
+                currentReportVariants[i], _validatorRankingRoot, _beaconBalance, _beaconValidators
+            );
 
-        // uint32 quorum = getQuorum();
-        // if (sameCount >= quorum) {
-        //     _pushReport(_beaconBalance, _beaconValidators, _nodeRankingCommitment);
-        //     emit ReportSuccess(_epochId, quorum, sameCount);
-        // }
+            if (isDifferent) {
+                ++i;
+            } else {
+                sameCount = count;
+                break;
+            }
+        }
+
+        emit ReportBeacon(_epochId, msg.sender, sameCount + 1);
+
+        if (i < currentReportVariants.length) {
+            if (sameCount + 1 >= quorum) {
+                _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
+                emit ReportSuccess(_epochId, quorum, sameCount);
+            } else {
+                // increment report counter, see ReportUtils for details
+                currentReportVariants[i] = ReportUtils.compressReportData(
+                    _validatorRankingRoot, _beaconBalance, _beaconValidators, sameCount + 1
+                );
+            }
+        } else {
+            if (quorum == 1) {
+                _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
+                emit ReportSuccess(_epochId, quorum, sameCount);
+            } else {
+                currentReportVariants.push(
+                    ReportUtils.compressReportData(
+                        _validatorRankingRoot, _beaconBalance, _beaconValidators, sameCount + 1
+                    )
+                );
+            }
+        }
+
+        emit testReport(i, currentReportVariants.length);
     }
 
     function isReportBeacon() external view returns (bool) {
-        // if (EnumerableMap.contains(hasSubmitted, msg.sender)) {
-        //     return EnumerableMap.get(hasSubmitted, msg.sender) == 1;
-        // }
-        return false;
+        // make sure the oracle is from members list and has not yet voted
+        uint256 index = _getMemberId(msg.sender);
+        if (index == MEMBER_NOT_FOUND) return false;
+        uint256 bitMask = reportBitMaskPosition;
+        uint256 mask = 1 << index;
+        return bitMask & mask != 0;
     }
 
-    function _pushReport(uint64 _beaconBalance, uint32 _beaconValidators, bytes32 _nodeRankingCommitment) private {
-        // ILiquidStaking liquidStaking = getLiquidStaking();
-        // liquidStaking.handleOracleReport(_beaconBalance, _beaconValidators);
-        uint256 nextExpectedEpoch = expectedEpochId + epochsPerFrame;
-
-        expectedEpochId = nextExpectedEpoch;
+    /**
+     * report reaches quorum processing data
+     * param {uint256} _nextExpectedEpochId The next expected epochId
+     */
+    function _dealReport(
+        uint256 _nextExpectedEpochId,
+        uint128 _beaconBalance,
+        uint32 _beaconValidators,
+        bytes32 _validatorRankingRoot
+    ) internal {
         // The report passed on the same day
         isQuorum = true;
         beaconBalances = _beaconBalance;
-        beaconActiveValidators = _beaconValidators;
-        merkleTreeRoot = _nodeRankingCommitment;
+        beaconValidators = _beaconValidators;
+        merkleTreeRoot = _validatorRankingRoot;
 
-        // clear map
-        // _clearReportedMap();
+        // clear report array
+        _clearReportingAndAdvanceTo(_nextExpectedEpochId);
     }
 
-    // function _clearReportedMap() private {
-    //     bytes32[] memory submittedReportKeys = EnumerableMap.keys(submittedReports);
-    //     uint256 submittedLen = submittedReportKeys.length;
-    //     if (submittedLen > 0) {
-    //         for (uint256 i = 0; i < submittedLen; i++) {
-    //             EnumerableMap.remove(submittedReports, submittedReportKeys[i]);
-    //         }
-    //     }
+    /**
+     *  Remove the current reporting progress and advances to accept the later epoch `_epochId`
+     */
+    function _clearReportingAndAdvanceTo(uint256 _nextExpectedEpochId) internal {
+        reportBitMaskPosition = 0;
+        expectedEpochId = _nextExpectedEpochId;
 
-    //     address[] memory hasSubmittedKeys = EnumerableMap.keys(hasSubmitted);
-    //     uint256 hasSubmittedLen = hasSubmittedKeys.length;
-    //     if (hasSubmittedLen > 0) {
-    //         for (uint256 i = 0; i < hasSubmittedLen; i++) {
-    //             EnumerableMap.remove(hasSubmitted, hasSubmittedKeys[i]);
-    //         }
-    //     }
-    // }
+        delete currentReportVariants;
+        emit ExpectedEpochIdUpdated(_nextExpectedEpochId);
+    }
 
     /**
      * description: Verify the value of nft

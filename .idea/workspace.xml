@@ -6,6 +6,9 @@
   <component name="ChangeListManager">
     <list default="true" id="aa38fe62-0e3d-4e38-bb7f-de7c9f1bef1f" name="变更" comment="">
       <change beforePath="$PROJECT_DIR$/src/oracles/BeaconOracle.sol" beforeDir="false" afterPath="$PROJECT_DIR$/src/oracles/BeaconOracle.sol" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/tokens/NETH.sol" beforeDir="false" afterPath="$PROJECT_DIR$/src/tokens/NETH.sol" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/LiquidStakingTest.sol" beforeDir="false" afterPath="$PROJECT_DIR$/test/LiquidStakingTest.sol" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/NEth.t.sol" beforeDir="false" afterPath="$PROJECT_DIR$/test/NEth.t.sol" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

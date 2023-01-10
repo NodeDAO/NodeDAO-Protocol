@@ -48,13 +48,8 @@ contract NEthTest is Test {
         nodeOperatorRegistry.initialize(address(this), operatorDaoVaultAdd);
         nodeOperatorRegistry.registerOperator{value: 0.1 ether}("operator1", operator1Add, operatorAuthAdd);
         nodeOperatorRegistry.setTrustedOperator(0);
-        ( 
-            trusted,
-            name,
-            rewardAddress,
-            controllerAddress
-        ) = nodeOperatorRegistry.getNodeOperator(0, true);
-        
+        (trusted, name, rewardAddress, controllerAddress) = nodeOperatorRegistry.getNodeOperator(0, true);
+
         // console.log(trusted);
         // console.log(name);
         // console.log(rewardAddress);
@@ -100,6 +95,4 @@ contract NEthTest is Test {
         nethValue = neth.mint(ethAmount, operator1Add);
         assertEq(nethValue, ethAmount);
     }
-
-
 }
