@@ -46,8 +46,12 @@ contract LiquidStakingTest is Test {
     }
 
 
-    function test1() public {
+    function correctStakeETH() public {
         liqStakingContract.stakeETH{value: 0.1 ether}(referral, 0);
+         assertEq(address(liqStakingContract).balance,  0.1 ether);
+         assertEq( liqStakingContract.checkOperatorBalance(0) ,  0.1 ether);
+         assertEq( liqStakingContract.checkOperatorBalance(1) ,  0 );
+
     }
 
 
