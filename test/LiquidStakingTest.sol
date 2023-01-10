@@ -20,7 +20,7 @@ contract LiquidStakingTest is Test {
     address oracleAdd = address(6);
     address validatorNftAdd = address(7);
     address public operatorAuthAdd = address(this);
-    address public operatorDaoVaultAdd= address(998);
+    address public operatorDaoVaultAdd = address(998);
     bytes public withdrawalCreds = "0x3333";
     bool trusted;
     string name;
@@ -40,19 +40,16 @@ contract LiquidStakingTest is Test {
         nodeOperatorRegistry.initialize(address(this), operatorDaoVaultAdd);
         nodeOperatorRegistry.registerOperator{value: 0.1 ether}("operator1", operator1Add, operatorAuthAdd);
         nodeOperatorRegistry.setTrustedOperator(0);
-                
+
         neth = new NETH();
         vm.prank(address(1));
         neth.initialize(address(liqStakingContract));
     }
 
-
     function correctStakeETH() public {
         liqStakingContract.stakeETH{value: 0.1 ether}(referral, 0);
-         assertEq(address(liqStakingContract).balance,  0.1 ether);
-         assertEq( liqStakingContract.checkOperatorBalance(0) ,  0.1 ether);
-         assertEq( liqStakingContract.checkOperatorBalance(1) ,  0 );
-
+        assertEq(address(liqStakingContract).balance, 0.1 ether);
+        assertEq(liqStakingContract.checkOperatorBalance(0), 0.1 ether);
+        assertEq(liqStakingContract.checkOperatorBalance(1), 0);
     }
-
 }

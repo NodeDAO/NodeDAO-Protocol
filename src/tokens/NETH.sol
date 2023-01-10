@@ -45,7 +45,7 @@ contract NETH is Initializable, OwnableUpgradeable, UUPSUpgradeable, ERC20Upgrad
         require(totalPooledEth > 0, "Cannot calculate nETH token amount while total network balance is zero");
 
         // Calculate and return
-        return _ethAmount * (nEthSupply/ totalPooledEth);
+        return _ethAmount * (nEthSupply / totalPooledEth);
     }
 
     // Mint nETH

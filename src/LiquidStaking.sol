@@ -91,10 +91,13 @@ contract LiquidStaking is
 
     function stakeETH(address _referral, uint256 _node_operator) external payable nonReentrant {
         require(msg.value != 0, "Stake amount must not be Zero");
-        // require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
         require(msg.value >= 100 wei, "Stake amount must be minimum  100 wei");
         require(_referral != address(0x0), "Referral address must be provided");
 
+        require(
+            iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true,
+            "The message sender is not part of Trusted KingHash Operators"
+        );
         uint256 depositNet;
         if (getDepositFeeRate() == 0) {
             depositNet = msg.value;
