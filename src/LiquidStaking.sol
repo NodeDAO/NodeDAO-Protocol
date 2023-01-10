@@ -14,7 +14,7 @@ import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
 
 
-contract LiquidStaking2 is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable {
     IDepositContract public depositContract;
 
     bytes public liquidStakingWithdrawalCredentials; // 通过质押池质押出去的验证者使用
