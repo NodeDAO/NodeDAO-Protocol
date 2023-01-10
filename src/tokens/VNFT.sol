@@ -20,7 +20,7 @@ contract VNFT is
   address constant public OPENSEA_PROXY_ADDRESS = 0x1E0049783F008A0085193E00003D00cd54003c71; // todo 0x1E0049783F008A0085193E00003D00cd54003c71 ?
   uint256 constant public MAX_SUPPLY = 6942069420;
 
-  mapping(bytes => uint256) public validatorRecords; // operator_id
+  mapping(bytes => uint256) public validatorRecords; // key is pubkey, value is operator_id
   mapping(uint256 => address) public lastOwners;
 
   bytes[] public _validators;
@@ -74,7 +74,7 @@ contract VNFT is
    * @param pubkey - A 48 bytes representing the validator's public key
    */
   function validatorExists(bytes calldata pubkey) external view returns (bool) {
-    return validatorRecords[pubkey] != 0; // operator 从1开始
+    return validatorRecords[pubkey] != 0;
   }
 
   /**
@@ -85,6 +85,10 @@ contract VNFT is
     return _validators[tokenId];
   }
 
+  /**
+   * @notice Finds the operator id of a nft
+   * @param tokenId - tokenId of the validator nft
+   */
   function operatorOf(uint256 tokenId) external view returns (uint256) {
     bytes memory _pubkey =  _validators[tokenId];
     return validatorRecords[_pubkey];
@@ -222,6 +226,10 @@ contract VNFT is
     _baseTokenURI = baseURI;
   }
 
+  /**
+   * @notice set LiquidStaking contract address
+   * @param _liqStakingAddress - contract address
+   */
   function setLiquidStaking(address _liqStakingAddress) external onlyOwner {
     require(_liqStakingAddress != address(0), "LiquidStaking address provided invalid");
     emit LiquidStakingChanged(liquidStakingAddress, _liqStakingAddress);
