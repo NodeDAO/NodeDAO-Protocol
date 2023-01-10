@@ -32,9 +32,9 @@ interface IELVault {
 
     function claimRewardsOfLiquidStaking(uint256[] memory tokenIds) external returns(uint256);
 
-    function claimRewardsOfUser(uint256 tokenId) external;
+    function claimRewardsOfUser(uint256 tokenId) external returns(uint256);
 
-    function setUserNft(uint256 tokenId) external;
+    function setUserNft(uint256 tokenId, uint256 number) external;
 
     function setLiquidStakingGasHeight(uint256 _gasHeight) external;
 }

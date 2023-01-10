@@ -164,7 +164,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
      * @dev Current active validator nft will equally recieve 
      *      all rewards earned in this era
      */
-    function settle() external override onlyLiquidStaking { // 每次nft的交易，铸造要调用
+    function settle() external override onlyLiquidStaking {
         _settle();
     }
 
@@ -210,7 +210,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
      * @notice Claims the rewards belonging to a validator nft and transfer it to the owner
      * @param tokenId - tokenId of the validator nft
      */
-    function claimRewardsOfUser(uint256 tokenId) external nonReentrant onlyLiquidStaking {
+    function claimRewardsOfUser(uint256 tokenId) external nonReentrant onlyLiquidStaking returns(uint256) {
         address owner = nftContract.ownerOf(tokenId);
         uint256 nftRewards = _rewards(tokenId);
         
@@ -219,10 +219,12 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
 
         userGasHeight[tokenId] = cumArr[cumArr.length - 1].height;
         emit RewardClaimed(owner, nftRewards);
+
+        return nftRewards;
     }
 
-    function setUserNft(uint256 tokenId) external onlyLiquidStaking {
-        userGasHeight[tokenId] = block.number;
+    function setUserNft(uint256 tokenId, uint256 number) external onlyLiquidStaking {
+        userGasHeight[tokenId] = number;
     }
 
     function setLiquidStakingGasHeight(uint256 _gasHeight) external onlyLiquidStaking {
