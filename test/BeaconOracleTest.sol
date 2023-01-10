@@ -13,33 +13,21 @@ contract BeaconOracleTest is Test {
     using ReportUtils for bytes;
 
     BeaconOracle beaconOracle;
-    NodeOperatorRegistry operatorRegistry;
 
     address _dao = address(1);
-    address _daoValutAddress = address(2);
 
     function setUp() public {
         vm.warp(1673161943);
         beaconOracle = new BeaconOracle();
-
-        operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress);
-        //        vm.prank(address(1));
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        beaconOracle.initialize(_dao);
 
         vm.startPrank(_dao);
-        operatorRegistry.setTrustedOperator(1);
-        operatorRegistry.setTrustedOperator(2);
-        operatorRegistry.setTrustedOperator(3);
-        operatorRegistry.setTrustedOperator(4);
-        operatorRegistry.setTrustedOperator(0);
+        beaconOracle.addOracleMember(address(11));
+        beaconOracle.addOracleMember(address(12));
+        beaconOracle.addOracleMember(address(13));
+        beaconOracle.addOracleMember(address(14));
+        beaconOracle.addOracleMember(address(15));
         vm.stopPrank();
-
-        beaconOracle.initialize(_dao, address(operatorRegistry));
     }
 
     function testDao() public {
@@ -96,13 +84,6 @@ contract BeaconOracleTest is Test {
     }
 
     function testReportBeacon() public {
-        vm.startPrank(_dao);
-        beaconOracle.addOracleMember(address(11));
-        beaconOracle.addOracleMember(address(12));
-        beaconOracle.addOracleMember(address(13));
-        beaconOracle.addOracleMember(address(14));
-        beaconOracle.addOracleMember(address(15));
-        vm.stopPrank();
 
         assertEq(beaconOracle.beaconBalances(), 0);
         assertEq(beaconOracle.beaconValidators(), 0);
@@ -146,10 +127,6 @@ contract BeaconOracleTest is Test {
         vm.prank(address(13));
         assertFalse(beaconOracle.isReportBeacon());
     }
-
-    // function testExEpochId() public {
-    //     console.log(beaconOracle._getFrameFirstEpochOfDay(beaconOracle._getCurrentEpochId()));
-    // }
 
     function testMerkle() public {
         bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;

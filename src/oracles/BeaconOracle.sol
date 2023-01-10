@@ -5,10 +5,7 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
-import "openzeppelin-contracts/utils/structs/EnumerableMap.sol";
 import "src/interfaces/IBeaconOracle.sol";
-import "src/interfaces/ILiquidStaking.sol";
-import "src/interfaces/INodeOperatorsRegistry.sol";
 import "src/oracles/ReportUtils.sol";
 
 /**
@@ -24,8 +21,6 @@ contract BeaconOracle is
     UUPSUpgradeable,
     IBeaconOracle
 {
-    using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
-    using EnumerableMap for EnumerableMap.AddressToUintMap;
     using ReportUtils for bytes;
 
     // Use the maximum value of uint256 as the index that does not exist
@@ -74,14 +69,11 @@ contract BeaconOracle is
 
     bytes[] private currentReportVariants;
 
-    address public nodeOperatorsContract;
-
-    function initialize(address _dao, address _nodeOperatorsContract) public initializer {
+    function initialize(address _dao) public initializer {
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
         dao = _dao;
-        nodeOperatorsContract = _nodeOperatorsContract;
         epochsPerFrame = 225;
         // So the initial is the first epochId
         expectedEpochId = _getFrameFirstEpochOfDay(_getCurrentEpochId());
@@ -140,15 +132,9 @@ contract BeaconOracle is
      * @return {uint32} Quorum = operatorCount * 2 / 3 + 1
      */
     function getQuorum() public view returns (uint32) {
-        uint32 n = (uint32(getNodeOperatorsContract().getNodeOperatorsCount()) * 2) / 3;
+        uint32 n = (uint32(oracleMembers.length) * 2) / 3;
         return uint32(n + 1);
     }
-
-    function getNodeOperatorsContract() public view returns (INodeOperatorsRegistry) {
-        return INodeOperatorsRegistry(nodeOperatorsContract);
-    }
-
-    event testReport(uint256 i, uint256 l);
 
     /**
      * description: The oracle service reports beacon chain data to the contract
@@ -232,7 +218,6 @@ contract BeaconOracle is
             }
         }
 
-        emit testReport(i, currentReportVariants.length);
     }
 
     function isReportBeacon() external view returns (bool) {
