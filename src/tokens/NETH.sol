@@ -21,11 +21,11 @@ contract NETH is INETH, ERC20, Ownable {
         liquidStakingAddress = _liquidStaking;
     }
 
-    function whiteListMint(uint256 amount, address account) external {
+    function whiteListMint(uint256 amount, address account) external onlyLiquidStaking {
         _mint(account, amount);
     }
 
-    function whiteListBurn(uint256 amount, address account) external {
+    function whiteListBurn(uint256 amount, address account) external onlyLiquidStaking {
         _burn(account, amount);
     }
 }
