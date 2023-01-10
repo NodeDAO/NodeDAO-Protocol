@@ -59,9 +59,14 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         _;
     }
 
-    event ELRewardsReceived(uint256 balance);
-    event EtherDeposited(address from, uint256 balance, uint256 height);
-    event Eth32Deposit(bytes _pubkey, bytes _withdrawal, address _owner);
+    event EthStake(address indexed from, uint256 amount, address indexed _referral, uint256 amountOut);
+    event EthUnstake(address indexed from, uint256 amount, address indexed _referral, uint256 amountOut);
+    event NftStake(address indexed from, uint256 count);
+    event ValidatorRegistered(uint256 operator, uint256 tokenId);
+    event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
+    event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
+    event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
+    event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
 
     // todo withdrawalCreds 必须是本合约地址
@@ -102,7 +107,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    event EthStake(address indexed from, uint256 amount, address indexed _referral, uint256 amountOut);
     function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
@@ -118,14 +122,13 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] + depositAmount;
 
         // 1. 将depositAmount根据nETH的汇率进行换算
-        // 2. 铸造nETH，todo nETH合约还未完，并且暂不确定：erc20是单独一个合约好 还是与质押池在一起好，在一起能够减少多次跨合约调用 ？？ lido rockpool - rebase
+        // 2. 铸造nETH
         uint256 amountOut = getNethOut(depositAmount);
         nETHContract.whiteListMint(amountOut, _referral);
 
         emit EthStake(msg.sender, msg.value, _referral, amountOut);
     }
 
-    event EthUnstake(address indexed from, uint256 amount, address indexed _referral, uint256 amountOut);
     function unstakeETH(address _referral, uint256 amount) external nonReentrant {
         uint256 amountOut = getEthOut(amount);
         require(address(this).balance >= amountOut, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
@@ -139,7 +142,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         emit EthUnstake(msg.sender, amount, _referral, amountOut);
     }
 
-    event NftStake(address indexed from, uint256 count);
     // 支持一个注册多个，必须operator提供签名
     function stakeNFT(bytes[] calldata data) external payable nonReentrant returns (bool) {
         // 1.判断资金
@@ -180,7 +182,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         return true;
     }
 
-    event ValidatorRegistered(uint256 operator, uint256 tokenId);
     // 不支持一次注册多个，因为为了保护untake pool
     function registerValidator(bytes calldata data) external nonReentrant {
         // 1. 解析data获得operator_id
@@ -283,7 +284,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         return data.length == 0;
     }
 
-    event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     // 将neth兑换成nft
     function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
         // 1.检查token id对应的wrapOperator 是否正确
@@ -327,7 +327,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         emit NftWrap(tokenId, operatorId, value, amountOut);
     }
 
-    event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     // 将nft兑换成neth
     function unwrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
         // 1.检查发起者是否持有token_id - 不需要
@@ -370,7 +369,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         emit NftUnwrap(tokenId, operatorId, value, amountOut);
     }
 
-    event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
     function claimRewardsOfOperator(uint256 operatorId) public { 
         // 1.claim 收益 复投 operatorPoolBalances
         // 2.结算完收益 setLiquidStakingGasHeight
@@ -389,7 +387,6 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         emit OperatorClaimRewards(operatorId, nftRewards);
     }
     
-    event UserClaimRewards(uint256 operatorId, uint256 rewards);
     function claimRewardsOfUser(uint256 tokenId) public {
         // 收益转给用户
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
@@ -408,7 +405,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         IELVault(valutContractAddress).settle();
     }
 
-    // todo 与neth之间的调用关系，以及rebase逻辑
+    // todo 计算量比较大，每次wrap/stake时都要调用，gas耗费比较多，应抽离到预言机合约？
     function getTotalEthValue() public view returns(uint256) {
         uint256 beaconBalance = beaconOracleContract.beaconValue();
 
