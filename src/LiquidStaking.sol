@@ -41,7 +41,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     uint256[] private _liquidNfts; // 质押池拥有过的验证者tokenid，trustedNft包含可能大于liquidNfts，因为用户手里可能会有
     mapping(uint256 => uint256[]) private _operatorNfts; // 
     mapping(uint256 => bool) private _liquidUserNft; // 从质押池使用neth买走的nft
-    mapping(uint256 => bool) private _liquidTruestOperators; // 曾经拥有过的可信operator
+    mapping(uint256 => bool) private _liquidTruestOperators; // 曾经拥有过的可信operator，存在可信operator被移除可信列表，但他已经注册的白名单nft要统计价值
 
 
     uint256 public unstakePoolSize; // nETH unstake pool，初始为0
@@ -142,6 +142,16 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         emit EthUnstake(msg.sender, amount, _referral, amountOut);
     }
 
+    // 0:2 v
+    // 2:14 empty
+    // 16:64 pubkey
+    // 64:96 withdrawalCredentials
+    // 96:192 signature
+    // 192:224 depositDataRoot
+    // 224:256 blockNumber
+    // 256:288 s
+    // 288:320 r
+    // 320:352 operator
     // 支持一个注册多个，必须operator提供签名
     function stakeNFT(bytes[] calldata data) external payable nonReentrant returns (bool) {
         // 1.判断资金
@@ -153,14 +163,14 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
         uint256 total_ether = 0;
         for (uint256 i = 0; i < data.length; i++) {
-            require(data[i].length == 320, "Invalid Data Length");
+            require(data[i].length == 352, "Invalid Data Length");
             bool trusted = _stake(data[i]);
 
             uint256 amountOut = getNethOut(DEPOSIT_SIZE);
             // mint nft / neth
             if (trusted) {
-                uint256 _operatorId = uint256(bytes32(data[i][0:32]));
-                bytes calldata pubkey = data[i][32:80];
+                uint256 _operatorId = uint256(bytes32(data[i][320:352]));
+                bytes calldata pubkey = data[i][16:64];
                 vNFTContract.whiteListMint(pubkey, msg.sender, _operatorId);
                 uint256 tokenId = vNFTContract.getLatestTokenId();
                 trustedNft[tokenId]= _operatorId;
@@ -192,7 +202,9 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         // 6. operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] - depositAmount;
         // 7.mint nft，铸造nft，存放在质押池合约，不能再铸造neth，因为已经在用户deposit时完成铸造
         // 8.更新_liquidNfts
-        uint256 _operatorId = uint256(bytes32(data[0:32]));
+        require(data.length == 352, "Invalid Data Length");
+        
+        uint256 _operatorId = uint256(bytes32(data[320:352]));
         require(address(this).balance >= unstakePoolSize, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId) == true, "The operator must be trusted");
         operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] - DEPOSIT_SIZE;
@@ -201,7 +213,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         _settle(_operatorId);
 
         // mint nft 
-        vNFTContract.whiteListMint(data[32:80], address(this), _operatorId);
+        vNFTContract.whiteListMint(data[16:64], address(this), _operatorId);
         uint256 tokenId = vNFTContract.getLatestTokenId();
         trustedNft[tokenId]= _operatorId;
         _liquidNfts.push(tokenId);
@@ -214,15 +226,15 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
     }
 
     function _stake(bytes calldata data) internal returns (bool) {
-        uint256 _operatorId = uint256(bytes32(data[0:32]));
+        uint256 _operatorId = uint256(bytes32(data[320:352]));
         uint256 operatorsCount = nodeOperatorRegistryContract.getNodeOperatorsCount();
         require(_operatorId <= operatorsCount, "The operator does not exist");
 
         bool trusted;
         address controllerAddress;
         (trusted, , , controllerAddress, ) = nodeOperatorRegistryContract.getNodeOperator(_operatorId, false);
-        bytes32 hash = precheck(data); // todo 数据位置
-        signercheck(bytes32(data[256:288]), bytes32(data[288:320]), uint8(bytes1(data[1])), hash, controllerAddress); // todo 数据位置
+        bytes32 hash = precheck(data);
+        signercheck(bytes32(data[256:288]), bytes32(data[288:320]), uint8(bytes1(data[1])), hash, controllerAddress);
         deposit(data);
 
         return trusted;
