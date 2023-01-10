@@ -91,10 +91,13 @@ contract LiquidStaking is
 
     function stakeETH(address _referral, uint256 _node_operator) external payable nonReentrant {
         require(msg.value != 0, "Stake amount must not be Zero");
-        // require(iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true , "The message sender is not part of Trusted KingHash Operators");
         require(msg.value >= 100 wei, "Stake amount must be minimum  100 wei");
         require(_referral != address(0x0), "Referral address must be provided");
 
+        require(
+            iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true,
+            "The message sender is not part of Trusted KingHash Operators"
+        );
         uint256 depositNet;
         if (getDepositFeeRate() == 0) {
             depositNet = msg.value;
@@ -140,23 +143,6 @@ contract LiquidStaking is
         // require(iNodeOperatorRegistry.getNodeOperator(_node_operator) == true , "The message sender is not part of KingHash Operators");
         // check caller nft , trasnfer this nft to protocoo ,check nodeOperatorRanking, take down validator
     }*/
-
-    function handleOracleReport(uint64 _beaconBalance, uint32 _beaconValidators) external override {
-        require(msg.sender == oracleAddress, "The msg.sender is not from BeaconOracle");
-
-        uint256 depositedValidators = iVNFT.activeValidators().length;
-        require(_beaconValidators <= depositedValidators, "More Validators than Reported ");
-        require(_beaconValidators >= totalBeaconValidators, "Less Validators than Reported ");
-
-        // Save the current _beaconBalance, transientBalance , _beaconValidators
-        setBeaconEtherPosition(_beaconBalance);
-        uint256 appearedValidators = _beaconValidators - totalBeaconValidators;
-        uint256 transientEther = appearedValidators * 32 ether;
-        setTransientEtherPosition(transientEther);
-        setTotalBeaconValidators(depositedValidators);
-        //check for EL Rewards
-        // uint256 executionLayerRewards =  computeELRewards() ;
-    }
 
     function getTotalPooledEther() external view override returns (uint256) {
         return bufferedEtherPosition + transientEtherPosition + beaconEtherPosition;

@@ -217,7 +217,6 @@ contract BeaconOracle is
                 );
             }
         }
-
     }
 
     function isReportBeacon() external view returns (bool) {

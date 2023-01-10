@@ -84,7 +84,6 @@ contract BeaconOracleTest is Test {
     }
 
     function testReportBeacon() public {
-
         assertEq(beaconOracle.beaconBalances(), 0);
         assertEq(beaconOracle.beaconValidators(), 0);
         assertFalse(beaconOracle.isReportBeacon());
