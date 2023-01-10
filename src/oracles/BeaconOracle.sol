@@ -86,6 +86,10 @@ IBeaconOracle
         _;
     }
 
+    function beaconValue() external view returns(uint256) {
+        return beaconBalances;
+    }
+    
     function addOracleMember(address _oracleMember) external onlyDao {
         oracleMembers[_oracleMember] = true;
         oracleMemberCount ++;
@@ -196,5 +200,4 @@ IBeaconOracle
     function _getTime() internal view returns (uint256) {
         return block.timestamp;
     }
-
 }
