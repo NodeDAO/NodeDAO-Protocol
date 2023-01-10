@@ -1,5 +1,7 @@
 import "forge-std/Test.sol";
 import "src/LiquidStaking.sol";
+import "../src/tokens/NETH.sol";
+import "../src/registries/NodeOperatorRegistry.sol";
 
 pragma solidity ^0.8.7;
 
@@ -8,28 +10,49 @@ contract LiquidStakingTest is Test {
     event ELRewardsReceived(uint256 balance);
     event EtherDeposited(address from, uint256 balance, uint256 height);
 
-    LiquidStaking liqStaking;
+    NETH public neth;
+    // Create mock contracts for iLiqStaking and totalSupply
+    address public operator1Add = address(1);
+    address public operator2Add = address(2);
+    address public operator3Add = address(3);
+    address public nethAddress = address(4);
+    address public referral = address(5);
+    address oracleAdd = address(6);
+    address validatorNftAdd = address(7);
+    address public operatorAuthAdd = address(this);
+    address public operatorDaoVaultAdd= address(998);
+    bytes public withdrawalCreds = "0x3333";
+    bool trusted;
+    string name;
+    address rewardAddress;
+    address controllerAddress;
 
-    // address _nethContract = address(1);
-    // address _liquidStakingContract = address(2);
-    // address _nodeOperatorsContract = address(3);
-    // address _referral1 = address(4);
-    // address _referral2 = address(0);
+    LiquidStaking liqStakingContract;
+    NodeOperatorRegistry nodeOperatorRegistry;
 
-    // bytes  withdrawalCreds = "0x010000000000000000000000d530d401d03348e2b1364a4d586b75dcb2ed53fc";
+    function setUp() public {
+        vm.warp(1673161943);
+        liqStakingContract = new LiquidStaking();
+        liqStakingContract.initialize(withdrawalCreds, operator1Add, nethAddress, oracleAdd, validatorNftAdd);
+        liqStakingContract.setDepositFeeRate(0);
 
-    // function initializer() private {
-    //     liqStaking.initialize(withdrawalCreds, _nodeOperatorsContract, _nethContract, address(1333));
-    // }
+        nodeOperatorRegistry = new NodeOperatorRegistry();
+        nodeOperatorRegistry.initialize(address(this), operatorDaoVaultAdd);
+        nodeOperatorRegistry.registerOperator{value: 0.1 ether}("operator1", operator1Add, operatorAuthAdd);
+        nodeOperatorRegistry.setTrustedOperator(0);
+                
+        neth = new NETH();
+        vm.prank(address(1));
+        neth.initialize(address(liqStakingContract));
+    }
 
-    // function setUp() public {
-    //     liqStaking = new LiquidStaking();
-    //     initializer();
-    // }
 
-    // function testStakeETH2() public {//check for zero msg.value
-    //     vm.prank(address(1));
-    //     vm.expectRevert("Stake amount must not be Zero");
-    //     liqStaking.stakeETH(_referral1, 12);
-    // }
+    function correctStakeETH() public {
+        liqStakingContract.stakeETH{value: 0.1 ether}(referral, 0);
+         assertEq(address(liqStakingContract).balance,  0.1 ether);
+         assertEq( liqStakingContract.checkOperatorBalance(0) ,  0.1 ether);
+         assertEq( liqStakingContract.checkOperatorBalance(1) ,  0 );
+
+    }
+
 }
