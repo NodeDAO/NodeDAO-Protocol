@@ -75,7 +75,7 @@ contract LiquidStaking is
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
 
-    // todo withdrawalCreds 必须是本合约地址
+    // todo withdrawalCreds 是一个共识层的提款地址
     function initialize(
         address _dao,
         address _daoVaultAddress,
@@ -162,7 +162,7 @@ contract LiquidStaking is
     // 224:256 blockNumber
     // 256:288 s
     // 288:320 r
-    // 320:352 operator
+    // 320:352 operatorId
     // 支持一个注册多个，必须operator提供签名
     function stakeNFT(bytes[] calldata data) external payable nonReentrant returns (bool) {
         // 1.判断资金
@@ -190,6 +190,9 @@ contract LiquidStaking is
                     _liquidTruestOperators[_operatorId] = true;
                 }
                 _settle(_operatorId);
+
+                address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
+                IELVault(vaultContractAddress).setUserNft(tokenId, block.number);
             } else {
                 nETHContract.whiteListMint(amountOut, address(this));
             }
@@ -203,7 +206,7 @@ contract LiquidStaking is
         return true;
     }
 
-    // 不支持一次注册多个，因为为了保护untake pool
+    // 只要是sender 是控制地址来的 就能过
     function registerValidator(bytes calldata data) external nonReentrant {
         // 1. 解析data获得operator_id
         // 2. 检查operator_id是否可信
@@ -337,6 +340,7 @@ contract LiquidStaking is
         success = nETHContract.transferFrom(msg.sender, address(this), amountOut);
         require(success, "Failed to transfer neth");
 
+        _settle(operatorId);
         claimRewardsOfOperator(operatorId);
 
         vNFTContract.safeTransferFrom(address(this), msg.sender, tokenId);
@@ -349,8 +353,7 @@ contract LiquidStaking is
 
         _liquidUserNft[tokenId] = true;
 
-        address vaultContractAddress;
-        (,,,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).setUserNft(tokenId, block.number);
         nftWrapNonce = nftWrapNonce + 1;
 
@@ -387,6 +390,7 @@ contract LiquidStaking is
             _liquidNfts.push(tokenId);
         }
 
+        _settle(operatorId);
         claimRewardsOfUser(tokenId);
 
         vNFTContract.safeTransferFrom(msg.sender, address(this), tokenId);
@@ -400,17 +404,32 @@ contract LiquidStaking is
         emit NftUnwrap(tokenId, operatorId, value, amountOut);
     }
 
+    function batchClaimRewardsOfOperator(uint256[] memory operatorIds) public {
+        // 1.claim 收益 复投 operatorPoolBalances
+        // 2.结算完收益 setLiquidStakingGasHeight
+        uint256 i;
+        for (i = 0; i < operatorIds.length; i++) {
+            address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorIds[i]);
+            IELVault(vaultContractAddress).settle();
+
+            uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfLiquidStaking();
+            IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
+
+            operatorPoolBalances[operatorIds[i]] = operatorPoolBalances[operatorIds[i]] + nftRewards;
+
+            emit OperatorClaimRewards(operatorIds[i], nftRewards);
+        }
+    }
+
     function claimRewardsOfOperator(uint256 operatorId) public {
+        // todo 领多个 batch_
         // 1.claim 收益 复投 operatorPoolBalances
         // 2.结算完收益 setLiquidStakingGasHeight
 
-        address vaultContractAddress;
-        (,,,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
 
-        uint256[] memory nfts = getOperatorNfts(operatorId);
-
-        uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfLiquidStaking(nfts);
+        uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfLiquidStaking();
         IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
         operatorPoolBalances[operatorId] = operatorPoolBalances[operatorId] + nftRewards;
@@ -421,8 +440,7 @@ contract LiquidStaking is
     function claimRewardsOfUser(uint256 tokenId) public {
         // 收益转给用户
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
-        address vaultContractAddress;
-        (,,,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
 
         uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfUser(tokenId);
@@ -431,29 +449,13 @@ contract LiquidStaking is
     }
 
     function _settle(uint256 operatorId) internal {
-        address vaultContractAddress;
-        (,,,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
     }
 
-    // todo 计算量比较大，每次wrap/stake时都要调用，gas耗费比较多，应抽离到预言机合约？
     function getTotalEthValue() public view returns (uint256) {
         uint256 beaconBalance = beaconOracleContract.getBeaconBalances();
-
-        uint256 i;
-        uint256 operators = nodeOperatorRegistryContract.getNodeOperatorsCount();
-        address vaultContractAddress;
-        uint256 totalReward;
-        for (i = 0; i < operators; i++) {
-            if (_liquidTruestOperators[i]) {
-                (,,,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(i, false);
-                uint256[] memory nfts = getOperatorNfts(i);
-                uint256 nftRewards = IELVault(vaultContractAddress).batchRewards(nfts);
-                totalReward += nftRewards;
-            }
-        }
-
-        return beaconBalance + totalReward + address(this).balance;
+        return beaconBalance + address(this).balance;
     }
 
     function getEthOut(uint256 _nethAmountIn) public view returns (uint256) {
