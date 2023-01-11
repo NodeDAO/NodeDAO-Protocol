@@ -214,14 +214,14 @@ contract LiquidStaking is
     //7. mint nft, minting nft, stored in the stake pool contract, can no longer mint neth, because minting has been completed when the user deposits
     //8. Update _liquidNfts
     function registerValidator(
-        uint256 operatorId,
         bytes calldata withdrawalCredentials,
         bytes[] calldata pubkeys,
         bytes[] calldata signatures,
         bytes32[] calldata depositDataRoots
     ) external nonReentrant {
+        uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperator(msg.sender);
         require(
-            nodeOperatorRegistryContract.isTrustedOperator(msg.sender),
+            operatorId != 0,
             "msg.sender must be the controllerAddress of the trusted operator"
         );
         require(getOperatorPoolEtherMultiple(operatorId) >= pubkeys.length, "Insufficient balance");

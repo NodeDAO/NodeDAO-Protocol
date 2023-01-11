@@ -30,7 +30,7 @@ contract NodeOperatorRegistry is
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) internal operators;
-    mapping(address => bool) public trustedControllerAddress;
+    mapping(address => uint256) public trustedControllerAddress;
 
     // @dev Total number of operators
     uint256 internal totalOperators;
@@ -121,7 +121,7 @@ contract NodeOperatorRegistry is
         NodeOperator memory operator = operators[_id];
         operators[_id].trusted = true;
         totalTrustedOperators += 1;
-        trustedControllerAddress[operator.controllerAddress] = true;
+        trustedControllerAddress[operator.controllerAddress] = _id;
         emit NodeOperatorTrustedSet(_id, operator.name, true);
     }
 
@@ -133,7 +133,7 @@ contract NodeOperatorRegistry is
         NodeOperator memory operator = operators[_id];
         operators[_id].trusted = false;
         totalTrustedOperators -= 1;
-        trustedControllerAddress[operator.controllerAddress] = false;
+        trustedControllerAddress[operator.controllerAddress] = 0;
         emit NodeOperatorTrustedRemove(_id, operator.name, false);
     }
 
@@ -171,9 +171,9 @@ contract NodeOperatorRegistry is
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.controllerAddress || msg.sender == dao, "AUTH_FAILED");
-        trustedControllerAddress[operator.controllerAddress] = false;
+        trustedControllerAddress[operator.controllerAddress] = 0;
         operators[_id].controllerAddress = _controllerAddress;
-        trustedControllerAddress[_controllerAddress] = true;
+        trustedControllerAddress[_controllerAddress] = _id;
         emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
     }
 
@@ -242,7 +242,7 @@ contract NodeOperatorRegistry is
     /**
      * @notice Returns whether an operator is trusted
      */
-    function isTrustedOperator(address _controllerAddress) external view returns (bool) {
+    function isTrustedOperator(address _controllerAddress) external view returns (uint256) {
         return trustedControllerAddress[_controllerAddress];
     }
 
