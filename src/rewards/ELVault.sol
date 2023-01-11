@@ -161,18 +161,16 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
 
     /**
      * @notice Settles outstanding rewards
-     * @dev Current active validator nft will equally recieve 
-     *      all rewards earned in this era
-     */
+     * @dev Current active validator nft will equally recieve all rewards earned in this era
+    */
     function settle() external override onlyLiquidStaking {
         _settle();
     }
 
     /**
      * @notice Settles outstanding rewards in the event there is no change in amount of validators
-     * @dev Current active validator nft will equally recieve 
-     *      all rewards earned in this era
-     */
+     * @dev Current active validator nft will equally recieve  all rewards earned in this era
+    */
     function publicSettle() external override {
         // prevent spam attack
         if (lastPublicSettle + publicSettleLimit > block.number) {
@@ -223,6 +221,9 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         return nftRewards;
     }
 
+    /**
+     * @notice Operater Claims the rewards 
+    */
     function setUserNft(uint256 tokenId, uint256 number) external onlyLiquidStaking {
         userGasHeight[tokenId] = number;
     }
@@ -266,7 +267,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     }
 
     /**
-      * @notice set dao valut address
+      * @notice set dao vault address
       */
     function setDaoAddress(address _dao) external onlyDao {
         dao = _dao;

@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "src/registries/NodeOperatorRegistry.sol";
 
 contract NodeOperatorRegistryTest is Test {
-    event NodeOperatorRegistered(uint256 id, string name, address rewardAddress, address controllerAddress, address _valutContractAddress);
+    event NodeOperatorRegistered(uint256 id, string name, address rewardAddress, address controllerAddress, address _vaultContractAddress);
     event NodeOperatorTrustedSet(uint256 id, string name, bool trusted);
     event NodeOperatorTrustedRemove(uint256 id, string name, bool trusted);
     event NodeOperatorNameSet(uint256 id, string name);
@@ -15,24 +15,24 @@ contract NodeOperatorRegistryTest is Test {
 
     NodeOperatorRegistry operatorRegistry;
     address _dao = address(1);
-    address _daoValutAddress = address(2);
+    address _daoVaultAddress = address(2);
 
     function initializer() private {
-        operatorRegistry.initialize(_dao, _daoValutAddress);
+        operatorRegistry.initialize(_dao, _daoVaultAddress);
     }
 
-    function checkOperator(bool _trusted, string memory _name, address _rewardAddress, address _controllerAddress, address _valutContractAddress) public {
+    function checkOperator(bool _trusted, string memory _name, address _rewardAddress, address _controllerAddress, address _vaultContractAddress) public {
         bool trusted;
         string memory name;
         address rewardAddress;
         address controllerAddress;
-        address valutContractAddress;
-        (trusted, name, rewardAddress, controllerAddress, valutContractAddress) = operatorRegistry.getNodeOperator(1, true);
+        address vaultContractAddress;
+        (trusted, name, rewardAddress, controllerAddress, vaultContractAddress) = operatorRegistry.getNodeOperator(1, true);
         assertEq(trusted, _trusted);
         assertEq(name, _name);
         assertEq(rewardAddress, _rewardAddress);
         assertEq(controllerAddress, _controllerAddress);
-        assertEq(valutContractAddress, _valutContractAddress);
+        assertEq(vaultContractAddress, _vaultContractAddress);
     }
 
     function setUp() public {
@@ -42,7 +42,7 @@ contract NodeOperatorRegistryTest is Test {
 
     function testDao() public {
         assertEq(operatorRegistry.dao(), _dao);
-        assertEq(operatorRegistry.daoValutAddress(), _daoValutAddress);
+        assertEq(operatorRegistry.daoVaultAddress(), _daoVaultAddress);
     }
 
     // -------------
@@ -57,7 +57,7 @@ contract NodeOperatorRegistryTest is Test {
 
     function testRegisterOperatorMoreValue() public {
         vm.expectEmit(true, true, false, true);
-        emit Transferred(_daoValutAddress, 0.1 ether);
+        emit Transferred(_daoVaultAddress, 0.1 ether);
         emit Transferred(msg.sender, 0.11 ether);
         operatorRegistry.registerOperator{value: 0.21 ether}("one", address(3), address(4), address(5));
     }
@@ -239,9 +239,9 @@ contract NodeOperatorRegistryTest is Test {
         operatorRegistry.setDaoAddress(address(10));
     }
 
-    function testSetDaoValutAuthFailed() public {
+    function testSetDaoVaultAuthFailed() public {
         vm.expectRevert("AUTH_FAILED");
-        operatorRegistry.setDaoValutAddress(address(10));
+        operatorRegistry.setDaoVaultAddress(address(10));
     }
 
     function testSetRegistrationFeeAuthFailed() public {
@@ -261,10 +261,10 @@ contract NodeOperatorRegistryTest is Test {
         assertEq(operatorRegistry.dao(), address(10));
     }
 
-    function testSetDaoValutAddress() public {
+    function testSetDaoVaultAddress() public {
         vm.prank(_dao);
-        operatorRegistry.setDaoValutAddress(address(10));
-        assertEq(operatorRegistry.daoValutAddress(), address(10));
+        operatorRegistry.setDaoVaultAddress(address(10));
+        assertEq(operatorRegistry.daoVaultAddress(), address(10));
     }
 
 }
