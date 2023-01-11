@@ -63,8 +63,8 @@ contract LiquidStaking is
         _;
     }
 
-    event EthStake(address indexed from, uint256 amount, address indexed _referral, uint256 amountOut);
-    event EthUnstake(address indexed from, uint256 amount, address indexed _referral, uint256 amountOut);
+    event EthStake(address indexed from, uint256 amount, uint256 amountOut, address indexed _referral);
+    event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
     event NftStake(address indexed from, uint256 count);
     event Eth32Deposit(bytes _pubkey, bytes _withdrawal, address _owner);
     event ValidatorRegistered(uint256 operator, uint256 tokenId);
@@ -109,14 +109,14 @@ contract LiquidStaking is
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function stakeETH(address receiver, uint256 _operatorId) external payable nonReentrant {
+    function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
-        require(receiver != address(0), "Referral address must be provided");
-
+        require(_referral != address(0), "Referral address must be provided");
         require(
             nodeOperatorRegistryContract.isTrustedOperator(_operatorId) == true,
             "The message sender is not part of Trusted KingHash Operators"
         );
+
         uint256 depositFeeAmount;
         uint256 depositPoolAmount;
         if (depositFeeRate == 0) {
@@ -126,26 +126,27 @@ contract LiquidStaking is
             depositPoolAmount = msg.value - depositFeeAmount;
             transfer(depositFeeAmount, daoVaultAddress);
         }
+
         operatorPoolBalances[_operatorId] += depositPoolAmount;
 
         // 1. Convert depositAmount according to the exchange rate of nETH
         // 2. Mint nETH
         uint256 amountOut = getNethOut(depositPoolAmount);
-        nETHContract.whiteListMint(amountOut, receiver);
+        nETHContract.whiteListMint(amountOut, msg.sender);
 
-        emit EthStake(msg.sender, msg.value, receiver, amountOut);
+        emit EthStake(msg.sender, msg.value, amountOut, _referral);
     }
 
     //1. Burn the user's nETH
     //2. Transfer eth to the user
-    function unstakeETH(address receiver, uint256 amount) external nonReentrant {
+    function unstakeETH(uint256 amount) external nonReentrant {
         uint256 amountOut = getEthOut(amount);
         require(address(this).balance >= amountOut, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
 
         nETHContract.whiteListBurn(amount, msg.sender);
-        transfer(amountOut, receiver);
+        transfer(amountOut, msg.sender);
 
-        emit EthUnstake(msg.sender, amount, receiver, amountOut);
+        emit EthUnstake(msg.sender, amount, amountOut);
     }
 
     //1. Determine funds
