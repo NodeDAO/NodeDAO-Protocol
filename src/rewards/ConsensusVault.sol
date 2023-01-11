@@ -8,9 +8,9 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 /**
- * @title NodeCapitalVault responsible for managing initial capital
+ * @title ConsensusVault responsible for managing initial capital and reward
  */
-contract NodeCapitalVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     address private _liquidStakingProxyAddress;
 
     event LiquidStakingChanged(address _from, address _to);
