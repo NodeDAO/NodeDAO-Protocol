@@ -197,6 +197,21 @@ contract NodeOperatorRegistry is
     }
 
     /**
+      * @notice Get information about an operator vault contract address
+      * @param _id operator id
+      * @param _fullInfo Get all information
+    */
+    function getNodeOperatorVaultContract(uint256 _id) external view
+        operatorExists(_id)
+        returns (
+            address vaultContractAddress
+        )
+    {
+        NodeOperator memory operator = operators[_id];
+        vaultContractAddress = operator.vaultContractAddress;
+    }
+
+    /**
       * @notice Returns total number of node operators
     */
     function getNodeOperatorsCount() external view returns (uint256) {
