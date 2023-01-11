@@ -44,15 +44,6 @@ contract NEthTest is Test {
         nodeOperatorRegistry.initialize(address(this), operatorDaoVaultAdd);
         nodeOperatorRegistry.registerOperator{value: 1000000 ether}("operator1", operator1Add, operatorAuthAdd);
         nodeOperatorRegistry.setTrustedOperator(0);
-<<<<<<< HEAD
-        (trusted, name, rewardAddress, controllerAddress) = nodeOperatorRegistry.getNodeOperator(0, true);
-
-        // console.log(trusted);
-        // console.log(name);
-        // console.log(rewardAddress);
-        // console.log(controllerAddress);
-=======
->>>>>>> 637f27633d7f3f203c663104d7f29db881eb2163
         (trusted, name, rewardAddress, controllerAddress) = nodeOperatorRegistry.getNodeOperator(0, true);
     }
 
