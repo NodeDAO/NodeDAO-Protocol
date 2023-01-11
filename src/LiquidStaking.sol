@@ -112,19 +112,22 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
 
-        uint256 depositAmount;
+        uint256 depositFeeAmount;
+        uint256 depositPoolAmount;
+
         if(depositFeeRate == 0){
-            depositAmount = msg.value;
+            depositPoolAmount = msg.value;
         } else {
-            depositAmount = depositFeeRate / totalBasisPoints * msg.value;
-            transfer(msg.value - depositAmount, daoVaultAddress);
+            depositFeeAmount = depositFeeRate / totalBasisPoints * msg.value;
+            depositPoolAmount = msg.value - depositFeeAmount;
+            transfer(depositFeeAmount, daoVaultAddress);
         }
 
-        operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] + depositAmount;
+        operatorPoolBalances[_operatorId] += depositPoolAmount;
 
         // 1. 将depositAmount根据nETH的汇率进行换算
         // 2. 铸造nETH
-        uint256 amountOut = getNethOut(depositAmount);
+        uint256 amountOut = getNethOut(depositPoolAmount);
         nETHContract.whiteListMint(amountOut, _referral);
 
         emit EthStake(msg.sender, msg.value, _referral, amountOut);
