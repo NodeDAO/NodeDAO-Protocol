@@ -49,7 +49,9 @@ contract LiquidStaking is
     mapping(uint256 => bool) private _liquidUserNft; // The nft purchased from the staking pool using neth
     mapping(uint256 => bool) private _liquidTruestOperators; // once owned trusted operator
 
-    uint256 public unstakePoolSize; // nETH unstake pool
+    uint256 public unstakePoolSize; // nETH unstake pool size
+    uint256 public unstakePoolBalances;
+
     mapping(uint256 => uint256) public operatorPoolBalances; // operator's private stake pool, key is operator_id
 
     uint256 public wrapOperator = 1; // When buying nft next time, sell the operator id of nft
@@ -72,6 +74,7 @@ contract LiquidStaking is
     event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
+    event ClaimRewardsToUnstakePool(uint256 operatorId, uint256 rewards);
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
 
@@ -143,13 +146,14 @@ contract LiquidStaking is
     //2. Transfer eth to the user
     function unstakeETH(uint256 amount) external nonReentrant {
         uint256 amountOut = getEthOut(amount);
-        require(address(this).balance >= amountOut, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
+        require(unstakePoolBalances >= amountOut, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
 
         nETHContract.whiteListBurn(amount, msg.sender);
+        unstakePoolBalances -= amountOut;
 
         uint256 userAmount;
         uint256 feeAmount;
-        if unstakeFeeRate == 0 {
+        if (unstakeFeeRate == 0) {
             userAmount = amountOut;
         } else {
             feeAmount = amountOut * unstakeFeeRate / totalBasisPoints;
@@ -233,19 +237,12 @@ contract LiquidStaking is
         bytes32[] calldata depositDataRoots
     ) external nonReentrant {
         uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperator(msg.sender);
-        require(
-            operatorId != 0,
-            "msg.sender must be the controllerAddress of the trusted operator"
-        );
+        require(operatorId != 0, "msg.sender must be the controllerAddress of the trusted operator");
         require(getOperatorPoolEtherMultiple(operatorId) >= pubkeys.length, "Insufficient balance");
         require(
             keccak256(abi.encodePacked(withdrawalCredentials))
                 == keccak256(abi.encodePacked(liquidStakingWithdrawalCredentials)),
             "withdrawal credentials does not match"
-        );
-        require(
-            address(this).balance >= unstakePoolSize + DEPOSIT_SIZE * pubkeys.length,
-            "UNSTAKE_POOL_INSUFFICIENT_BALANCE"
         );
 
         uint256 i;
@@ -434,9 +431,13 @@ contract LiquidStaking is
             uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfLiquidStaking();
             IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
-            operatorPoolBalances[operatorIds[i]] = operatorPoolBalances[operatorIds[i]] + nftRewards;
-
-            emit OperatorClaimRewards(operatorIds[i], nftRewards);
+            if (unstakePoolBalances < unstakePoolSize) {
+                unstakePoolBalances += nftRewards;
+                emit ClaimRewardsToUnstakePool(operatorIds[i], nftRewards);
+            } else {
+                operatorPoolBalances[operatorIds[i]] = operatorPoolBalances[operatorIds[i]] + nftRewards;
+                emit OperatorClaimRewards(operatorIds[i], nftRewards);
+            }
         }
     }
 
@@ -449,9 +450,13 @@ contract LiquidStaking is
         uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfLiquidStaking();
         IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
-        operatorPoolBalances[operatorId] = operatorPoolBalances[operatorId] + nftRewards;
-
-        emit OperatorClaimRewards(operatorId, nftRewards);
+        if (unstakePoolBalances < unstakePoolSize) {
+            unstakePoolBalances += nftRewards;
+            emit ClaimRewardsToUnstakePool(operatorId, nftRewards);
+        } else {
+            operatorPoolBalances[operatorId] = operatorPoolBalances[operatorId] + nftRewards;
+            emit OperatorClaimRewards(operatorId, nftRewards);
+        }
     }
 
     function claimRewardsOfUser(uint256 tokenId) public {
@@ -565,7 +570,7 @@ contract LiquidStaking is
         require(_feeRate < totalBasisPoints, "cannot be 100%");
         depositFeeRate = _feeRate;
     }
-    
+
     function setUnstakeFeeRate(uint256 _feeRate) external onlyDao {
         require(_feeRate < totalBasisPoints, "cannot be 100%");
         unstakeFeeRate = _feeRate;
