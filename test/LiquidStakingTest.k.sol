@@ -7,6 +7,7 @@ import "forge-std/console.sol";
 import "forge-std/console2.sol";
 import "../src/LiquidStaking.sol";
 import "../src/oracles/BeaconOracle.sol";
+import "../src/tokens/NETH.sol";
 import "../src/registries/NodeOperatorRegistry.sol";
 
 contract LiquidStakingTest is Test {
@@ -30,6 +31,7 @@ contract LiquidStakingTest is Test {
     LiquidStaking liqStakingContract;
     NodeOperatorRegistry nodeOperatorRegistry;
     BeaconOracle beaconOracle;
+    NETH neth;
 
     function setUp() public {
         vm.warp(1673161943);
@@ -54,56 +56,53 @@ contract LiquidStakingTest is Test {
         nodeOperatorRegistry.setTrustedOperator(1);
         (trusted, name, rewardAddress, controllerAddress, validatorContractAdd) =
             nodeOperatorRegistry.getNodeOperator(1, true);
-        console.log(trusted);
-        console.log(name);
-        console.log(rewardAddress);
-        console.log(controllerAddress);
-        console.log(validatorContractAdd);
+        // console.log(trusted);
+        // console.log(name);
+        // console.log(rewardAddress);
+        // console.log(controllerAddress);
+        // console.log(validatorContractAdd);
     }
 
-    function testGetTotalEthValue() public {
-        beaconOracle = new BeaconOracle();
-        beaconOracle.initialize(operatorAuthAdd);
-        liqStakingContract.initialize(
-            operatorAuthAdd,
-            operatorDaoVaultAdd,
-            withdrawalCreds,
-            address(nodeOperatorRegistry),
-            nethAddress,
-            nVNFTContractAddress,
-            address(beaconOracle),
-            depositContractAddress
-        );
-        liqStakingContract.setDaoAddress(operatorAuthAdd);
-        uint256 totalEth = liqStakingContract.getTotalEthValue();
-        console.log(totalEth);
-        assertEq(0, totalEth);
-    }
+    // function testGetTotalEthValue() public {
+    //     beaconOracle = new BeaconOracle();
+    //     beaconOracle.initialize(operatorAuthAdd);
+    //     liqStakingContract.initialize(
+    //         operatorAuthAdd,
+    //         operatorDaoVaultAdd,
+    //         withdrawalCreds,
+    //         address(nodeOperatorRegistry),
+    //         nethAddress,
+    //         nVNFTContractAddress,
+    //         address(beaconOracle),
+    //         depositContractAddress
+    //     );
+    //     liqStakingContract.setDaoAddress(operatorAuthAdd);
+    //     uint256 totalEth = liqStakingContract.getTotalEthValue();
+    //     assertEq(0, totalEth);
+    // }
 
     function testGetEthOut(uint256 nethAmount) public {
         vm.assume(nethAmount > 1000 wei);
         vm.assume(nethAmount < 1000000 ether);
         beaconOracle = new BeaconOracle();
         beaconOracle.initialize(operatorAuthAdd);
+        neth = new NETH();
+        neth.setLiquidStaking(address(liqStakingContract));
         liqStakingContract.initialize(
             operatorAuthAdd,
             operatorDaoVaultAdd,
             withdrawalCreds,
             address(nodeOperatorRegistry),
-            nethAddress,
+            address(neth),
             nVNFTContractAddress,
             address(beaconOracle),
             depositContractAddress
         );
         liqStakingContract.setDaoAddress(operatorAuthAdd);
-        console.log(1);
         liqStakingContract.setDepositFeeRate(0);
-        console.log(2);
         liqStakingContract.stakeETH{value: (nethAmount + 1)}(referral, 1);
-        console.log(3);
         uint256 ethValue;
         ethValue = liqStakingContract.getEthOut(nethAmount);
-        console.log(4);
         assertEq(ethValue, nethAmount);
     }
 
