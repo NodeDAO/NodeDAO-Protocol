@@ -206,43 +206,6 @@ contract LiquidStaking is
         return true;
     }
 
-    // 只要是sender 是控制地址来的 就能过
-    function registerValidator(bytes calldata data) external nonReentrant {
-        // 1. 解析data获得operator_id
-        // 2. 检查operator_id是否可信
-        // 3. precheck，需增加检查 withdrawalCredentials必须是质押池设置的
-        // 4. signercheck
-        // 5. depost
-        // 6. operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] - depositAmount;
-        // 7.mint nft，铸造nft，存放在质押池合约，不能再铸造neth，因为已经在用户deposit时完成铸造
-        // 8.更新_liquidNfts
-        require(data.length == 352, "Invalid Data Length");
-
-        uint256 _operatorId = uint256(bytes32(data[320:352]));
-        require(
-            getOperatorPoolEtherMultiple(_operatorId) > 0, "The following Operator's Balance has less than 32 ether"
-        );
-
-        require(address(this).balance >= unstakePoolSize, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
-        require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId) == true, "The operator must be trusted");
-        operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] - DEPOSIT_SIZE;
-
-        _stake(data);
-        _settle(_operatorId);
-
-        // mint nft
-        vNFTContract.whiteListMint(data[16:64], address(this), _operatorId);
-        uint256 tokenId = vNFTContract.getLatestTokenId();
-        trustedNft[tokenId] = _operatorId;
-        _liquidNfts.push(tokenId);
-        _operatorNfts[_operatorId].push(tokenId);
-        if (!_liquidTruestOperators[_operatorId]) {
-            _liquidTruestOperators[_operatorId] = true;
-        }
-
-        emit ValidatorRegistered(_operatorId, tokenId);
-    }
-
     function _stake(bytes calldata data) internal returns (bool) {
         uint256 _operatorId = uint256(bytes32(data[320:352]));
         uint256 operatorsCount = nodeOperatorRegistryContract.getNodeOperatorsCount();
@@ -256,6 +219,65 @@ contract LiquidStaking is
         deposit(data);
 
         return trusted;
+    }
+
+    // 1. 解析data获得operator_id
+    // 2. 检查operator_id是否可信
+    // 3. precheck，需增加检查 withdrawalCredentials必须是质押池设置的
+    // 4. signercheck
+    // 5. depost
+    // 6. operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] - depositAmount;
+    // 7.mint nft，铸造nft，存放在质押池合约，不能再铸造neth，因为已经在用户deposit时完成铸造
+    // 8.更新_liquidNfts
+    function registerValidator(
+        uint256 operatorId,
+        bytes calldata withdrawalCredentials,
+        bytes[] calldata pubkeys,
+        bytes[] calldata signatures,
+        bytes32[] calldata depositDataRoots
+    ) external nonReentrant {
+        bool trusted;
+        address controllerAddress;
+        (trusted,,, controllerAddress,) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
+        require(trusted, "The operator must be trusted");
+        require(msg.sender == controllerAddress, "msg.sender must be the controllerAddress of the operator");
+        require(getOperatorPoolEtherMultiple(operatorId) >= pubkeys.length, "Insufficient balance");
+        require(
+            keccak256(abi.encodePacked(withdrawalCredentials))
+                == keccak256(abi.encodePacked(liquidStakingWithdrawalCredentials)),
+            "withdrawal credentials does not match"
+        );
+
+        uint256 i;
+        for (i = 0; i < pubkeys.length; i++) {
+            bytes calldata withdrawalCredential = withdrawalCredentials;
+            _stakeAndMint(operatorId, pubkeys[i], signatures[i], depositDataRoots[i], withdrawalCredential);
+        }
+
+        operatorPoolBalances[operatorId] -= DEPOSIT_SIZE * pubkeys.length;
+        _settle(operatorId);
+    }
+
+    function _stakeAndMint(
+        uint256 operatorId,
+        bytes calldata pubkey,
+        bytes calldata signature,
+        bytes32 depositDataRoot,
+        bytes calldata withdrawalCredential
+    ) internal {
+        depositContract.deposit{value: 32 ether}(pubkey, withdrawalCredential, signature, depositDataRoot);
+
+        // mint nft
+        vNFTContract.whiteListMint(pubkey, address(this), operatorId);
+        uint256 tokenId = vNFTContract.getLatestTokenId();
+        trustedNft[tokenId] = operatorId;
+        _liquidNfts.push(tokenId);
+        _operatorNfts[operatorId].push(tokenId);
+        if (!_liquidTruestOperators[operatorId]) {
+            _liquidTruestOperators[operatorId] = true;
+        }
+
+        emit ValidatorRegistered(operatorId, tokenId);
     }
 
     /**
