@@ -11,7 +11,6 @@ import "src/interfaces/ILiquidStaking.sol";
 contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
     address public liquidStakingAddress;
 
-    address public constant OPENSEA_PROXY_ADDRESS = 0x1E0049783F008A0085193E00003D00cd54003c71; // todo 0x1E0049783F008A0085193E00003D00cd54003c71 ?
     uint256 public constant MAX_SUPPLY = 6942069420;
 
     mapping(bytes => uint256) public validatorRecords; // key is pubkey, value is operator_id
@@ -22,8 +21,6 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
     bytes[] public _validators;
 
     uint256[] public _initHeights;
-
-    bool private _isOpenSeaProxyActive; // todo 其他合约 可升级合约不能在构造写任何东西的,常量例外
 
     event BaseURIChanged(string _before, string _after);
     event Transferred(address _to, uint256 _amount);
@@ -37,7 +34,6 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         __ERC721A_init("Validator NFT", "vNFT");
-        _isOpenSeaProxyActive = false;
     }
 
     modifier onlyLiquidStaking() {
@@ -243,13 +239,6 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
         liquidStakingAddress = _liqStakingAddress;
     }
 
-    // function to disable gasless listings for security in case
-    // opensea ever shuts down or is compromised
-    function setIsOpenSeaProxyActive(bool isOpenSeaProxyActive_) external onlyOwner {
-        emit OpenSeaState(isOpenSeaProxyActive_);
-        _isOpenSeaProxyActive = isOpenSeaProxyActive_;
-    }
-
     function numberMinted(address owner) external view returns (uint256) {
         return _numberMinted(owner);
     }
@@ -259,12 +248,9 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
         // Get a reference to OpenSea's proxy registry contract by instantiating
         // the contract using the already existing address.
 
-        if (_isOpenSeaProxyActive && OPENSEA_PROXY_ADDRESS == operator) {
+        if (operator == liquidStakingAddress) {
             return true;
         }
-        // if (operator == _liquidStakingAddress) {
-        //     return true;
-        // }
 
         return super.isApprovedForAll(owner, operator);
     }
