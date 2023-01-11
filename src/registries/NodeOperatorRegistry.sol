@@ -86,7 +86,7 @@ contract NodeOperatorRegistry is
         validAddress(_vaultContractAddress)
         returns (uint256 id)
     {
-        require(msg.value >= registrationFee, "Insufficient registration operator fee");
+        require(msg.value == registrationFee, "Insufficient registration operator fee");
 
         id = totalOperators + 1;
 
@@ -100,13 +100,7 @@ contract NodeOperatorRegistry is
             name: _name
         });
 
-        if (registrationFee != 0) {
-            transfer(registrationFee, daoVaultAddress);
-        }
-
-        if (msg.value > registrationFee) {
-            transfer(msg.value - registrationFee, daoVaultAddress);
-        }
+        transfer(registrationFee, daoVaultAddress);
 
         emit NodeOperatorRegistered(id, _name, _rewardAddress, _controllerAddress, _vaultContractAddress);
     }
