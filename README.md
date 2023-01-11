@@ -4,8 +4,8 @@ Made by:
 
 ![kinghash](./docs/images/kingHashLogo.PNG)
 
-![node](https://img.shields.io/badge/node-v16.14.2-green)
-![npm](https://img.shields.io/badge/npm-v8.5.0-green)
+![node](https://img.shields.io/badge/node-v10.15.3-green)
+![npm](https://img.shields.io/badge/npm-v6.9.0-green)
 ![python](https://img.shields.io/badge/python-v3.8.10-green)
 ![solidity](https://img.shields.io/badge/solidity-0.8.7-brightgreen)
 ![license](https://img.shields.io/github/license/King-Hash-Org/NodeDAO-Protocol)
