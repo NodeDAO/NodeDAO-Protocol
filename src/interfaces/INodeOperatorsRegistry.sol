@@ -71,9 +71,9 @@ interface INodeOperatorsRegistry {
         );
 
     /**
-      * @notice Get information about an operator vault contract address
-      * @param _id operator id
-    */
+     * @notice Get information about an operator vault contract address
+     * @param _id operator id
+     */
     function getNodeOperatorVaultContract(uint256 _id) external view returns (address vaultContractAddress);
 
     /**

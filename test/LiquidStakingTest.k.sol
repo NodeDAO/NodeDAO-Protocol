@@ -46,9 +46,12 @@ contract LiquidStakingTest is Test {
 
         nodeOperatorRegistry = new NodeOperatorRegistry();
         nodeOperatorRegistry.initialize(address(this), operatorDaoVaultAdd);
-        nodeOperatorRegistry.registerOperator{value: 0.1 ether}("operator1", operator1Add, operatorAuthAdd, validatorContractAdd);
+        nodeOperatorRegistry.registerOperator{value: 0.1 ether}(
+            "operator1", operator1Add, operatorAuthAdd, validatorContractAdd
+        );
         nodeOperatorRegistry.setTrustedOperator(1);
-        (trusted, name, rewardAddress, controllerAddress, validatorContractAdd) = nodeOperatorRegistry.getNodeOperator(1, true);
+        (trusted, name, rewardAddress, controllerAddress, validatorContractAdd) =
+            nodeOperatorRegistry.getNodeOperator(1, true);
         console.log(trusted);
         console.log(name);
         console.log(rewardAddress);
@@ -58,9 +61,14 @@ contract LiquidStakingTest is Test {
 
     function testGetEthOut(uint256 nethAmount) public {
         liqStakingContract.initialize(
-            operatorAuthAdd, operatorDaoVaultAdd, withdrawalCreds, 
-            address(nodeOperatorRegistry), nethAddress,nVNFTContractAddress, 
-            beaconOracleContractAdd, depositContractAddress
+            operatorAuthAdd,
+            operatorDaoVaultAdd,
+            withdrawalCreds,
+            address(nodeOperatorRegistry),
+            nethAddress,
+            nVNFTContractAddress,
+            beaconOracleContractAdd,
+            depositContractAddress
         );
         console.log(1);
         liqStakingContract.setDepositFeeRate(0);

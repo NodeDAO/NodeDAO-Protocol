@@ -15,7 +15,7 @@ interface IVNFT is IERC721AUpgradeable {
 
     function operatorOf(uint256 tokenId) external view returns (uint256);
 
-    function getNftCountsOfOperator(uint256 operatorId) external view returns(uint256);
+    function getNftCountsOfOperator(uint256 operatorId) external view returns (uint256);
 
     function tokenOfValidator(bytes calldata pubkey) external view returns (uint256);
 
