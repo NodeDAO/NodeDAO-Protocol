@@ -91,6 +91,11 @@ interface INodeOperatorsRegistry {
      */
     function isTrustedOperator(uint256 _id) external view returns (bool);
 
+    /**
+     * @notice Returns whether an operator is trusted
+     */
+    function isTrustedOperator(address _controllerAddress) external view returns (bool);
+
     event NodeOperatorRegistered(
         uint256 id, string name, address rewardAddress, address controllerAddress, address _vaultContractAddress
     );

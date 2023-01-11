@@ -30,6 +30,7 @@ contract NodeOperatorRegistry is
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) internal operators;
+    mapping(address => bool) public trustedControllerAddress;
 
     // @dev Total number of operators
     uint256 internal totalOperators;
@@ -120,6 +121,7 @@ contract NodeOperatorRegistry is
         NodeOperator memory operator = operators[_id];
         operators[_id].trusted = true;
         totalTrustedOperators += 1;
+        trustedControllerAddress[operator.controllerAddress] = true;
         emit NodeOperatorTrustedSet(_id, operator.name, true);
     }
 
@@ -131,6 +133,7 @@ contract NodeOperatorRegistry is
         NodeOperator memory operator = operators[_id];
         operators[_id].trusted = false;
         totalTrustedOperators -= 1;
+        trustedControllerAddress[operator.controllerAddress] = false;
         emit NodeOperatorTrustedRemove(_id, operator.name, false);
     }
 
@@ -168,8 +171,9 @@ contract NodeOperatorRegistry is
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.controllerAddress || msg.sender == dao, "AUTH_FAILED");
-
+        trustedControllerAddress[operator.controllerAddress] = false;
         operators[_id].controllerAddress = _controllerAddress;
+        trustedControllerAddress[_controllerAddress] = true;
         emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
     }
 
@@ -233,6 +237,13 @@ contract NodeOperatorRegistry is
     function isTrustedOperator(uint256 _id) external view operatorExists(_id) returns (bool) {
         NodeOperator memory operator = operators[_id];
         return operator.trusted;
+    }
+
+    /**
+     * @notice Returns whether an operator is trusted
+     */
+    function isTrustedOperator(address _controllerAddress) external view returns (bool) {
+        return trustedControllerAddress[_controllerAddress];
     }
 
     /**
