@@ -418,7 +418,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
 
     // todo 计算量比较大，每次wrap/stake时都要调用，gas耗费比较多，应抽离到预言机合约？
     function getTotalEthValue() public view returns(uint256) {
-        uint256 beaconBalance = beaconOracleContract.beaconValue();
+        uint256 beaconBalance = beaconOracleContract.getBeaconBalances();
 
         uint256 i;
         uint256 operators = nodeOperatorRegistryContract.getNodeOperatorsCount();

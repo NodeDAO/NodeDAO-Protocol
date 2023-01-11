@@ -21,12 +21,16 @@ interface IBeaconOracle {
 
     function removeOracleMember(address _oracleMember) external;
 
-    function beaconValue() external view returns(uint256);
+    function getBeaconBalances() external view returns (uint128);
+
+    function getBeaconValidators() external view returns (uint64);
 
     event AddOracleMember(address oracleMember);
     event RemoveOracleMember(address oracleMember);
     event ResetExpectedEpochId(uint256 expectedEpochId);
+    event ExpectedEpochIdUpdated(uint256 expectedEpochId);
     event ResetEpochsPerFrame(uint256 epochsPerFrame);
-    event ReportBeacon(uint256 epochId, address oracleMember, uint256 sameReportCount);
-    event ReportSuccess(uint256 epochId, uint32 sameReportCount, uint32 quorum);
+    event ReportBeacon(uint256 epochId, address oracleMember, uint32 sameReportCount);
+    event ReportSuccess(uint256 epochId, uint256 sameReportCount, uint32 quorum);
+    event achieveQuorum(uint256 epochId, bool isQuorum, uint32 quorum);
 }
