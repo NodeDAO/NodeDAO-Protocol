@@ -208,6 +208,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         // 7.mint nft，铸造nft，存放在质押池合约，不能再铸造neth，因为已经在用户deposit时完成铸造
         // 8.更新_liquidNfts
         require(data.length == 352, "Invalid Data Length");
+        require(getOperatorPoolEtherMultiple > 0 , "The following Operator's Balance has less than 32 ether") ;
 
         uint256 _operatorId = uint256(bytes32(data[320:352]));
         require(address(this).balance >= unstakePoolSize, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
