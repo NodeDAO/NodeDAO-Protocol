@@ -167,7 +167,7 @@ contract NodeOperatorRegistry is
      */
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
-        require(msg.sender == operator.controllerAddress, "AUTH_FAILED");
+        require(msg.sender == operator.controllerAddress || msg.sender == dao, "AUTH_FAILED");
 
         operators[_id].controllerAddress = _controllerAddress;
         emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
