@@ -21,13 +21,15 @@ contract VNFT is
   uint256 constant public MAX_SUPPLY = 6942069420;
 
   mapping(bytes => uint256) public validatorRecords; // key is pubkey, value is operator_id
+  mapping(uint256 => uint256) public operatorRecords; // key is operator_id, value is  token counts
+  
   mapping(uint256 => address) public lastOwners;
 
   bytes[] public _validators;
 
   uint256[] public _initHeights;
 
-  bool private _isOpenSeaProxyActive = false;
+  bool private _isOpenSeaProxyActive; // todo 其他合约 可升级合约不能在构造写任何东西的,常量例外
 
   event BaseURIChanged(string _before, string _after);
   event Transferred(address _to, uint256 _amount);
@@ -40,7 +42,8 @@ contract VNFT is
       __Ownable_init();
       __UUPSUpgradeable_init();
       __ReentrancyGuard_init();
-      __ERC721A_init("Validator Nft", "vNFT");
+      __ERC721A_init("Validator NFT", "vNFT");
+      _isOpenSeaProxyActive = false;
   }
 
   modifier onlyLiquidStaking() {
@@ -139,9 +142,9 @@ contract VNFT is
 
   /**
    * @notice Finds all the validator's public key of a particular operator
-   * @param _operatorId - The particular address of the operator
+   * @param operatorId - The particular address of the operator
    */
-  function validatorsOfOperator(uint256 _operatorId) external view returns (bytes[] memory) {
+  function validatorsOfOperator(uint256 operatorId) external view returns (bytes[] memory) {
     uint256 total = _nextTokenId();
     uint256 tokenIdsIdx;
     bytes[] memory validators = new bytes[](total);
@@ -152,7 +155,7 @@ contract VNFT is
         if (ownership.burned) { 
           continue;
         }
-        if (validatorRecords[_validators[i]] == _operatorId) {
+        if (validatorRecords[_validators[i]] == operatorId) {
           validators[tokenIdsIdx++] = _validators[i];
         }
     }
@@ -187,22 +190,22 @@ contract VNFT is
 
   /**
    * @notice Mints a Validator nft (vNFT)
-   * @param _pubkey -  A 48 bytes representing the validator's public key
-   * @param _to - The recipient of the nft
-   * @param _operator - The operator repsonsible for operating the physical node
+   * @param pubkey -  A 48 bytes representing the validator's public key
+   * @param to - The recipient of the nft
+   * @param operatorId - The operator repsonsible for operating the physical node
    */
-  function whiteListMint(bytes calldata _pubkey, address _to, uint256 _operator) external onlyLiquidStaking {
+  function whiteListMint(bytes calldata pubkey, address to, uint256 operatorId) external onlyLiquidStaking {
     require(
       totalSupply() + 1 <= MAX_SUPPLY,
       "not enough remaining reserved for auction to support desired mint amount"
     );
-    require(validatorRecords[_pubkey] == 0, "Pub key already in used");
+    require(validatorRecords[pubkey] == 0, "Pub key already in used");
 
-    validatorRecords[_pubkey] = _operator;
-    _validators.push(_pubkey);
+    validatorRecords[pubkey] = operatorId;
+    _validators.push(pubkey);
     _initHeights.push(block.number);
-
-    _safeMint(_to, 1);
+    operatorRecords[operatorId] += 1;
+    _safeMint(to, 1);
   }
 
   /**
@@ -212,6 +215,18 @@ contract VNFT is
   function whiteListBurn(uint256 tokenId) external onlyLiquidStaking {
     lastOwners[tokenId] = ownerOf(tokenId);
     _burn(tokenId);
+
+    bytes memory pubkey = _validators[tokenId];
+    uint256 operatorId = validatorRecords[pubkey];
+    operatorRecords[operatorId] -= 1;
+  }
+
+  /**
+   * @notice Get the number of operator's nft
+   * @param operatorId - operator id
+   */
+  function getNftCountsOfOperator(uint256 operatorId) external view returns(uint256) {
+    return operatorRecords[operatorId];
   }
 
   // // metadata URI

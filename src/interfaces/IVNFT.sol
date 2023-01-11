@@ -14,6 +14,8 @@ interface IVNFT is IERC721AUpgradeable {
 
     function operatorOf(uint256 tokenId) external view returns (uint256);
 
+    function getNftCountsOfOperator(uint256 operatorId) external view returns(uint256);
+
     function tokenOfValidator(bytes calldata pubkey) external view returns (uint256);
 
     function setGasHeight(uint256 tokenId, uint256 value) external;
@@ -22,7 +24,7 @@ interface IVNFT is IERC721AUpgradeable {
 
     function lastOwnerOf(uint256 tokenId) external view returns (address);
 
-    function whiteListMint(bytes calldata data, address _to, uint256 _operatorId) external payable;
+    function whiteListMint(bytes calldata data, address to, uint256 operatorId) external payable;
 
     function whiteListBurn(uint256 tokenId) external;
 
