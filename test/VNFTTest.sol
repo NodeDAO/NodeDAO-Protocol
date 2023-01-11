@@ -6,6 +6,7 @@ import "src/tokens/VNFT.sol";
 
 contract VNFTTest is Test {
     VNFT vnft;
+
     function setUp() public {
         vnft = new VNFT();
         vnft.initialize();
@@ -48,7 +49,7 @@ contract VNFTTest is Test {
     function testFailWhiteListBurn() public {
         vnft.setLiquidStaking(address(1));
         vm.prank(address(1));
-         vnft.whiteListMint(bytes("1"), address(2), 1);
+        vnft.whiteListMint(bytes("1"), address(2), 1);
         assertEq(1, vnft.balanceOf(address(2)));
 
         vnft.whiteListBurn(0);

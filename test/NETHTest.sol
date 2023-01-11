@@ -6,6 +6,7 @@ import "src/tokens/NETH.sol";
 
 contract NETHTest is Test {
     NETH neth;
+
     function setUp() public {
         neth = new NETH();
     }

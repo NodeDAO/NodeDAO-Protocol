@@ -13,9 +13,7 @@ contract NETH is INETH, ERC20, Ownable {
         _;
     }
 
-    constructor() ERC20("Node ETH", "nETH") {
-
-    }
+    constructor() ERC20("Node ETH", "nETH") {}
 
     function setLiquidStaking(address _liquidStaking) public onlyOwner {
         liquidStakingAddress = _liquidStaking;

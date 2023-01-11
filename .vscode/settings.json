@@ -1,0 +1,7 @@
+{
+  "commentTranslate.multiLineMerge": false,
+  "slither.solcPath": "",
+  "slither.hiddenDetectors": ["abiencoderv2-array"],
+  "commentTranslate.targetLanguage": "en",
+  "commentTranslate.hover.enabled": true
+}

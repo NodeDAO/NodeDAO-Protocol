@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity ^0.8.7;
+
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts/proxy/utils/Initializable.sol";
@@ -52,10 +53,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         nftContract = IVNFT(nftContract_);
         dao = _dao;
 
-        RewardMetadata memory r = RewardMetadata({
-            value: 0,
-            height: 0
-        });
+        RewardMetadata memory r = RewardMetadata({value: 0, height: 0});
 
         cumArr.push(r);
         unclaimedRewards = 0;
@@ -107,10 +105,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
 
         uint256 averageRewards = outstandingRewards / nftContract.totalSupply();
         uint256 currentValue = cumArr[cumArr.length - 1].value + averageRewards;
-        RewardMetadata memory r = RewardMetadata({
-            value: currentValue,
-            height: block.number
-        });
+        RewardMetadata memory r = RewardMetadata({value: currentValue, height: block.number});
         cumArr.push(r);
 
         emit Settle(block.number, averageRewards);
@@ -124,7 +119,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         return _rewards(tokenId);
     }
 
-    function batchRewards(uint256[] memory tokenIds) external view returns(uint256) {
+    function batchRewards(uint256[] memory tokenIds) external view returns (uint256) {
         uint256 nftRewards;
         uint256 i;
         for (i = 0; i < tokenIds.length; i++) {
@@ -162,7 +157,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /**
      * @notice Settles outstanding rewards
      * @dev Current active validator nft will equally recieve all rewards earned in this era
-    */
+     */
     function settle() external override onlyLiquidStaking {
         _settle();
     }
@@ -170,7 +165,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /**
      * @notice Settles outstanding rewards in the event there is no change in amount of validators
      * @dev Current active validator nft will equally recieve  all rewards earned in this era
-    */
+     */
     function publicSettle() external override {
         // prevent spam attack
         if (lastPublicSettle + publicSettleLimit > block.number) {
@@ -188,7 +183,12 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         emit Transferred(to, amount);
     }
 
-    function claimRewardsOfLiquidStaking(uint256[] memory tokenIds)external nonReentrant onlyLiquidStaking returns(uint256) {
+    function claimRewardsOfLiquidStaking(uint256[] memory tokenIds)
+        external
+        nonReentrant
+        onlyLiquidStaking
+        returns (uint256)
+    {
         uint256 nftRewards;
         uint256 i;
         for (i = 0; i < tokenIds.length; i++) {
@@ -208,10 +208,10 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
      * @notice Claims the rewards belonging to a validator nft and transfer it to the owner
      * @param tokenId - tokenId of the validator nft
      */
-    function claimRewardsOfUser(uint256 tokenId) external nonReentrant onlyLiquidStaking returns(uint256) {
+    function claimRewardsOfUser(uint256 tokenId) external nonReentrant onlyLiquidStaking returns (uint256) {
         address owner = nftContract.ownerOf(tokenId);
         uint256 nftRewards = _rewards(tokenId);
-        
+
         unclaimedRewards -= nftRewards;
         transfer(nftRewards, owner);
 
@@ -222,8 +222,8 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice Operater Claims the rewards 
-    */
+     * @notice Operater Claims the rewards
+     */
     function setUserNft(uint256 tokenId, uint256 number) external onlyLiquidStaking {
         userGasHeight[tokenId] = number;
     }
@@ -233,7 +233,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice Operater Claims the rewards 
+     * @notice Operater Claims the rewards
      */
     function claimOperater(address to) external nonReentrant {
         transfer(operatorRewards, to);
@@ -267,15 +267,15 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     }
 
     /**
-      * @notice set dao vault address
-      */
+     * @notice set dao vault address
+     */
     function setDaoAddress(address _dao) external onlyDao {
         dao = _dao;
     }
 
-    function liquidStaking() external view returns(address) {
+    function liquidStaking() external view returns (address) {
         return liquidStakingAddress;
     }
 
-    receive() external payable{}
+    receive() external payable {}
 }

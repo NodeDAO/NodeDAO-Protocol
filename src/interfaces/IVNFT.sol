@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 pragma solidity ^0.8.7;
+
 import "lib/ERC721A-Upgradeable/contracts/IERC721AUpgradeable.sol";
 
 interface IVNFT is IERC721AUpgradeable {

@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.7;
 
-  /**
-   * @title Interface for IELVault
-   * @notice Vault will manage methods for rewards, commissions, tax
-   */
+/**
+ * @title Interface for IELVault
+ * @notice Vault will manage methods for rewards, commissions, tax
+ */
 interface IELVault {
     struct RewardMetadata {
         uint256 value;
@@ -14,7 +14,7 @@ interface IELVault {
 
     function rewards(uint256 tokenId) external view returns (uint256);
 
-    function batchRewards(uint256[] calldata tokenIds) external view returns(uint256);
+    function batchRewards(uint256[] calldata tokenIds) external view returns (uint256);
 
     function rewardsHeight() external view returns (uint256);
 
@@ -24,15 +24,15 @@ interface IELVault {
 
     function dao() external view returns (address);
 
-    function liquidStaking() external view returns(address);
+    function liquidStaking() external view returns (address);
 
     function settle() external;
 
     function publicSettle() external;
 
-    function claimRewardsOfLiquidStaking(uint256[] memory tokenIds) external returns(uint256);
+    function claimRewardsOfLiquidStaking(uint256[] memory tokenIds) external returns (uint256);
 
-    function claimRewardsOfUser(uint256 tokenId) external returns(uint256);
+    function claimRewardsOfUser(uint256 tokenId) external returns (uint256);
 
     function setUserNft(uint256 tokenId, uint256 number) external;
 

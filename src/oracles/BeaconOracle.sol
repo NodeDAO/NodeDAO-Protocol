@@ -26,11 +26,6 @@ contract BeaconOracle is
     // Use the maximum value of uint256 as the index that does not exist
     uint256 internal constant MEMBER_NOT_FOUND = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
-    /// The bitmask of the oracle members that pushed their reports
-    // keccak256("oracle.reportsBitMask")
-    // uint256 internal reportBitMaskPosition = 0xea6fa022365e4737a3bb52facb00ddc693a656fb51ffb2b4bd24fb85bdc888be;
-    uint256 internal reportBitMaskPosition = 0;
-
     // Number of slots corresponding to each epoch
     uint64 internal constant SLOTS_PER_EPOCH = 32;
 
@@ -40,14 +35,14 @@ contract BeaconOracle is
     // Seconds for each slot
     uint64 internal constant SECONDS_PER_SLOT = 12;
 
+    // Maximum number of oracle committee members
+    uint8 public constant MAX_MEMBERS = 255;
+
+    /// The bitmask of the oracle members that pushed their reports (default:0)
+    uint256 internal reportBitMaskPosition;
+
     // dao address
     address public dao;
-
-    // oracle committee members
-    address[] private oracleMembers;
-
-    // Maximum number of oracle committee members
-    uint256 public constant MAX_MEMBERS = 256;
 
     // The epoch of each frame (currently 24h for 225)
     uint32 public epochsPerFrame;
@@ -64,10 +59,16 @@ contract BeaconOracle is
     // current reportBeacon beaconValidators
     uint64 public beaconValidators;
 
+    uint8 public oracleMemberCount;
+
     // reportBeacon merkleTreeRoot storage
     bytes32 private merkleTreeRoot;
 
+    // reportBeacon storge
     bytes[] private currentReportVariants;
+
+    // oracle commit members
+    address[] private oracleMembers;
 
     function initialize(address _dao) public initializer {
         __UUPSUpgradeable_init();
@@ -84,56 +85,74 @@ contract BeaconOracle is
         _;
     }
 
+    /**
+     * description: get Quorum
+     * @return {uint32} Quorum = oracleMemberCount * 2 / 3 + 1
+     */
+    function getQuorum() public view returns (uint8) {
+        uint8 n = (oracleMemberCount * 2) / 3;
+        return n + 1;
+    }
+
+    /**
+     * Add oracle member
+     */
     function addOracleMember(address _oracleMember) external onlyDao {
         require(address(0) != _oracleMember, "BAD_ARGUMENT");
-        require(oracleMembers.length < MAX_MEMBERS, "TOO_MANY_MEMBERS");
+        require(oracleMemberCount < MAX_MEMBERS, "TOO_MANY_MEMBERS");
         require(MEMBER_NOT_FOUND == _getMemberId(_oracleMember), "MEMBER_EXISTS");
 
         oracleMembers.push(_oracleMember);
+        oracleMemberCount++;
 
         emit AddOracleMember(_oracleMember);
     }
 
+    /**
+     * Add oracle member and configure all members to re-report
+     */
     function removeOracleMember(address _oracleMember) external onlyDao {
         uint256 index = _getMemberId(_oracleMember);
         require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
-
+        require(oracleMemberCount > 0, "Member count is 0");
         delete oracleMembers[index];
+        oracleMemberCount--;
 
         emit RemoveOracleMember(_oracleMember);
+
+        // There is an operation to delete oracleMember, all members need to report again
+        reportBitMaskPosition = 0;
+        delete currentReportVariants;
     }
 
+    /**
+     * @return {bool} is oracleMember
+     */
     function isOracleMember(address _oracleMember) external view returns (bool) {
         return _isOracleMember(_oracleMember);
     }
 
-    function _isOracleMember(address _oracleMember) internal view returns (bool) {
-        uint256 index = _getMemberId(_oracleMember);
-        return index != MEMBER_NOT_FOUND;
-    }
-
-    // Example Reset the reporting frequency
+    /**
+     * Example Reset the reporting frequency
+     */
     function resetEpochsPerFrame(uint32 _epochsPerFrame) external onlyDao {
         epochsPerFrame = _epochsPerFrame;
 
         emit ResetEpochsPerFrame(_epochsPerFrame);
     }
 
+    /**
+     * @return {uint128} The total balance of the consensus layer
+     */
     function getBeaconBalances() external view returns (uint128) {
         return beaconBalances;
     }
 
+    /**
+     * @return {uint128} The total validator count of the consensus layer
+     */
     function getBeaconValidators() external view returns (uint64) {
         return beaconValidators;
-    }
-
-    /**
-     * description: get Quorum
-     * @return {uint32} Quorum = operatorCount * 2 / 3 + 1
-     */
-    function getQuorum() public view returns (uint32) {
-        uint32 n = (uint32(oracleMembers.length) * 2) / 3;
-        return uint32(n + 1);
     }
 
     /**
@@ -219,6 +238,9 @@ contract BeaconOracle is
         }
     }
 
+    /**
+     * Whether the address of the caller has performed reportBeacon
+     */
     function isReportBeacon() external view returns (bool) {
         // make sure the oracle is from members list and has not yet voted
         uint256 index = _getMemberId(msg.sender);
@@ -226,6 +248,35 @@ contract BeaconOracle is
         uint256 bitMask = reportBitMaskPosition;
         uint256 mask = 1 << index;
         return bitMask & mask != 0;
+    }
+
+    /**
+     * Verify the value of nft
+     * leaf: bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID
+     * @param {bytes32[] memory} proof validator's merkleTree proof
+     * @param {bytes memory} pubkey
+     * @param {uint256} beaconBalance validator consensus layer balance
+     * @param {uint256} nftTokenID
+     * @return whether the validation passed
+     */
+    function verifyNftValue(bytes32[] memory proof, bytes memory pubkey, uint256 beaconBalance, uint256 nftTokenID)
+        external
+        view
+        returns (bool)
+    {
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(pubkey, beaconBalance, nftTokenID))));
+        return MerkleProof.verify(proof, merkleTreeRoot, leaf);
+    }
+
+    /**
+     *  Remove the current reporting progress and advances to accept the later epoch `_epochId`
+     */
+    function _clearReportingAndAdvanceTo(uint256 _nextExpectedEpochId) internal {
+        reportBitMaskPosition = 0;
+        expectedEpochId = _nextExpectedEpochId;
+
+        delete currentReportVariants;
+        emit ExpectedEpochIdUpdated(_nextExpectedEpochId);
     }
 
     /**
@@ -248,35 +299,13 @@ contract BeaconOracle is
         _clearReportingAndAdvanceTo(_nextExpectedEpochId);
     }
 
-    /**
-     *  Remove the current reporting progress and advances to accept the later epoch `_epochId`
-     */
-    function _clearReportingAndAdvanceTo(uint256 _nextExpectedEpochId) internal {
-        reportBitMaskPosition = 0;
-        expectedEpochId = _nextExpectedEpochId;
-
-        delete currentReportVariants;
-        emit ExpectedEpochIdUpdated(_nextExpectedEpochId);
+    function _isOracleMember(address _oracleMember) internal view returns (bool) {
+        uint256 index = _getMemberId(_oracleMember);
+        return index != MEMBER_NOT_FOUND;
     }
 
     /**
-     * description: Verify the value of nft
-     * leaf: bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID
-     * @return {bool} Whether the verification is successful
-     */
-    function verifyNftValue(bytes32[] memory proof, bytes memory pubkey, uint256 validatorBalance, uint256 nftTokenID)
-        external
-        view
-        returns (bool)
-    {
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(pubkey, validatorBalance, nftTokenID))));
-        return MerkleProof.verify(proof, merkleTreeRoot, leaf);
-    }
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
-
-    /**
-     * @notice Return `_member` index in the members list or MEMBER_NOT_FOUND
+     * Return `_member` index in the members list or MEMBER_NOT_FOUND
      */
     function _getMemberId(address _member) internal view returns (uint256) {
         uint256 length = oracleMembers.length;
@@ -289,14 +318,14 @@ contract BeaconOracle is
     }
 
     /**
-     * description: Return the first epoch of the frame that `_epochId` belongs to
+     * Return the first epoch of the frame that `_epochId` belongs to
      */
     function _getFrameFirstEpochOfDay(uint256 _epochId) internal view returns (uint256) {
         return (_epochId / epochsPerFrame) * epochsPerFrame;
     }
 
     /**
-     * description: Return the epoch calculated from current timestamp
+     * Return the epoch calculated from current timestamp
      */
     function _getCurrentEpochId() internal view returns (uint256) {
         // The number of epochs after the base time
@@ -304,9 +333,11 @@ contract BeaconOracle is
     }
 
     /**
-     * description Return the current timestamp
+     * Return the current timestamp
      */
     function _getTime() internal view returns (uint256) {
         return block.timestamp;
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 }

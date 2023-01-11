@@ -4,10 +4,7 @@ pragma solidity ^0.8.7;
 import "forge-std/Test.sol";
 import "src/oracles/BeaconOracle.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
-import "src/registries/NodeOperatorRegistry.sol";
-import "src/LiquidStaking.sol";
 import "src/oracles/ReportUtils.sol";
-import "src/interfaces/INodeOperatorsRegistry.sol";
 
 contract BeaconOracleTest is Test {
     using ReportUtils for bytes;
@@ -116,7 +113,9 @@ contract BeaconOracleTest is Test {
         vm.stopPrank();
 
         assertEq(beaconOracle.beaconBalances(), 123456789);
+        assertEq(beaconOracle.getBeaconBalances(), 123456789);
         assertEq(beaconOracle.beaconValidators(), 12345);
+        assertEq(beaconOracle.getBeaconValidators(), 12345);
         assertEq(beaconOracle.isQuorum(), true);
 
         vm.prank(address(11));
