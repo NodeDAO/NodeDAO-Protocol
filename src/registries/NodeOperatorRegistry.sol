@@ -86,7 +86,7 @@ contract NodeOperatorRegistry is
         validAddress(_vaultContractAddress)
         returns (uint256 id)
     {
-        require(msg.value == registrationFee, "Insufficient registration operator fee");
+        require(msg.value == registrationFee, "Invalid registration operator fee");
 
         id = totalOperators + 1;
 
