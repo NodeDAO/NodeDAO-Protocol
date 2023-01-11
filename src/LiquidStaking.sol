@@ -115,6 +115,7 @@ contract LiquidStaking is
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
 
+        require( nodeOperatorRegistryContract.isTrustedOperator(_operatorId) == true,  "The message sender is not part of Trusted KingHash Operators" );
         uint256 depositFeeAmount;
         uint256 depositPoolAmount;
 
@@ -212,6 +213,8 @@ contract LiquidStaking is
         require(data.length == 352, "Invalid Data Length");
 
         uint256 _operatorId = uint256(bytes32(data[320:352]));
+        require(getOperatorPoolEtherMultiple(_operatorId) > 0 , "The following Operator's Balance has less than 32 ether") ;
+
         require(address(this).balance >= unstakePoolSize, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId) == true, "The operator must be trusted");
         operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] - DEPOSIT_SIZE;
@@ -549,4 +552,9 @@ contract LiquidStaking is
         payable(to).transfer(amount);
         emit Transferred(to, amount);
     }
+
+    function getOperatorPoolEtherMultiple(uint256 operator) internal view returns (uint256) {
+        return operatorPoolBalances[operator] / 32 ether;
+    }
+
 }

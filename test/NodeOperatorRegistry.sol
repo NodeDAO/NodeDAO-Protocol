@@ -61,14 +61,16 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testRegisterOperator() public {
+        vm.expectEmit(true, true, false, true);
+        emit NodeOperatorRegistered(1, "one", address(3), address(4), address(5));
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
     }
 
     function testRegisterOperatorMoreValue() public {
         vm.expectEmit(true, true, false, true);
         emit Transferred(_daoVaultAddress, 0.1 ether);
-        emit Transferred(msg.sender, 0.11 ether);
-        operatorRegistry.registerOperator{value: 0.21 ether}("one", address(3), address(4), address(5));
+        emit NodeOperatorRegistered(1, "one", address(3), address(4), address(5));
+        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4), address(5));
     }
 
     // -------------

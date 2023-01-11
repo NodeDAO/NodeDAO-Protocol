@@ -70,7 +70,11 @@ interface INodeOperatorsRegistry {
             address vaultContractAddress
         );
 
-    // function getTrustedOperatorVaultContracts() external view returns (uint256[] memory, address[] memory);
+    /**
+      * @notice Get information about an operator vault contract address
+      * @param _id operator id
+    */
+    function getNodeOperatorVaultContract(uint256 _id) external view returns (address vaultContractAddress);
 
     /**
      * @notice Returns total number of node operators
