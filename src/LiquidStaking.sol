@@ -114,22 +114,19 @@ contract LiquidStaking is
     function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
-
         require(
             nodeOperatorRegistryContract.isTrustedOperator(_operatorId) == true,
             "The message sender is not part of Trusted KingHash Operators"
         );
         uint256 depositFeeAmount;
         uint256 depositPoolAmount;
-
         if (depositFeeRate == 0) {
             depositPoolAmount = msg.value;
         } else {
-            depositFeeAmount = depositFeeRate / totalBasisPoints * msg.value;
+            depositFeeAmount = msg.value * depositFeeRate / totalBasisPoints;
             depositPoolAmount = msg.value - depositFeeAmount;
             transfer(depositFeeAmount, daoVaultAddress);
         }
-
         operatorPoolBalances[_operatorId] += depositPoolAmount;
 
         // 1. 将depositAmount根据nETH的汇率进行换算
