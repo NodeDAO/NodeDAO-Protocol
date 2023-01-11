@@ -14,13 +14,11 @@ interface IELVault {
 
     function rewards(uint256 tokenId) external view returns (uint256);
 
-    function batchRewards(uint256[] calldata tokenIds) external view returns (uint256);
+    function getLiquidStakingReward() external view returns (uint256);
 
     function rewardsHeight() external view returns (uint256);
 
     function rewardsAndHeights(uint256 amt) external view returns (RewardMetadata[] memory);
-
-    function comission() external view returns (uint256);
 
     function dao() external view returns (address);
 
@@ -30,7 +28,7 @@ interface IELVault {
 
     function publicSettle() external;
 
-    function claimRewardsOfLiquidStaking(uint256[] memory tokenIds) external returns (uint256);
+    function claimRewardsOfLiquidStaking() external returns (uint256);
 
     function claimRewardsOfUser(uint256 tokenId) external returns (uint256);
 

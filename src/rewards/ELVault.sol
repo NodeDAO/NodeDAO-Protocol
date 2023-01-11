@@ -15,6 +15,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     IVNFT public nftContract;
     address public liquidStakingAddress;
 
+    uint256 operatorId;
     // dao address
     address public dao;
 
@@ -23,13 +24,18 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     uint256 public lastPublicSettle;
     uint256 public publicSettleLimit;
 
-    uint256 public comission = 1000; // todo 给operator的执行层奖励抽成
+    uint256 public comissionRate; // Execution layer reward ratio
+    uint256 public daoComissionRate;
     uint256 public operatorRewards;
+    uint256 public daoRewards;
 
-    uint256 public liquidStakingGasHeight; // 标记流动性池子的gasHeight
-    mapping(uint256 => uint256) public userGasHeight; // key tokenId ; value gasheight
+    uint256 public liquidStakingGasHeight;
+    uint256 public liquidStakingReward; // liquidStaking reward
 
-    event ComissionChanged(uint256 _before, uint256 _after);
+    mapping(uint256 => uint256) public userGasHeight; // key tokenId; value gasheight
+    uint256 public userNftsCount;
+
+    event ComissionRateChanged(uint256 _before, uint256 _after);
     event LiquidStakingChanged(address _before, address _after);
     event PublicSettleLimitChanged(uint256 _before, uint256 _after);
     event RewardClaimed(address _owner, uint256 _amount);
@@ -49,9 +55,9 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
-    function initialize(address nftContract_, address _dao) external initializer {
+    function initialize(address nftContract_, address dao_, uint256 operatorId_) external initializer {
         nftContract = IVNFT(nftContract_);
-        dao = _dao;
+        dao = dao_;
 
         RewardMetadata memory r = RewardMetadata({value: 0, height: 0});
 
@@ -59,6 +65,9 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         unclaimedRewards = 0;
         lastPublicSettle = 0;
         publicSettleLimit = 216000;
+        comissionRate = 1000;
+        daoComissionRate = 3000;
+        operatorId = operatorId_;
     }
 
     /**
@@ -98,12 +107,18 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
             return;
         }
 
-        uint256 operatorReward = (outstandingRewards * comission) / 10000;
-        operatorRewards += operatorReward;
-        outstandingRewards -= operatorReward;
+        uint256 comission = (outstandingRewards * comissionRate) / 10000;
+        uint256 daoReward = (comission * daoComissionRate) / 10000;
+        daoRewards += daoReward;
+        operatorRewards += comission - daoReward;
+
+        outstandingRewards -= comission;
         unclaimedRewards += outstandingRewards;
 
-        uint256 averageRewards = outstandingRewards / nftContract.totalSupply();
+        uint256 averageRewards = outstandingRewards / nftContract.getNftCountsOfOperator(operatorId);
+
+        liquidStakingReward += averageRewards * userNftsCount;
+
         uint256 currentValue = cumArr[cumArr.length - 1].value + averageRewards;
         RewardMetadata memory r = RewardMetadata({value: currentValue, height: block.number});
         cumArr.push(r);
@@ -119,14 +134,11 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         return _rewards(tokenId);
     }
 
-    function batchRewards(uint256[] memory tokenIds) external view returns (uint256) {
-        uint256 nftRewards;
-        uint256 i;
-        for (i = 0; i < tokenIds.length; i++) {
-            nftRewards += _rewards(tokenIds[i]);
-        }
-
-        return nftRewards;
+    /**
+     * @notice get liquidStaking pool reward
+     */
+    function getLiquidStakingReward() external view returns (uint256) {
+        return liquidStakingReward;
     }
 
     /**
@@ -183,20 +195,9 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         emit Transferred(to, amount);
     }
 
-    function claimRewardsOfLiquidStaking(uint256[] memory tokenIds)
-        external
-        nonReentrant
-        onlyLiquidStaking
-        returns (uint256)
-    {
-        uint256 nftRewards;
-        uint256 i;
-        for (i = 0; i < tokenIds.length; i++) {
-            nftRewards += _rewards(tokenIds[i]);
-        }
-
-        unclaimedRewards -= nftRewards;
-
+    function claimRewardsOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
+        uint256 nftRewards = liquidStakingReward;
+        liquidStakingReward = 0;
         transfer(nftRewards, liquidStakingAddress);
 
         emit RewardClaimed(liquidStakingAddress, nftRewards);
@@ -209,6 +210,8 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
      * @param tokenId - tokenId of the validator nft
      */
     function claimRewardsOfUser(uint256 tokenId) external nonReentrant onlyLiquidStaking returns (uint256) {
+        require(userGasHeight[tokenId] != 0, "must be user tokenId");
+
         address owner = nftContract.ownerOf(tokenId);
         uint256 nftRewards = _rewards(tokenId);
 
@@ -225,6 +228,12 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
      * @notice Operater Claims the rewards
      */
     function setUserNft(uint256 tokenId, uint256 number) external onlyLiquidStaking {
+        if (number == 0) {
+            userNftsCount -= 1;
+        } else {
+            userNftsCount += 1;
+        }
+
         userGasHeight[tokenId] = number;
     }
 
@@ -235,9 +244,17 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /**
      * @notice Operater Claims the rewards
      */
-    function claimOperater(address to) external nonReentrant {
+    function claimOperater(address to) external nonReentrant onlyOwner {
         transfer(operatorRewards, to);
         operatorRewards = 0;
+    }
+
+    /**
+     * @notice Operater Claims the rewards
+     */
+    function claimDao(address to) external nonReentrant onlyDao {
+        transfer(daoRewards, to);
+        daoRewards = 0;
     }
 
     /**
@@ -258,12 +275,21 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice Sets the comission. Comission is currently used to fund hardware costs
+     * @notice Sets the comission.
      */
-    function setComission(uint256 comission_) external onlyDao {
-        require(comission_ < 10000, "Comission cannot be 100%");
-        emit ComissionChanged(comission, comission_);
-        comission = comission_;
+    function setComissionRate(uint256 comissionRate_) external onlyDao {
+        require(comissionRate_ < 10000, "Comission cannot be 100%");
+        emit ComissionRateChanged(comissionRate, comissionRate_);
+        comissionRate = comissionRate_;
+    }
+
+    /**
+     * @notice Sets the comission.
+     */
+    function setDaoComissionRate(uint256 comissionRate_) external onlyDao {
+        require(comissionRate_ < 10000, "Comission cannot be 100%");
+        emit ComissionRateChanged(daoComissionRate, comissionRate_);
+        daoComissionRate = comissionRate_;
     }
 
     /**
