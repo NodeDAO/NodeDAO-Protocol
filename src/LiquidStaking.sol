@@ -24,7 +24,8 @@ contract LiquidStaking is
 
     bytes public liquidStakingWithdrawalCredentials;
 
-    uint256 public depositFeeRate; //deposit fee rate,
+    uint256 public depositFeeRate; // deposit fee rate
+    uint256 public unstakeFeeRate; // unstake fee rate
     uint256 public constant totalBasisPoints = 10000;
 
     uint256 public constant DEPOSIT_SIZE = 32 ether;
@@ -105,6 +106,7 @@ contract LiquidStaking is
 
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
         beaconOracleContractAddress = _beaconOracleContractAddress;
+        unstakeFeeRate = 5;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -144,6 +146,17 @@ contract LiquidStaking is
         require(address(this).balance >= amountOut, "UNSTAKE_POOL_INSUFFICIENT_BALANCE");
 
         nETHContract.whiteListBurn(amount, msg.sender);
+
+        uint256 userAmount;
+        uint256 feeAmount;
+        if unstakeFeeRate == 0 {
+            userAmount = amountOut;
+        } else {
+            feeAmount = amountOut * unstakeFeeRate / totalBasisPoints;
+            userAmount = amountOut - feeAmount;
+            transfer(feeAmount, daoVaultAddress);
+        }
+
         transfer(amountOut, msg.sender);
 
         emit EthUnstake(msg.sender, amount, amountOut);
@@ -551,6 +564,11 @@ contract LiquidStaking is
     function setDepositFeeRate(uint256 _feeRate) external onlyDao {
         require(_feeRate < totalBasisPoints, "cannot be 100%");
         depositFeeRate = _feeRate;
+    }
+    
+    function setUnstakeFeeRate(uint256 _feeRate) external onlyDao {
+        require(_feeRate < totalBasisPoints, "cannot be 100%");
+        unstakeFeeRate = _feeRate;
     }
 
     function setLiquidStakingWithdrawalCredentials(bytes memory _liquidStakingWithdrawalCredentials) external onlyDao {
