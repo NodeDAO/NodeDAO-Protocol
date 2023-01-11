@@ -112,6 +112,7 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
 
+        require( iNodeOperatorRegistry.isTrustedOperator(_node_operator) == true,  "The message sender is not part of Trusted KingHash Operators" );
         uint256 depositFeeAmount;
         uint256 depositPoolAmount;
 
@@ -542,4 +543,9 @@ contract LiquidStaking is Initializable, UUPSUpgradeable, ReentrancyGuardUpgrade
         payable(to).transfer(amount);
         emit Transferred(to, amount);
     }
+
+    function getOperatorPoolEtherMultiple(uint256 operator) internal view returns (uint256) {
+        return operatorPoolBalances[operator] / 32 ether;
+    }
+
 }
