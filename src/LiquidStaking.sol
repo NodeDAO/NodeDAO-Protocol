@@ -54,7 +54,7 @@ contract LiquidStaking is
 
     mapping(uint256 => uint256) public operatorPoolBalances; // operator's private stake pool, key is operator_id
 
-    uint256 public wrapOperator = 1; // When buying nft next time, sell the operator id of nft
+    uint256 public wrapOperator; // When buying nft next time, sell the operator id of nft
     uint256 public nftWrapNonce;
     // dao address
     address public dao;
@@ -111,6 +111,7 @@ contract LiquidStaking is
         beaconOracleContractAddress = _beaconOracleContractAddress;
         unstakeFeeRate = 5;
         unstakePoolSize = 1000 ether;
+        wrapOperator = 1;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
