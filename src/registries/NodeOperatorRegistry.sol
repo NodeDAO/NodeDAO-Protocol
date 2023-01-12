@@ -6,6 +6,7 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
+import "src/interfaces/IELVaultFactory.sol";
 
 /**
  * @title Node Operator registry
@@ -44,6 +45,8 @@ contract NodeOperatorRegistry is
     // operator registration fee
     uint256 public registrationFee = 0.1 ether;
 
+    IELVaultFactory public vaultFactory;
+
     event Transferred(address _to, uint256 _amount);
 
     modifier onlyDao() {
@@ -66,11 +69,13 @@ contract NodeOperatorRegistry is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
-    function initialize(address _dao, address _daoVaultAddress) public initializer {
-        dao = _dao;
-        daoVaultAddress = _daoVaultAddress;
+    function initialize(address _dao, address _daoVaultAddress, address _vaultFactory) public initializer {
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+
+        dao = _dao;
+        daoVaultAddress = _daoVaultAddress;
+        vaultFactory = IELVaultFactory(_vaultFactory);
     }
 
     /**
@@ -80,18 +85,12 @@ contract NodeOperatorRegistry is
      * @param _controllerAddress Ethereum 1 address for the operator's management authority
      * @return id a unique key of the added operator
      */
-    function registerOperator(
-        string memory _name,
-        address _rewardAddress,
-        address _controllerAddress,
-        address _vaultContractAddress
-    )
+    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress)
         external
         payable
         nonReentrant
         validAddress(_rewardAddress)
         validAddress(_controllerAddress)
-        validAddress(_vaultContractAddress)
         returns (uint256 id)
     {
         require(msg.value == registrationFee, "Invalid registration operator fee");
@@ -100,17 +99,19 @@ contract NodeOperatorRegistry is
 
         totalOperators = id;
 
+        address vaultContractAddress = vaultFactory.create(id);
+
         operators[id] = NodeOperator({
             trusted: false,
             rewardAddress: _rewardAddress,
             controllerAddress: _controllerAddress,
-            vaultContractAddress: _vaultContractAddress,
+            vaultContractAddress: vaultContractAddress,
             name: _name
         });
 
         transfer(registrationFee, daoVaultAddress);
 
-        emit NodeOperatorRegistered(id, _name, _rewardAddress, _controllerAddress, _vaultContractAddress);
+        emit NodeOperatorRegistered(id, _name, _rewardAddress, _controllerAddress, vaultContractAddress);
     }
 
     /**

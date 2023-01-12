@@ -14,12 +14,10 @@ interface INodeOperatorsRegistry {
      * @param _controllerAddress Ethereum 1 address for the operator's management authority
      * @return id a unique key of the added operator
      */
-    function registerOperator(
-        string memory _name,
-        address _rewardAddress,
-        address _controllerAddress,
-        address _vaultContractAddress
-    ) external payable returns (uint256 id);
+    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress)
+        external
+        payable
+        returns (uint256 id);
 
     /**
      * @notice Set an operator as trusted

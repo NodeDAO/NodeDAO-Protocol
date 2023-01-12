@@ -55,7 +55,10 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
-    function initialize(address nftContract_, address dao_, uint256 operatorId_) external initializer {
+    function initialize(address nftContract_, address dao_, uint256 operatorId_, address liquidStakingAddress_)
+        external
+        initializer
+    {
         nftContract = IVNFT(nftContract_);
         dao = dao_;
 
@@ -68,6 +71,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         comissionRate = 1000;
         daoComissionRate = 3000;
         operatorId = operatorId_;
+        liquidStakingAddress = liquidStakingAddress_;
     }
 
     /**
@@ -257,14 +261,14 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         daoRewards = 0;
     }
 
-    /**
-     * @notice Sets the liquidStaking address
-     */
-    function setLiquidStaking(address liquidStakingAddress_) external onlyDao {
-        require(liquidStakingAddress_ != address(0), "LiquidStaking address provided invalid");
-        emit LiquidStakingChanged(liquidStakingAddress, liquidStakingAddress_);
-        liquidStakingAddress = liquidStakingAddress_;
-    }
+    // /**
+    //  * @notice Sets the liquidStaking address
+    //  */
+    // function setLiquidStaking(address liquidStakingAddress_) external onlyDao {
+    //     require(liquidStakingAddress_ != address(0), "LiquidStaking address provided invalid");
+    //     emit LiquidStakingChanged(liquidStakingAddress, liquidStakingAddress_);
+    //     liquidStakingAddress = liquidStakingAddress_;
+    // }
 
     /**
      * @notice Sets the `PublicSettleLimit`. Determines how frequently this contract can be spammed

@@ -118,10 +118,7 @@ contract LiquidStaking is
     function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
-        require(
-            nodeOperatorRegistryContract.isTrustedOperator(_operatorId),
-            "The operator is not trusted"
-        );
+        require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
 
         uint256 depositFeeAmount;
         uint256 depositPoolAmount;
@@ -461,15 +458,15 @@ contract LiquidStaking is
 
         if (unstakePoolBalances < unstakePoolSize) {
             if (unstakePoolBalances + nftRewards > unstakePoolSize) {
-                    uint256 operatorFund = unstakePoolBalances + nftRewards - unstakePoolSize;
-                    unstakePoolBalances = unstakePoolSize;
-                    operatorPoolBalances[operatorId] += operatorFund;
-                    emit ClaimRewardsToUnstakePool(operatorId, nftRewards - operatorFund);
-                    emit OperatorClaimRewards(operatorId, operatorFund);
-                } else {
-                    unstakePoolBalances += nftRewards;
-                    emit ClaimRewardsToUnstakePool(operatorId, nftRewards);
-                }
+                uint256 operatorFund = unstakePoolBalances + nftRewards - unstakePoolSize;
+                unstakePoolBalances = unstakePoolSize;
+                operatorPoolBalances[operatorId] += operatorFund;
+                emit ClaimRewardsToUnstakePool(operatorId, nftRewards - operatorFund);
+                emit OperatorClaimRewards(operatorId, operatorFund);
+            } else {
+                unstakePoolBalances += nftRewards;
+                emit ClaimRewardsToUnstakePool(operatorId, nftRewards);
+            }
         } else {
             operatorPoolBalances[operatorId] += nftRewards;
             emit OperatorClaimRewards(operatorId, nftRewards);
