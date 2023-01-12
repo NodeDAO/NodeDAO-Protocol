@@ -275,11 +275,4 @@ contract NodeOperatorRegistry is
         payable(to).transfer(amount);
         emit Transferred(to, amount);
     }
-
-    /**
-     * @notice transfer amount to msg sender
-     */
-    receive() external payable {
-        transfer(msg.value, msg.sender);
-    }
 }
