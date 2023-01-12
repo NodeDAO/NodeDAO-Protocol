@@ -174,7 +174,8 @@ contract LiquidStaking is
     //5. depost
     //6. mint nft, if it is a trusted operator, mint neth for the stake pool, transfer nft to the user, and record nft in trustedNft; if it is an untrusted operator, only mint nft
     function stakeNFT(bytes[] calldata data) external payable nonReentrant returns (bool) {
-        uint256 total_ether = 0;
+        require(msg.value >= DEPOSIT_SIZE * data.length , "Incorrect Ether amount provided");
+        
         for (uint256 i = 0; i < data.length; i++) {
             require(data[i].length == 352, "Invalid Data Length");
             bool trusted = _stake(data[i]);
@@ -198,13 +199,9 @@ contract LiquidStaking is
             } else {
                 nETHContract.whiteListMint(amountOut, address(this));
             }
-
-            total_ether += DEPOSIT_SIZE;
         }
 
-        require(msg.value == total_ether, "Incorrect Ether amount provided");
-
-        emit NftStake(msg.sender, total_ether / DEPOSIT_SIZE);
+        emit NftStake(msg.sender, msg.value / DEPOSIT_SIZE);
         return true;
     }
 
