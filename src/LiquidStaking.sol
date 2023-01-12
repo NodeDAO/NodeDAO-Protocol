@@ -110,6 +110,7 @@ contract LiquidStaking is
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
         beaconOracleContractAddress = _beaconOracleContractAddress;
         unstakeFeeRate = 5;
+        unstakePoolSize = 1000 ether;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -119,7 +120,7 @@ contract LiquidStaking is
         require(_referral != address(0), "Referral address must be provided");
         require(
             nodeOperatorRegistryContract.isTrustedOperator(_operatorId),
-            "The message sender is not part of Trusted KingHash Operators"
+            "The operator is not trusted"
         );
 
         uint256 depositFeeAmount;
@@ -432,10 +433,18 @@ contract LiquidStaking is
             IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
             if (unstakePoolBalances < unstakePoolSize) {
-                unstakePoolBalances += nftRewards;
-                emit ClaimRewardsToUnstakePool(operatorIds[i], nftRewards);
+                if (unstakePoolBalances + nftRewards > unstakePoolSize) {
+                    uint256 operatorFund = unstakePoolBalances + nftRewards - unstakePoolSize;
+                    unstakePoolBalances = unstakePoolSize;
+                    operatorPoolBalances[operatorIds[i]] += operatorFund;
+                    emit ClaimRewardsToUnstakePool(operatorIds[i], nftRewards - operatorFund);
+                    emit OperatorClaimRewards(operatorIds[i], operatorFund);
+                } else {
+                    unstakePoolBalances += nftRewards;
+                    emit ClaimRewardsToUnstakePool(operatorIds[i], nftRewards);
+                }
             } else {
-                operatorPoolBalances[operatorIds[i]] = operatorPoolBalances[operatorIds[i]] + nftRewards;
+                operatorPoolBalances[operatorIds[i]] += nftRewards;
                 emit OperatorClaimRewards(operatorIds[i], nftRewards);
             }
         }
@@ -451,10 +460,18 @@ contract LiquidStaking is
         IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
         if (unstakePoolBalances < unstakePoolSize) {
-            unstakePoolBalances += nftRewards;
-            emit ClaimRewardsToUnstakePool(operatorId, nftRewards);
+            if (unstakePoolBalances + nftRewards > unstakePoolSize) {
+                    uint256 operatorFund = unstakePoolBalances + nftRewards - unstakePoolSize;
+                    unstakePoolBalances = unstakePoolSize;
+                    operatorPoolBalances[operatorId] += operatorFund;
+                    emit ClaimRewardsToUnstakePool(operatorId, nftRewards - operatorFund);
+                    emit OperatorClaimRewards(operatorId, operatorFund);
+                } else {
+                    unstakePoolBalances += nftRewards;
+                    emit ClaimRewardsToUnstakePool(operatorId, nftRewards);
+                }
         } else {
-            operatorPoolBalances[operatorId] = operatorPoolBalances[operatorId] + nftRewards;
+            operatorPoolBalances[operatorId] += nftRewards;
             emit OperatorClaimRewards(operatorId, nftRewards);
         }
     }
