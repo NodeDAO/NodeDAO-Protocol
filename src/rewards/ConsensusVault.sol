@@ -48,7 +48,7 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
         payable(to).transfer(amount);
         emit Transferred(to, amount);
     }
-    
+
     /**
      * @notice Set proxy address of LiquidStaking
      * @param liquidStakingProxyAddress_ proxy address of LiquidStaking
@@ -60,5 +60,5 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
         _liquidStakingProxyAddress = liquidStakingProxyAddress_;
     }
 
-    receive() external payable{}
+    receive() external payable {}
 }

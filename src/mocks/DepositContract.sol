@@ -10,6 +10,7 @@
 // SPDX-License-Identifier: CC0-1.0
 
 pragma solidity ^0.8.7;
+
 import "src/interfaces/IDepositContract.sol";
 
 // Based on official specification in https://eips.ethereum.org/EIPS/eip-165
