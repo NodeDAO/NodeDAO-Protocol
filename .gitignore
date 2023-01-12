@@ -1,6 +1,7 @@
 # Compiler files
 cache/
 out/
+temp
 
 # Ignores development broadcast logs
 !/broadcast
@@ -9,3 +10,5 @@ out/
 
 # Dotenv file
 .env
+.idea/
+.vscode/
