@@ -17,7 +17,7 @@ Made by:
 | ![Statements](https://img.shields.io/badge/statements-32.09%25-red.svg?style=flat) | ![Branches](https://img.shields.io/badge/branches-30.30%25-red.svg?style=flat) | ![Functions](https://img.shields.io/badge/functions-19.68%25-red.svg?style=flat) | ![Lines](https://img.shields.io/badge/lines-36.36%25-red.svg?style=flat) |
 -->
 
-This repository contains the core smart contracts for the [NodeDAO Protocol](https://www.kinghash.com/). NodeDAO Protocol is a smart contract for the next generation of liquid staking derivatives. It encompasses all the concepts from traditional liquid staking, re-staking, Distributed Validators & Validator NFT in a single protocol.
+This repository contains the core smart contracts for the [NodeDAO Protocol](https://nodedao.com/). NodeDAO Protocol is a smart contract for the next generation of liquid staking derivatives. It encompasses all the concepts from traditional liquid staking, re-staking, Distributed Validators & Validator NFT in a single protocol.
 
 **Overview**
 
