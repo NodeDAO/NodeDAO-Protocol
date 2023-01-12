@@ -76,26 +76,21 @@ contract BeaconOracleTest is Test {
         assertEq(beaconOracle.epochsPerFrame(), 450);
     }
 
-    function testIsReportBeacon() public {
-        assertFalse(beaconOracle.isReportBeacon());
-    }
-
     function testReportBeacon() public {
         assertEq(beaconOracle.beaconBalances(), 0);
         assertEq(beaconOracle.beaconValidators(), 0);
-        assertFalse(beaconOracle.isReportBeacon());
 
         bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
 
         vm.startPrank(address(11));
-        assertFalse(beaconOracle.isReportBeacon());
+        assertFalse(beaconOracle.isReportBeacon(address(11)));
         beaconOracle.reportBeacon(172575, 123456789, 12345, root);
-        assertEq(beaconOracle.isReportBeacon(), true);
+        assertEq(beaconOracle.isReportBeacon(address(11)), true);
         vm.stopPrank();
 
         vm.startPrank(address(12));
         beaconOracle.reportBeacon(172575, 123456789, 12345, root);
-        assertEq(beaconOracle.isReportBeacon(), true);
+        assertEq(beaconOracle.isReportBeacon(address(12)), true);
         vm.stopPrank();
 
         vm.startPrank(address(13));
@@ -104,12 +99,12 @@ contract BeaconOracleTest is Test {
 
         vm.startPrank(address(14));
         beaconOracle.reportBeacon(172575, 123456789, 12345, root);
-        assertEq(beaconOracle.isReportBeacon(), false);
+        assertEq(beaconOracle.isReportBeacon(address(14)), false);
         vm.stopPrank();
 
         vm.startPrank(address(15));
         beaconOracle.reportBeacon(172575, 123456789, 12345, root);
-        assertEq(beaconOracle.isReportBeacon(), false);
+        assertEq(beaconOracle.isReportBeacon(address(15)), false);
         vm.stopPrank();
 
         assertEq(beaconOracle.beaconBalances(), 123456789);
@@ -119,11 +114,11 @@ contract BeaconOracleTest is Test {
         assertEq(beaconOracle.isQuorum(), true);
 
         vm.prank(address(11));
-        assertFalse(beaconOracle.isReportBeacon());
+        assertFalse(beaconOracle.isReportBeacon(address(11)));
         vm.prank(address(12));
-        assertFalse(beaconOracle.isReportBeacon());
+        assertFalse(beaconOracle.isReportBeacon(address(12)));
         vm.prank(address(13));
-        assertFalse(beaconOracle.isReportBeacon());
+        assertFalse(beaconOracle.isReportBeacon(address(13)));
     }
 
     function testMerkle() public {

@@ -241,10 +241,11 @@ contract BeaconOracle is
     /**
      * Whether the address of the caller has performed reportBeacon
      */
-    function isReportBeacon() external view returns (bool) {
+    function isReportBeacon(address _oracleMember) external view returns (bool) {
+        require(_oracleMember != address(0), "address provided invalid");
         // make sure the oracle is from members list and has not yet voted
-        uint256 index = _getMemberId(msg.sender);
-        if (index == MEMBER_NOT_FOUND) return false;
+        uint256 index = _getMemberId(_oracleMember);
+        require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
         uint256 bitMask = reportBitMaskPosition;
         uint256 mask = 1 << index;
         return bitMask & mask != 0;
