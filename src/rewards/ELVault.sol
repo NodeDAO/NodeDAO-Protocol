@@ -15,7 +15,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     IVNFT public nftContract;
     address public liquidStakingAddress;
 
-    uint256 operatorId;
+    uint256 public operatorId;
     // dao address
     address public dao;
 
