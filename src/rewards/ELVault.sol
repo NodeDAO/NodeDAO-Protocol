@@ -4,7 +4,7 @@ pragma solidity ^0.8.7;
 
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
-import "openzeppelin-contracts/proxy/utils/Initializable.sol";
+import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "src/interfaces/IELVault.sol";
 import "src/interfaces/IVNFT.sol";
 
