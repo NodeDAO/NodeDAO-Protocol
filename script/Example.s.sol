@@ -10,18 +10,19 @@ contract ExampleScript is Script {
 
     address _dao = address(1);
 
-    function setUp() public {
-        implementation = new BeaconOracle();
-
-    }
+    function setUp() public {}
 
     function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+        implementation = new BeaconOracle();
+
         DeployProxy deployer = new DeployProxy();
         deployer.setType("uups");
 
         address admin = msg.sender;
         address proxyAddress = deployer.deploy(address(implementation), admin);
         BeaconOracle(proxyAddress).initialize(_dao);
-        vm.broadcast();
+        vm.stopBroadcast();
     }
 }

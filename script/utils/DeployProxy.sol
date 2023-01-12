@@ -8,9 +8,6 @@ import {UpgradeableBeacon} from "openzeppelin-contracts/proxy/beacon/Upgradeable
 import {Vm} from "forge-std/Vm.sol";
 
 contract DeployProxy {
-    /// Cheatcodes address
-    Vm constant vm =
-        Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     ProxyType public proxyType;
 
@@ -100,7 +97,7 @@ contract DeployProxy {
     function deployBeacon(address impl) public returns (address) {
         beacon = new UpgradeableBeacon(impl);
         beaconAddress = address(beacon);
-        vm.label(address(beaconAddress), "Upgradeable Beacon");
+
         return beaconAddress;
     }
 
@@ -110,7 +107,7 @@ contract DeployProxy {
     {
         beaconProxy = new UpgradeableBeaconProxy(_beacon, data);
         proxyAddress = address(beaconProxy);
-        vm.label(proxyAddress, "Beacon Proxy");
+
         return proxyAddress;
     }
 
@@ -120,7 +117,7 @@ contract DeployProxy {
     {
         erc1967 = new ERC1967Proxy(implementation, data);
         proxyAddress = address(erc1967);
-        vm.label(proxyAddress, "ERC1967 Proxy");
+
         return proxyAddress;
     }
 
@@ -131,7 +128,7 @@ contract DeployProxy {
     ) public returns (address) {
         uups = new TransparentUpgradeableProxy(implementation, admin, data);
         proxyAddress = address(uups);
-        vm.label(proxyAddress, "UUPS Proxy");
+
         return proxyAddress;
     }
 
