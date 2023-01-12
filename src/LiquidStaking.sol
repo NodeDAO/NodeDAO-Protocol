@@ -118,7 +118,7 @@ contract LiquidStaking is
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
         require(
-            nodeOperatorRegistryContract.isTrustedOperator(_operatorId) == true,
+            nodeOperatorRegistryContract.isTrustedOperator(_operatorId),
             "The message sender is not part of Trusted KingHash Operators"
         );
 
