@@ -48,19 +48,32 @@ contract StakeETHTest is Test {
         depositContractAddress = address(8);
         nodeOperatorRegistry = new NodeOperatorRegistry();
         nodeOperatorRegistry.initialize(address(this), operatorDaoVaultAdd);
-        nodeOperatorRegistry.registerOperator{value: 0.1 ether}( "operator1", operator1Add, operatorAuthAdd, validatorContractAdd );
+        nodeOperatorRegistry.registerOperator{value: 0.1 ether}(
+            "operator1", operator1Add, operatorAuthAdd, validatorContractAdd
+        );
         nodeOperatorRegistry.setTrustedOperator(1);
-        (trusted, name, rewardAddress, controllerAddress, validatorContractAdd) = nodeOperatorRegistry.getNodeOperator(1, true);
+        (trusted, name, rewardAddress, controllerAddress, validatorContractAdd) =
+            nodeOperatorRegistry.getNodeOperator(1, true);
     }
 
-     function testStakeETH(uint256 stakeAmount) public { //correct test for stakeETH 
+    function testStakeETH(uint256 stakeAmount) public {
+        //correct test for stakeETH
         vm.assume(stakeAmount > 1000 wei);
         vm.assume(stakeAmount < 1000000 ether);
         beaconOracle = new BeaconOracle();
         beaconOracle.initialize(operatorAuthAdd);
         neth = new NETH();
         neth.setLiquidStaking(address(liqStakingContract));
-        liqStakingContract.initialize( operatorAuthAdd, operatorDaoVaultAdd, withdrawalCreds, address(nodeOperatorRegistry), address(neth), nVNFTContractAddress, address(beaconOracle), depositContractAddress );
+        liqStakingContract.initialize(
+            operatorAuthAdd,
+            operatorDaoVaultAdd,
+            withdrawalCreds,
+            address(nodeOperatorRegistry),
+            address(neth),
+            nVNFTContractAddress,
+            address(beaconOracle),
+            depositContractAddress
+        );
         liqStakingContract.setDaoAddress(operatorAuthAdd);
         liqStakingContract.setDepositFeeRate(0);
         liqStakingContract.stakeETH{value: stakeAmount}(referral, 1);
@@ -69,8 +82,7 @@ contract StakeETHTest is Test {
         assertEq(ethValue, stakeAmount);
     }
 
-
-    // function testUnstakeETH(address _referral, uint256 amount) public { //correct test for unstakeETH 
+    // function testUnstakeETH(address _referral, uint256 amount) public { //correct test for unstakeETH
     //     vm.assume(amount > 1000 wei);
     //     vm.assume(amount < 1 ether);
     //     beaconOracle = new BeaconOracle();
@@ -85,5 +97,4 @@ contract StakeETHTest is Test {
     //     liqStakingContract.unstakeETH(referral, amount);
 
     // }
-
 }
