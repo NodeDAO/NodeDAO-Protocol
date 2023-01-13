@@ -20,8 +20,7 @@ contract ExampleScript is Script {
         DeployProxy deployer = new DeployProxy();
         deployer.setType("uups");
 
-        address admin = msg.sender;
-        address proxyAddress = deployer.deploy(address(implementation), admin);
+        address proxyAddress = deployer.deploy(address(implementation));
         BeaconOracle(proxyAddress).initialize(_dao);
         vm.stopBroadcast();
     }

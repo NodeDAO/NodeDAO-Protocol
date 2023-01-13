@@ -49,12 +49,10 @@ contract DeployGoerliScript is Script {
         beaconOracle = new BeaconOracle();
         liquidStaking = new LiquidStaking();
 
-        address admin = msg.sender;
-
-        vnftProxy = deployer.deploy(address(vnft), admin);
-        operatorRegistryProxy = deployer.deploy(address(operatorRegistry), admin);
-        beaconOracleProxy = deployer.deploy(address(beaconOracle), admin);
-        liquidStakingProxy = deployer.deploy(address(liquidStaking), admin);
+        vnftProxy = deployer.deploy(address(vnft));
+        operatorRegistryProxy = deployer.deploy(address(operatorRegistry));
+        beaconOracleProxy = deployer.deploy(address(beaconOracle));
+        liquidStakingProxy = deployer.deploy(address(liquidStaking));
 
         // initialize
         VNFT(vnftProxy).initialize();

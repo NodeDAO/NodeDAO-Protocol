@@ -17,7 +17,7 @@ contract DeployProxy {
 
     ERC1967Proxy public erc1967;
 
-    TransparentUpgradeableProxy public uups;
+    ERC1967Proxy public uups;
 
     UpgradeableBeacon public beacon;
 
@@ -30,28 +30,12 @@ contract DeployProxy {
         Transparent
     }
 
-    function deploy(address implementation, bytes memory data)
-        public
-        returns (address)
-    {
-        if (proxyType == ProxyType.Transparent) {
-            revert("Transparent proxy returns a single address");
-        } else if (proxyType == ProxyType.UUPS) {
-            revert("UUPS proxies require an admin address");
-        } else if (proxyType == ProxyType.BeaconProxy) {
-            return deployBeaconProxy(implementation, data);
-        } else if (proxyType == ProxyType.Beacon) {
-            return deployBeacon(implementation);
-        } else {
-            revert("Undefined proxy");
-        }
-    }
-
     function deploy(address implementation) public returns (address) {
         if (proxyType == ProxyType.Transparent) {
             revert("Transparent proxy returns a single address");
         } else if (proxyType == ProxyType.UUPS) {
-            revert("UUPS proxies require an admin address");
+            bytes memory data;
+            return deployUupsProxy(implementation, data);
         } else if (proxyType == ProxyType.BeaconProxy) {
             bytes memory data;
             return deployBeaconProxy(implementation, data);
@@ -64,29 +48,12 @@ contract DeployProxy {
 
     function deploy(
         address implementation,
-        address admin,
         bytes memory data
     ) public returns (address) {
         if (proxyType == ProxyType.Transparent) {
             revert("proxy implementation does't include admin address");
         } else if (proxyType == ProxyType.UUPS) {
-            return deployUupsProxy(implementation, admin, data);
-        } else if (proxyType == ProxyType.Beacon) {
-            revert("proxy implementation does't include admin address");
-        } else {
-            revert("Undefined proxy");
-        }
-    }
-
-    function deploy(address implementation, address admin)
-        public
-        returns (address)
-    {
-        if (proxyType == ProxyType.Transparent) {
-            revert("proxy implementation does't include admin address");
-        } else if (proxyType == ProxyType.UUPS) {
-            bytes memory data;
-            return deployUupsProxy(implementation, admin, data);
+            return deployUupsProxy(implementation, data);
         } else if (proxyType == ProxyType.Beacon) {
             revert("proxy implementation does't include admin address");
         } else {
@@ -123,10 +90,9 @@ contract DeployProxy {
 
     function deployUupsProxy(
         address implementation,
-        address admin,
         bytes memory data
     ) public returns (address) {
-        uups = new TransparentUpgradeableProxy(implementation, admin, data);
+        uups = new ERC1967Proxy(implementation, data);
         proxyAddress = address(uups);
 
         return proxyAddress;
