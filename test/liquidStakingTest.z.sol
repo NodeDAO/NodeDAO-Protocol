@@ -2,7 +2,7 @@
 pragma solidity ^0.8.7;
 
 import "forge-std/Test.sol";
-import "src/liquidStaking.sol";
+import "src/LiquidStaking.sol";
 import "src/tokens/NETH.sol";
 import "src/tokens/VNFT.sol";
 import "src/registries/NodeOperatorRegistry.sol";
