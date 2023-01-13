@@ -42,12 +42,9 @@ contract LiquidStaking is
     IBeaconOracle public beaconOracleContract;
     address public beaconOracleContractAddress;
 
-    mapping(uint256 => uint256) public trustedNft; // trusted nft, this nft has already minted neth, key is token_id, value is operator_id
-
-    uint256[] private _liquidNfts; // The validator tokenid owned by the stake pool, trustedNft may be greater than liquidNfts, because the user may have
+    uint256[] private _liquidNfts; // The validator tokenid owned by the stake pool
     mapping(uint256 => uint256[]) private _operatorNfts;
     mapping(uint256 => bool) private _liquidUserNft; // The nft purchased from the staking pool using neth
-    mapping(uint256 => bool) private _liquidTruestOperators; // once owned trusted operator
 
     uint256 public unstakePoolSize; // nETH unstake pool size
     uint256 public unstakePoolBalances;
@@ -68,7 +65,7 @@ contract LiquidStaking is
 
     event EthStake(address indexed from, uint256 amount, uint256 amountOut, address indexed _referral);
     event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
-    event NftStake(address indexed from, uint256 count);
+    event NftStake(address indexed from, uint256 count, address indexed _referral);
     event Eth32Deposit(bytes _pubkey, bytes _withdrawal, address _owner);
     event ValidatorRegistered(uint256 operator, uint256 tokenId);
     event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
@@ -119,10 +116,7 @@ contract LiquidStaking is
     function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
-        require(
-            nodeOperatorRegistryContract.isTrustedOperator(_operatorId),
-            "The operator is not trusted"
-        );
+        require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
 
         uint256 depositFeeAmount;
         uint256 depositPoolAmount;
@@ -168,57 +162,27 @@ contract LiquidStaking is
         emit EthUnstake(msg.sender, amount, amountOut);
     }
 
-    //1. Determine funds
-    //2. operator check, must exist
-    //3. precheck, need to add check withdrawalCredentials must be set by the stake pool
-    //4. signercheck
-    //5. depost
-    //6. mint nft, if it is a trusted operator, mint neth for the stake pool, transfer nft to the user, and record nft in trustedNft; if it is an untrusted operator, only mint nft
-    function stakeNFT(bytes[] calldata data) external payable nonReentrant returns (bool) {
-        require(msg.value >= DEPOSIT_SIZE * data.length , "Incorrect Ether amount provided");
-        
-        for (uint256 i = 0; i < data.length; i++) {
-            require(data[i].length == 352, "Invalid Data Length");
-            bool trusted = _stake(data[i]);
+    //1. depost
+    //2. _operatorId must be a trusted operator
+    function stakeNFT(address _referral, uint256 _operatorId) external payable nonReentrant returns (bool) {
+        require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
+        require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
 
-            uint256 amountOut = getNethOut(DEPOSIT_SIZE);
-            // mint nft / neth
-            if (trusted) {
-                uint256 _operatorId = uint256(bytes32(data[i][320:352]));
-                bytes calldata pubkey = data[i][16:64];
-                vNFTContract.whiteListMint(pubkey, msg.sender, _operatorId);
-                uint256 tokenId = vNFTContract.getLatestTokenId();
-                trustedNft[tokenId] = _operatorId;
-                nETHContract.whiteListMint(amountOut, address(this));
-                if (!_liquidTruestOperators[_operatorId]) {
-                    _liquidTruestOperators[_operatorId] = true;
-                }
-                _settle(_operatorId);
+        uint256 amountOut = getNethOut(msg.value);
+        nETHContract.whiteListMint(amountOut, address(this));
 
-                address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
-                IELVault(vaultContractAddress).setUserNft(tokenId, block.number);
-            } else {
-                nETHContract.whiteListMint(amountOut, address(this));
-            }
+        uint256 mintNftsCount = msg.value / DEPOSIT_SIZE;
+        for (uint256 i = 0; i < mintNftsCount; i++) {
+            uint256 tokenId;
+            (, tokenId) = vNFTContract.whiteListMint(bytes(""), msg.sender, _operatorId);
+            _liquidNfts.push(tokenId);
+            _operatorNfts[_operatorId].push(tokenId);
+            address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
+            IELVault(vaultContractAddress).setUserNft(tokenId, block.number);
         }
 
-        emit NftStake(msg.sender, msg.value / DEPOSIT_SIZE);
+        emit NftStake(msg.sender, mintNftsCount, _referral);
         return true;
-    }
-
-    function _stake(bytes calldata data) internal returns (bool) {
-        uint256 _operatorId = uint256(bytes32(data[320:352]));
-        uint256 operatorsCount = nodeOperatorRegistryContract.getNodeOperatorsCount();
-        require(_operatorId <= operatorsCount, "The operator does not exist");
-
-        bool trusted;
-        address controllerAddress;
-        (trusted,,, controllerAddress,) = nodeOperatorRegistryContract.getNodeOperator(_operatorId, false);
-        bytes32 hash = precheck(data);
-        signercheck(bytes32(data[256:288]), bytes32(data[288:320]), uint8(bytes1(data[1])), hash, controllerAddress);
-        deposit(data);
-
-        return trusted;
     }
 
     //1. Check whether msg.sender is the controllerAddress of the operator
@@ -230,7 +194,6 @@ contract LiquidStaking is
     //7. mint nft, minting nft, stored in the stake pool contract, can no longer mint neth, because minting has been completed when the user deposits
     //8. Update _liquidNfts
     function registerValidator(
-        bytes calldata withdrawalCredentials,
         bytes[] calldata pubkeys,
         bytes[] calldata signatures,
         bytes32[] calldata depositDataRoots
@@ -238,81 +201,31 @@ contract LiquidStaking is
         uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperator(msg.sender);
         require(operatorId != 0, "msg.sender must be the controllerAddress of the trusted operator");
         require(getOperatorPoolEtherMultiple(operatorId) >= pubkeys.length, "Insufficient balance");
-        require(
-            keccak256(abi.encodePacked(withdrawalCredentials))
-                == keccak256(abi.encodePacked(liquidStakingWithdrawalCredentials)),
-            "withdrawal credentials does not match"
-        );
 
-        uint256 i;
-        for (i = 0; i < pubkeys.length; i++) {
-            bytes calldata withdrawalCredential = withdrawalCredentials;
-            _stakeAndMint(operatorId, pubkeys[i], signatures[i], depositDataRoots[i], withdrawalCredential);
+        _settle(operatorId);
+
+        for (uint256 i = 0; i < pubkeys.length; i++) {
+            _stakeAndMint(operatorId, pubkeys[i], signatures[i], depositDataRoots[i]);
         }
 
         operatorPoolBalances[operatorId] -= DEPOSIT_SIZE * pubkeys.length;
-        _settle(operatorId);
     }
 
-    function _stakeAndMint(
-        uint256 operatorId,
-        bytes calldata pubkey,
-        bytes calldata signature,
-        bytes32 depositDataRoot,
-        bytes calldata withdrawalCredential
-    ) internal {
-        depositContract.deposit{value: 32 ether}(pubkey, withdrawalCredential, signature, depositDataRoot);
+    function _stakeAndMint(uint256 operatorId, bytes calldata pubkey, bytes calldata signature, bytes32 depositDataRoot)
+        internal
+    {
+        depositContract.deposit{value: 32 ether}(pubkey, liquidStakingWithdrawalCredentials, signature, depositDataRoot);
 
         // mint nft
-        vNFTContract.whiteListMint(pubkey, address(this), operatorId);
-        uint256 tokenId = vNFTContract.getLatestTokenId();
-        trustedNft[tokenId] = operatorId;
-        _liquidNfts.push(tokenId);
-        _operatorNfts[operatorId].push(tokenId);
-        if (!_liquidTruestOperators[operatorId]) {
-            _liquidTruestOperators[operatorId] = true;
+        bool isMint;
+        uint256 tokenId;
+        (isMint, tokenId) = vNFTContract.whiteListMint(pubkey, address(this), operatorId);
+        if (isMint) {
+            _liquidNfts.push(tokenId);
+            _operatorNfts[operatorId].push(tokenId);
         }
 
         emit ValidatorRegistered(operatorId, tokenId);
-    }
-
-    /**
-     * @notice Pre-processing before performing the signer verification.
-     * @return bytes32 hashed value of the pubkey, withdrawalCredentials, signature,
-     *         depositDataRoot, bytes32(blockNumber)
-     */
-    function precheck(bytes calldata data) private view returns (bytes32) {
-        bytes calldata withdrawalCredentials = data[64:96];
-        require(
-            keccak256(abi.encodePacked(withdrawalCredentials))
-                == keccak256(abi.encodePacked(liquidStakingWithdrawalCredentials)),
-            "withdrawal credentials does not match"
-        );
-        bytes calldata pubkey = data[16:64];
-        bytes calldata signature = data[96:192];
-        bytes32 depositDataRoot = bytes32(data[192:224]);
-        uint256 blockNumber = uint256(bytes32(data[224:256]));
-
-        require(!vNFTContract.validatorExists(pubkey), "Pub key already in used");
-        require(blockNumber > block.number, "Block height too old, please generate a new transaction");
-
-        return
-            keccak256(abi.encodePacked(pubkey, withdrawalCredentials, signature, depositDataRoot, bytes32(blockNumber)));
-    }
-
-    /**
-     * @notice Performs signer verification to prevent unauthorized usage
-     * @param v, r, and s parts of a signature
-     * @param hash_ - hashed value from precheck
-     * @param signer_ - authentic signer to check against
-     */
-    function signercheck(bytes32 s, bytes32 r, uint8 v, bytes32 hash_, address signer_) private pure {
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
-        bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, hash_));
-        address signer = ecrecover(prefixedHash, v, r, s);
-
-        require(signer == signer_, "Not authorized");
-        require(signer != address(0), "ECDSA: invalid signature");
     }
 
     /**
@@ -379,10 +292,9 @@ contract LiquidStaking is
     //unwrap nft to neth
     //1. Check if the originator holds a token_id -not required
     //2. Check if the value matches the oracle
-    //3. Check whether the token_id exists in trustedNft, if there is a direct transfer to neth, update _liquidUserNft to false; if there is no recasting of neth, record the tokenid to trustedNft, and add _liquidNfts
-    //4. Claim income for the user, and transfer the user's nft to the stake pool
-    //5. Transfer neth to the user
-    //6. Set the vault contract setUserNft to 0
+    //3. Claim income for the user, and transfer the user's nft to the stake pool
+    //4. Transfer neth to the user
+    //5. Set the vault contract setUserNft to 0
     function unwrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
 
@@ -397,13 +309,7 @@ contract LiquidStaking is
 
         uint256 amountOut = getNethOut(value);
 
-        if (trustedNft[tokenId] != 0) {
-            _liquidUserNft[tokenId] = false;
-        } else {
-            nETHContract.whiteListMint(amountOut, msg.sender);
-            trustedNft[tokenId] = operatorId;
-            _liquidNfts.push(tokenId);
-        }
+        _liquidUserNft[tokenId] = false;
 
         _settle(operatorId);
         claimRewardsOfUser(tokenId);
@@ -422,8 +328,7 @@ contract LiquidStaking is
     //1. claim income operatorPoolBalances
     //2. Earnings are settled setLiquidStakingGasHeight
     function batchClaimRewardsOfOperator(uint256[] memory operatorIds) public {
-        uint256 i;
-        for (i = 0; i < operatorIds.length; i++) {
+        for (uint256 i = 0; i < operatorIds.length; i++) {
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorIds[i]);
             IELVault(vaultContractAddress).settle();
 
@@ -459,15 +364,15 @@ contract LiquidStaking is
 
         if (unstakePoolBalances < unstakePoolSize) {
             if (unstakePoolBalances + nftRewards > unstakePoolSize) {
-                    uint256 operatorFund = unstakePoolBalances + nftRewards - unstakePoolSize;
-                    unstakePoolBalances = unstakePoolSize;
-                    operatorPoolBalances[operatorId] += operatorFund;
-                    emit ClaimRewardsToUnstakePool(operatorId, nftRewards - operatorFund);
-                    emit OperatorClaimRewards(operatorId, operatorFund);
-                } else {
-                    unstakePoolBalances += nftRewards;
-                    emit ClaimRewardsToUnstakePool(operatorId, nftRewards);
-                }
+                uint256 operatorFund = unstakePoolBalances + nftRewards - unstakePoolSize;
+                unstakePoolBalances = unstakePoolSize;
+                operatorPoolBalances[operatorId] += operatorFund;
+                emit ClaimRewardsToUnstakePool(operatorId, nftRewards - operatorFund);
+                emit OperatorClaimRewards(operatorId, operatorFund);
+            } else {
+                unstakePoolBalances += nftRewards;
+                emit ClaimRewardsToUnstakePool(operatorId, nftRewards);
+            }
         } else {
             operatorPoolBalances[operatorId] += nftRewards;
             emit OperatorClaimRewards(operatorId, nftRewards);

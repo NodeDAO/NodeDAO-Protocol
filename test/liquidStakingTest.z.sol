@@ -14,7 +14,7 @@ contract LiquidStakingTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event EthStake(address indexed from, uint256 amount, uint256 amountOut, address indexed _referral);
     event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
-    event NftStake(address indexed from, uint256 count);
+    event NftStake(address indexed from, uint256 count, address indexed _referral);
     event Eth32Deposit(bytes _pubkey, bytes _withdrawal, address _owner);
     event ValidatorRegistered(uint256 operator, uint256 tokenId);
     event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
@@ -43,8 +43,6 @@ contract LiquidStakingTest is Test {
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
 
-
-
     function setUp() public {
         liquidStaking = new LiquidStaking();
 
@@ -57,10 +55,14 @@ contract LiquidStakingTest is Test {
 
         vaultContract = new ELVault();
         vaultContract.initialize(address(vnft), _dao, 1);
+        vm.prank(_dao);
+        vaultContract.setLiquidStaking(address(liquidStaking));
 
         operatorRegistry = new NodeOperatorRegistry();
         operatorRegistry.initialize(_dao, _daoValutAddress);
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(_rewardAddress), address(_controllerAddress), address(vaultContract));
+        operatorRegistry.registerOperator{value: 0.1 ether}(
+            "one", address(_rewardAddress), address(_controllerAddress), address(vaultContract)
+        );
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
 
@@ -76,7 +78,7 @@ contract LiquidStakingTest is Test {
         beaconOracle.addOracleMember(_oracleMember4);
         beaconOracle.addOracleMember(_oracleMember5);
         vm.stopPrank();
-        
+
         liquidStaking.initialize(
             _dao,
             _daoValutAddress,
@@ -96,5 +98,38 @@ contract LiquidStakingTest is Test {
         vm.prank(address(20));
         vm.deal(address(20), 2 ether);
         liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
+    }
+
+    function testStakeNFT() public {
+        vm.expectEmit(true, true, false, true);
+        emit NftStake(address(20), 10, _referral);
+        vm.prank(address(20));
+        vm.deal(address(20), 330 ether);
+        vm.roll(10000);
+        
+        liquidStaking.stakeNFT{value: 320 ether}(_referral, 1);
+        assertEq(10, vnft.balanceOf(address(20)));
+       
+        assertEq(vnft.operatorEmptyNftIndex(1), 0);
+       
+        assertEq(vnft.operatorEmptyNfts(1, 0), 0);
+        assertEq(vnft.operatorEmptyNfts(1, 1), 1);
+        assertEq(vnft.operatorEmptyNfts(1, 2), 2);
+        assertEq(vnft.operatorEmptyNfts(1, 3), 3);
+        assertEq(vnft.operatorEmptyNfts(1, 4), 4);
+        assertEq(vnft.operatorEmptyNfts(1, 5), 5);
+        assertEq(vnft.operatorEmptyNfts(1, 6), 6);
+        assertEq(vnft.operatorEmptyNfts(1, 7), 7);
+        assertEq(vnft.operatorEmptyNfts(1, 8), 8);
+        assertEq(vnft.operatorEmptyNfts(1, 9), 9);
+
+        uint256 operatorId;
+        uint256 initHeight;
+        bytes memory pubkey;
+        (operatorId, initHeight, pubkey) = vnft.validators(0);
+
+        assertEq(operatorId, 1);
+        assertEq(pubkey, bytes(""));
+        assertEq(initHeight, 10000);
     }
 }
