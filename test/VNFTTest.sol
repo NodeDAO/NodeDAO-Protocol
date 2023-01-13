@@ -54,4 +54,37 @@ contract VNFTTest is Test {
 
         vnft.whiteListBurn(0);
     }
+
+    function testGetLatestTokenId() public {
+        vnft.setLiquidStaking(address(1));
+        assertEq(0, vnft.getNextTokenId());
+        vm.prank(address(1));
+        vnft.whiteListMint(bytes("1"), address(2), 1);
+        assertEq(1, vnft.getNextTokenId());
+        vnft.initHeightOf(0);
+    }
+
+    function testWhiteListMintEmpty() public {
+        vnft.setLiquidStaking(address(1));
+        vm.startPrank(address(1));
+
+        vnft.whiteListMint(bytes("1"), address(2), 1);
+        assertEq(vnft.validatorOf(0), bytes("1"));
+
+        vnft.whiteListMint(bytes(""), address(2), 1);
+        assertEq(vnft.validatorOf(1), bytes(""));
+        assertEq(vnft.operatorEmptyNfts(1, 0), 1);
+        assertEq(vnft.operatorEmptyNftIndex(1), 0);
+
+        vnft.whiteListMint(bytes("2"), address(2), 1);
+        assertEq(vnft.operatorEmptyNfts(1, 0), 1);
+        assertEq(vnft.operatorEmptyNftIndex(1), 1);
+        assertEq(vnft.validatorOf(1), bytes("2"));
+
+        vnft.whiteListMint(bytes("3"), address(2), 1);
+        assertEq(vnft.operatorEmptyNfts(1, 0), 1);
+        assertEq(vnft.operatorEmptyNftIndex(1), 1);
+        assertEq(vnft.validatorOf(2), bytes("3"));
+        assertEq(3, vnft.balanceOf(address(2)));
+    }
 }

@@ -13,14 +13,19 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
 
     uint256 public constant MAX_SUPPLY = 6942069420;
 
+    struct Validator {
+        uint256 operatorId;
+        uint256 initHeight;
+        bytes pubkey;
+    }
+
     mapping(bytes => uint256) public validatorRecords; // key is pubkey, value is operator_id
     mapping(uint256 => uint256) public operatorRecords; // key is operator_id, value is  token counts
+    mapping(uint256 => uint256[]) public operatorEmptyNfts;
+    mapping(uint256 => uint256) public operatorEmptyNftIndex;
 
+    Validator[] public validators;
     mapping(uint256 => address) public lastOwners;
-
-    bytes[] public _validators;
-
-    uint256[] public _initHeights;
 
     event BaseURIChanged(string _before, string _after);
     event Transferred(address _to, uint256 _amount);
@@ -47,7 +52,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
     function activeValidators() external view returns (bytes[] memory) {
         uint256 total = _nextTokenId();
         uint256 tokenIdsIdx;
-        bytes[] memory validators = new bytes[](total);
+        bytes[] memory _validators = new bytes[](total);
         TokenOwnership memory ownership;
 
         for (uint256 i = _startTokenId(); i < total; ++i) {
@@ -56,10 +61,10 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
                 continue;
             }
 
-            validators[tokenIdsIdx++] = _validators[i];
+            _validators[tokenIdsIdx++] = validators[i].pubkey;
         }
 
-        return validators;
+        return _validators;
     }
 
     /**
@@ -75,7 +80,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
      * @param tokenId - tokenId of the validator nft
      */
     function validatorOf(uint256 tokenId) external view returns (bytes memory) {
-        return _validators[tokenId];
+        return validators[tokenId].pubkey;
     }
 
     /**
@@ -83,8 +88,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
      * @param tokenId - tokenId of the validator nft
      */
     function operatorOf(uint256 tokenId) external view returns (uint256) {
-        bytes memory _pubkey = _validators[tokenId];
-        return validatorRecords[_pubkey];
+        return validators[tokenId].operatorId;
     }
 
     /**
@@ -98,7 +102,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
             //slither-disable-next-line uninitialized-local
             address currOwnershipAddr;
             uint256 tokenIdsLength = balanceOf(owner);
-            bytes[] memory tokenIds = new bytes[](tokenIdsLength);
+            bytes[] memory pubkeys = new bytes[](tokenIdsLength);
             TokenOwnership memory ownership;
             for (uint256 i = 0; tokenIdsIdx != tokenIdsLength; ++i) {
                 ownership = _ownershipAt(i);
@@ -109,10 +113,10 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
                     currOwnershipAddr = ownership.addr;
                 }
                 if (currOwnershipAddr == owner) {
-                    tokenIds[tokenIdsIdx++] = _validators[i];
+                    pubkeys[tokenIdsIdx++] = validators[i].pubkey;
                 }
             }
-            return tokenIds;
+            return pubkeys;
         }
     }
 
@@ -122,8 +126,8 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
      * @param pubkey - A 48 bytes representing the validator's public key
      */
     function tokenOfValidator(bytes calldata pubkey) external view returns (uint256) {
-        for (uint256 i = 0; i < _validators.length; i++) {
-            if (keccak256(_validators[i]) == keccak256(pubkey) && _exists(i)) {
+        for (uint256 i = 0; i < validators.length; i++) {
+            if (keccak256(validators[i].pubkey) == keccak256(pubkey) && _exists(i)) {
                 return i;
             }
         }
@@ -137,7 +141,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
     function validatorsOfOperator(uint256 operatorId) external view returns (bytes[] memory) {
         uint256 total = _nextTokenId();
         uint256 tokenIdsIdx;
-        bytes[] memory validators = new bytes[](total);
+        bytes[] memory _validators = new bytes[](total);
         TokenOwnership memory ownership;
 
         for (uint256 i = _startTokenId(); i < total; ++i) {
@@ -145,12 +149,12 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
             if (ownership.burned) {
                 continue;
             }
-            if (validatorRecords[_validators[i]] == operatorId) {
-                validators[tokenIdsIdx++] = _validators[i];
+            if (validatorRecords[validators[i].pubkey] == operatorId) {
+                _validators[tokenIdsIdx++] = validators[i].pubkey;
             }
         }
 
-        return validators;
+        return _validators;
     }
 
     /**
@@ -160,7 +164,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
     function initHeightOf(uint256 tokenId) external view returns (uint256) {
         require(_exists(tokenId), "Token does not exist");
 
-        return _initHeights[tokenId];
+        return validators[tokenId].initHeight;
     }
 
     /**
@@ -173,27 +177,43 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
         return lastOwners[tokenId];
     }
 
-    function getLatestTokenId() external view returns (uint256) {
+    function getNextTokenId() external view returns (uint256) {
         return _nextTokenId();
     }
 
     /**
      * @notice Mints a Validator nft (vNFT)
-     * @param pubkey -  A 48 bytes representing the validator's public key
-     * @param to - The recipient of the nft
-     * @param operatorId - The operator repsonsible for operating the physical node
+     * @param _pubkey -  A 48 bytes representing the validator's public key
+     * @param _to - The recipient of the nft
+     * @param _operatorId - The operator repsonsible for operating the physical node
      */
-    function whiteListMint(bytes calldata pubkey, address to, uint256 operatorId) external onlyLiquidStaking {
-        require(
-            totalSupply() + 1 <= MAX_SUPPLY, "not enough remaining reserved for auction to support desired mint amount"
-        );
-        require(validatorRecords[pubkey] == 0, "Pub key already in used");
+    function whiteListMint(bytes calldata _pubkey, address _to, uint256 _operatorId)
+        external
+        onlyLiquidStaking
+        returns (bool, uint256)
+    {
+        require(totalSupply() + 1 <= MAX_SUPPLY, "Exceed MAX_SUPPLY");
 
-        validatorRecords[pubkey] = operatorId;
-        _validators.push(pubkey);
-        _initHeights.push(block.number);
-        operatorRecords[operatorId] += 1;
-        _safeMint(to, 1);
+        uint256 nextTokenId = _nextTokenId();
+        if (_pubkey.length == 0) {
+            operatorEmptyNfts[_operatorId].push(nextTokenId);
+        } else {
+            require(validatorRecords[_pubkey] == 0, "Pub key already in used");
+            validatorRecords[_pubkey] = _operatorId;
+
+            if (operatorEmptyNfts[_operatorId].length != operatorEmptyNftIndex[_operatorId]) {
+                uint256 tokenId = operatorEmptyNfts[_operatorId][operatorEmptyNftIndex[_operatorId]];
+                operatorEmptyNftIndex[_operatorId] += 1;
+                validators[tokenId].pubkey = _pubkey;
+                return (false, tokenId);
+            }
+        }
+
+        validators.push(Validator({operatorId: _operatorId, initHeight: block.number, pubkey: _pubkey}));
+        operatorRecords[_operatorId] += 1;
+
+        _safeMint(_to, 1);
+        return (true, nextTokenId);
     }
 
     /**
@@ -204,9 +224,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
         lastOwners[tokenId] = ownerOf(tokenId);
         _burn(tokenId);
 
-        bytes memory pubkey = _validators[tokenId];
-        uint256 operatorId = validatorRecords[pubkey];
-        operatorRecords[operatorId] -= 1;
+        operatorRecords[validators[tokenId].operatorId] -= 1;
     }
 
     /**
