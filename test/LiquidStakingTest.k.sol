@@ -45,7 +45,7 @@ contract LiquidStakingTest is Test {
     address _oracleMember3 = address(13);
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
-    bytes  withdrawalCreds = hex"3031";
+    bytes withdrawalCreds = hex"3031";
 
     function setUp() public {
         liquidStaking = new LiquidStaking();
@@ -62,7 +62,9 @@ contract LiquidStakingTest is Test {
 
         operatorRegistry = new NodeOperatorRegistry();
         operatorRegistry.initialize(_dao, _daoValutAddress);
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(_rewardAddress), address(_controllerAddress), address(vaultContract));
+        operatorRegistry.registerOperator{value: 0.1 ether}(
+            "one", address(_rewardAddress), address(_controllerAddress), address(vaultContract)
+        );
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
 
@@ -78,7 +80,7 @@ contract LiquidStakingTest is Test {
         beaconOracle.addOracleMember(_oracleMember4);
         beaconOracle.addOracleMember(_oracleMember5);
         vm.stopPrank();
-        
+
         liquidStaking.initialize(
             _dao,
             _daoValutAddress,
@@ -189,48 +191,35 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeNFT() public {
-        // vm.assume(bytesArr.length == 11);
-        // bytes memory tempBytes;
-        // for (uint256 index = 0; index < bytesArr.length; index++) {
-        //     tempBytes = bytes.concat(bytes(tempBytes), " ", bytes(bytesArr[index]));
-        // }
-
-        bytes[] memory myBytesArray = new bytes[](4);
-        bytes memory pubkey = bytes(hex"97b92f678f7c5f79c1b64844c639ccc12b8c6ff196a06d7db5969a889309bbe15d3a9befdb3fd8e97eb65084876d64de");
-        bytes memory withdrawal_credentials = bytes(hex"004f58172d06b6d54c015d688511ad5656450933aff85dac123cd09410a0825c");
-        bytes memory signature = bytes(hex"81037db57034ff28a8a703ba2f79af3edbd4766e732d4d51c89acc28094bc761a5cbed5317c0d4bb0a37d82a560d215e0f9097508914ae12fbd0258b6938e2b2d5d4daff91ea2b715c5b64f3d0bbda60321a4aacb9afe7034c567193705f82ad");
+        bytes[] memory myBytesArray = new bytes[](1);
+        bytes memory pubkey =
+            bytes(hex"97b92f678f7c5f79c1b64844c639ccc12b8c6ff196a06d7db5969a889309bbe15d3a9befdb3fd8e97eb65084876d64de");
+        bytes memory withdrawal_credentials =
+            bytes(hex"004f58172d06b6d54c015d688511ad5656450933aff85dac123cd09410a0825c");
+        bytes memory signature = bytes(
+            hex"81037db57034ff28a8a703ba2f79af3edbd4766e732d4d51c89acc28094bc761a5cbed5317c0d4bb0a37d82a560d215e0f9097508914ae12fbd0258b6938e2b2d5d4daff91ea2b715c5b64f3d0bbda60321a4aacb9afe7034c567193705f82ad"
+        );
         bytes memory deposit_data_root = bytes(hex"7559c8495faab971d962d7a257ca37a4ba6fb69832fb1b3cbd12a805a51298c7");
 
-        myBytesArray[0] = pubkey;
-        myBytesArray[1] = withdrawal_credentials;
-        myBytesArray[2] = signature;
-        myBytesArray[3] = deposit_data_root;
+        bytes memory packedBytes = abi.encodePacked(
+            bytes(string("0000000000000000")), pubkey, withdrawal_credentials, signature, deposit_data_root
+        );
 
-        liquidStaking.stakeNFT(myBytesArray);
+        while (packedBytes.length < 320) {
+            packedBytes = abi.encodePacked(packedBytes, bytes(hex"00"));
+        }
 
-        // bytes memory operatorRegistryContractAddBytes = bytes(hex"72c1c4f08De52a2cEe82CE80D938c54b3B1df42e");
+        console.log(packedBytes.length);
 
-        // bytes memory nETHContractAddressBytes = bytes(hex"000B92c8CDB2b494D436ac13B43393bE8c4407C8");
-        // bytes memory nVNFTContractAddressBytes = bytes(hex"d4A5DFd86BC22BDe059b7f2CBC1ebDE32F571e81");
-        // bytes memory beaconOracleContractAddressBytes = bytes(hex"4375f0F6311777a720666e2F2E426Aeb9eEDC7fC");
-        // bytes memory depositContractAddress = bytes(hex"ff50ed3d0ec03aC01D4C79aAd74928BFF48a7b2b");
+        bytes memory operatorId = bytes(hex"0000000000000000000000000000000000000000000000000000000000000001");
 
-        // liquidStaking.stakeNFT();
+        packedBytes = abi.encodePacked(packedBytes, operatorId);
 
-        // tempBytes = bytes.concat(bytes(tempBytes), " ", bytes(_rewardAddress));
+        console.log(packedBytes.length);
 
-        // console.log(tempBytes);
+        myBytesArray[0] = packedBytes;
 
-        // vm.prank(_dao);
-        // liquidStaking.setDaoAddress(_dao);
-        // vm.prank(_dao);
-        // liquidStaking.setDepositFeeRate(3000);
-        // liquidStaking.stakeETH{value: (nethAmount)}(_referral, 1);
-        // uint256 ethValue;
-        // uint256 calculatedValue;
-        // ethValue = liquidStaking.getTotalEthValue();
-        // calculatedValue = (nethAmount - ((nethAmount * 3000) / 10000));
-        // assertEq(ethValue, calculatedValue);
+        liquidStaking.stakeNFT{value: 32 ether}(myBytesArray);
     }
 
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {
