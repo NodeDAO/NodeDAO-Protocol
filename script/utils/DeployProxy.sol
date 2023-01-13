@@ -8,7 +8,6 @@ import {UpgradeableBeacon} from "openzeppelin-contracts/proxy/beacon/Upgradeable
 import {Vm} from "forge-std/Vm.sol";
 
 contract DeployProxy {
-
     ProxyType public proxyType;
 
     address public proxyAddress;
@@ -46,10 +45,7 @@ contract DeployProxy {
         }
     }
 
-    function deploy(
-        address implementation,
-        bytes memory data
-    ) public returns (address) {
+    function deploy(address implementation, bytes memory data) public returns (address) {
         if (proxyType == ProxyType.Transparent) {
             revert("proxy implementation does't include admin address");
         } else if (proxyType == ProxyType.UUPS) {
@@ -68,30 +64,21 @@ contract DeployProxy {
         return beaconAddress;
     }
 
-    function deployBeaconProxy(address _beacon, bytes memory data)
-        public
-        returns (address)
-    {
+    function deployBeaconProxy(address _beacon, bytes memory data) public returns (address) {
         beaconProxy = new UpgradeableBeaconProxy(_beacon, data);
         proxyAddress = address(beaconProxy);
 
         return proxyAddress;
     }
 
-    function deployErc1967Proxy(address implementation, bytes memory data)
-        public
-        returns (address)
-    {
+    function deployErc1967Proxy(address implementation, bytes memory data) public returns (address) {
         erc1967 = new ERC1967Proxy(implementation, data);
         proxyAddress = address(erc1967);
 
         return proxyAddress;
     }
 
-    function deployUupsProxy(
-        address implementation,
-        bytes memory data
-    ) public returns (address) {
+    function deployUupsProxy(address implementation, bytes memory data) public returns (address) {
         uups = new ERC1967Proxy(implementation, data);
         proxyAddress = address(uups);
 
@@ -103,13 +90,9 @@ contract DeployProxy {
             proxyType = ProxyType.UUPS;
         } else if (keccak256(bytes(_proxyType)) == keccak256(bytes("beacon"))) {
             proxyType = ProxyType.Beacon;
-        } else if (
-            keccak256(bytes(_proxyType)) == keccak256(bytes("beaconProxy"))
-        ) {
+        } else if (keccak256(bytes(_proxyType)) == keccak256(bytes("beaconProxy"))) {
             proxyType = ProxyType.BeaconProxy;
-        } else if (
-            keccak256(bytes(_proxyType)) == keccak256(bytes("transparent"))
-        ) {
+        } else if (keccak256(bytes(_proxyType)) == keccak256(bytes("transparent"))) {
             proxyType = ProxyType.Transparent;
         }
     }
