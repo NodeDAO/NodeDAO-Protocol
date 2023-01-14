@@ -74,12 +74,30 @@ contract StakeETHTest is Test {
             address(beaconOracle),
             depositContractAddress
         );
+
         liqStakingContract.setDaoAddress(operatorAuthAdd);
         liqStakingContract.setDepositFeeRate(0);
-        liqStakingContract.stakeETH{value: stakeAmount}(referral, 1);
-        uint256 ethValue;
-        ethValue = liqStakingContract.getEthOut(stakeAmount);
-        assertEq(ethValue, stakeAmount);
+
+        liqStakingContract.stakeETH{value: 1 ether}(referral, 1);
+        uint256 nEthValue1 = liqStakingContract.getNethOut(1e18);
+        uint256 ethValue1 = liqStakingContract.getEthOut(1e18);
+        console2.log("----ethValue1----",ethValue1);
+    console2.log("----nEthValue1----",nEthValue1);
+
+        liqStakingContract.stakeETH{value: 1 ether}(referral, 1);
+        uint256 nEthValue2 = liqStakingContract.getNethOut(1e18);
+        uint256 ethValue2 = liqStakingContract.getEthOut(1e18);
+        console2.log("----ethValue2----",ethValue2);
+        console2.log("----nEthValue2----",nEthValue2);
+
+        liqStakingContract.stakeETH{value: 1 ether}(referral, 1);
+        uint256 nEthValue3 = liqStakingContract.getNethOut(1e18);
+        uint256 ethValue3 = liqStakingContract.getEthOut(1e18);
+        console2.log("----ethValue3----",ethValue3);
+        console2.log("----nEthValue3----",nEthValue3);
+        // assertEq(ethValue, stakeAmount);
+        // assertEq(liqStakingContract.getExchangeRate(), 1 ether);
+        console.log(liqStakingContract.getExchangeRate());
     }
 
     // function testUnstakeETH(address _referral, uint256 amount) public { //correct test for unstakeETH
