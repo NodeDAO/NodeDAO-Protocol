@@ -132,7 +132,7 @@ contract LiquidStaking is
 
         // 1. Convert depositAmount according to the exchange rate of nETH
         // 2. Mint nETH
-        uint256 amountOut = getNethOut(depositPoolAmount);
+        uint256 amountOut = _getNethOut(depositPoolAmount);
         nETHContract.whiteListMint(amountOut, msg.sender);
 
         emit EthStake(msg.sender, msg.value, amountOut, _referral);
@@ -168,7 +168,7 @@ contract LiquidStaking is
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
 
-        uint256 amountOut = getNethOut(msg.value);
+        uint256 amountOut = _getNethOut(msg.value);
         nETHContract.whiteListMint(amountOut, address(this));
 
         uint256 mintNftsCount = msg.value / DEPOSIT_SIZE;
@@ -260,7 +260,7 @@ contract LiquidStaking is
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
         require(operatorId == wrapOperator, "The selected token id does not belong to the operator being sold");
 
-        uint256 amountOut = getNethOut(value);
+        uint256 amountOut = _getNethOut(value);
 
         bytes memory pubkey = vNFTContract.validatorOf(tokenId);
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
@@ -307,7 +307,7 @@ contract LiquidStaking is
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
         require(success, "verifyNftValue fail");
 
-        uint256 amountOut = getNethOut(value);
+        uint256 amountOut = _getNethOut(value);
 
         _liquidUserNft[tokenId] = false;
 
@@ -323,6 +323,11 @@ contract LiquidStaking is
         nftWrapNonce = nftWrapNonce + 1;
 
         emit NftUnwrap(tokenId, operatorId, value, amountOut);
+    }
+
+    function depositUnstakePool() public payable {
+        require(msg.value != 0, "must have fund");
+        unstakePoolBalances += msg.value;
     }
 
     //1. claim income operatorPoolBalances
@@ -407,6 +412,16 @@ contract LiquidStaking is
         }
 
         return _nethAmountIn * (totalEth) / (nethSupply);
+    }
+
+    function _getNethOut(uint256 _ethAmountIn) internal returns (uint256) {
+        uint256 totalEth = getTotalEthValue() - msg.value;
+        uint256 nethSupply = nETHContract.totalSupply();
+        if (nethSupply == 0) {
+            return _ethAmountIn;
+        }
+        require(totalEth > 0, "Cannot calculate nETH token amount while balance is zero");
+        return _ethAmountIn * (nethSupply) / (totalEth);
     }
 
     function getNethOut(uint256 _ethAmountIn) public view returns (uint256) {

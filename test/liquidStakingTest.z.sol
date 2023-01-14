@@ -9,6 +9,7 @@ import "src/registries/NodeOperatorRegistry.sol";
 import "src/mocks/DepositContract.sol";
 import "src/rewards/ELVault.sol";
 import "src/oracles/BeaconOracle.sol";
+import "forge-std/console.sol";
 
 contract LiquidStakingTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -95,9 +96,26 @@ contract LiquidStakingTest is Test {
         vm.expectEmit(true, true, false, true);
         emit Transfer(address(0), address(20), 1 ether);
         emit EthStake(address(20), 1 ether, 1 ether, _referral);
-        vm.prank(address(20));
         vm.deal(address(20), 2 ether);
+
+        console.log("rate: 1", liquidStaking.getNethOut(1 ether));
+        vm.prank(address(20));
         liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
+        console.log("rate: 2", liquidStaking.getNethOut(1 ether));
+        vm.deal(address(21), 2 ether);
+
+        console.log("rate: 3 ", liquidStaking.getNethOut(1 ether));
+        vm.prank(address(21));
+        liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
+        console.log("balance: 21",neth.balanceOf(address(21)));
+        console.log("rate: 4 ", liquidStaking.getNethOut(1 ether));
+
+        vm.deal(address(23), 5 ether);
+
+        console.log("rate: 4 ", liquidStaking.getNethOut(3 ether));
+        vm.prank(address(23));
+        liquidStaking.stakeETH{value: 3 ether}(_referral, 1);
+        console.log("balance: 23",neth.balanceOf(address(23)));
     }
 
     function testStakeNFT() public {
