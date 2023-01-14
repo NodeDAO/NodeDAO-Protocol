@@ -43,7 +43,7 @@ contract LiquidStaking is
     mapping(uint256 => bool) private _liquidUserNfts; // The nft purchased from the staking pool using neth
 
     uint256 public unstakePoolSize; // nETH unstake pool size
-    uint256 public unstakeDrawnRate;
+    uint256 public unstakePoolDrawnRate;
     uint256 public unstakePoolBalances;
 
     mapping(uint256 => uint256) public operatorPoolBalances; // operator's private stake pool, key is operator_id
@@ -105,7 +105,7 @@ contract LiquidStaking is
         unstakeFeeRate = 5;
         unstakePoolSize = 1000 ether;
         wrapOperator = 1;
-        unstakeDrawnRate = 1000;
+        unstakePoolDrawnRate = 1000;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -131,7 +131,7 @@ contract LiquidStaking is
         nETHContract.whiteListMint(amountOut, msg.sender);
 
         if (unstakePoolBalances < unstakePoolSize) {
-            uint256 drawnAmount = depositPoolAmount * unstakeDrawnRate / totalBasisPoints;
+            uint256 drawnAmount = depositPoolAmount * unstakePoolDrawnRate / totalBasisPoints;
             if (unstakePoolBalances + drawnAmount > unstakePoolSize) {
                 drawnAmount = unstakePoolBalances + drawnAmount - unstakePoolSize;
             }
