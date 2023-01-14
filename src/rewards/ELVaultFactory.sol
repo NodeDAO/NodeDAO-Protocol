@@ -11,14 +11,14 @@ import "./ELVault.sol";
 
 contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public dao;
-    address public nftContract;
+    address public vNFTContract;
     address public beacon;
     address[] public ELVaults;
     mapping(uint256 => address) operatorVaults;
 
     event ELVaultProxyDeployed(address proxyAddress);
 
-    function initialize(address _ELVaultImplementationAddress, address _nftContract, address _dao)
+    function initialize(address _ELVaultImplementationAddress, address _nVNFTContractAddress, address _dao)
         external
         initializer
     {
@@ -30,7 +30,7 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         );
         _beacon.transferOwnership(msg.sender);
         beacon = address(_beacon);
-        nftContract = _nftContract;
+        vNFTContract = _nVNFTContractAddress;
         dao = _dao;
     }
 
@@ -40,7 +40,7 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         // require operator exists
 
         address proxyAddress = address(
-            new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, nftContract, dao, operatorId))
+            new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, vNFTContract, dao, operatorId))
         );
         ELVaults.push(proxyAddress);
         emit ELVaultProxyDeployed(proxyAddress);

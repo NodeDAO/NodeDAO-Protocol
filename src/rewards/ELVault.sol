@@ -12,7 +12,7 @@ import "src/interfaces/IVNFT.sol";
  * @title ELVault for managing rewards
  */
 contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
-    IVNFT public nftContract;
+    IVNFT public vNFTContract;
     address public liquidStakingContract;
 
     uint256 public operatorId;
@@ -55,8 +55,8 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
-    function initialize(address nftContract_, address dao_, uint256 operatorId_) external initializer {
-        nftContract = IVNFT(nftContract_);
+    function initialize(address _nVNFTContractAddress, address dao_, uint256 operatorId_) external initializer {
+        vNFTContract = IVNFT(_nVNFTContractAddress);
         dao = dao_;
 
         RewardMetadata memory r = RewardMetadata({value: 0, height: 0});
@@ -115,7 +115,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         outstandingRewards -= comission;
         unclaimedRewards += outstandingRewards;
 
-        uint256 averageRewards = outstandingRewards / nftContract.getNftCountsOfOperator(operatorId);
+        uint256 averageRewards = outstandingRewards / vNFTContract.getNftCountsOfOperator(operatorId);
 
         liquidStakingReward += averageRewards * userNftsCount;
 
@@ -212,7 +212,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     function claimRewardsOfUser(uint256 tokenId) external nonReentrant onlyLiquidStaking returns (uint256) {
         require(userGasHeight[tokenId] != 0, "must be user tokenId");
 
-        address owner = nftContract.ownerOf(tokenId);
+        address owner = vNFTContract.ownerOf(tokenId);
         uint256 nftRewards = _rewards(tokenId);
 
         unclaimedRewards -= nftRewards;
