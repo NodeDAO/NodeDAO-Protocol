@@ -125,6 +125,11 @@ contract LiquidStaking is
             transfer(depositFeeAmount, daoVaultAddress);
         }
 
+        // 1. Convert depositAmount according to the exchange rate of nETH
+        // 2. Mint nETH
+        uint256 amountOut = _getNethOut(depositPoolAmount);
+        nETHContract.whiteListMint(amountOut, msg.sender);
+
         if (unstakePoolBalances < unstakePoolSize) {
             uint256 drawnAmount = depositPoolAmount * unstakeDrawnRate / totalBasisPoints;
             if (unstakePoolBalances + drawnAmount > unstakePoolSize) {
@@ -137,11 +142,6 @@ contract LiquidStaking is
         }
 
         operatorPoolBalances[_operatorId] += depositPoolAmount;
-
-        // 1. Convert depositAmount according to the exchange rate of nETH
-        // 2. Mint nETH
-        uint256 amountOut = _getNethOut(depositPoolAmount);
-        nETHContract.whiteListMint(amountOut, msg.sender);
 
         emit EthStake(msg.sender, msg.value, amountOut, _referral);
     }

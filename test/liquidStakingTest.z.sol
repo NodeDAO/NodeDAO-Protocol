@@ -116,6 +116,9 @@ contract LiquidStakingTest is Test {
         vm.prank(address(23));
         liquidStaking.stakeETH{value: 3 ether}(_referral, 1);
         console.log("balance: 23", neth.balanceOf(address(23)));
+
+        assertEq(liquidStaking.unstakePoolBalances(), 0.5 ether);
+        assertEq(liquidStaking.operatorPoolBalances(1), 4.5 ether);
     }
 
     function testStakeNFT() public {
