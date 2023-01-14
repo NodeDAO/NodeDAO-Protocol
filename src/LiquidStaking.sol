@@ -43,6 +43,7 @@ contract LiquidStaking is
     mapping(uint256 => bool) private _liquidUserNfts; // The nft purchased from the staking pool using neth
 
     uint256 public unstakePoolSize; // nETH unstake pool size
+    uint256 public unstakeDrawnRate;
     uint256 public unstakePoolBalances;
 
     mapping(uint256 => uint256) public operatorPoolBalances; // operator's private stake pool, key is operator_id
@@ -69,6 +70,7 @@ contract LiquidStaking is
     event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
     event ClaimRewardsToUnstakePool(uint256 operatorId, uint256 rewards);
+    event stakeETHToUnstakePool(uint256 operatorId, uint256 amount);
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
 
@@ -103,6 +105,7 @@ contract LiquidStaking is
         unstakeFeeRate = 5;
         unstakePoolSize = 1000 ether;
         wrapOperator = 1;
+        unstakeDrawnRate = 1000;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -120,6 +123,17 @@ contract LiquidStaking is
             depositFeeAmount = msg.value * depositFeeRate / totalBasisPoints;
             depositPoolAmount = msg.value - depositFeeAmount;
             transfer(depositFeeAmount, daoVaultAddress);
+        }
+
+        if (unstakePoolBalances < unstakePoolSize) {
+            uint256 drawnAmount = depositPoolAmount * unstakeDrawnRate / totalBasisPoints;
+            if (unstakePoolBalances + drawnAmount > unstakePoolSize) {
+                drawnAmount = unstakePoolBalances + drawnAmount - unstakePoolSize;
+            }
+
+            depositPoolAmount -= drawnAmount;
+            unstakePoolBalances += drawnAmount;
+            emit stakeETHToUnstakePool(_operatorId, drawnAmount);
         }
 
         operatorPoolBalances[_operatorId] += depositPoolAmount;
@@ -316,12 +330,6 @@ contract LiquidStaking is
         nftWrapNonce = nftWrapNonce + 1;
 
         emit NftUnwrap(tokenId, operatorId, value, amountOut);
-    }
-
-    // todo test use
-    function depositUnstakePool() public payable {
-        require(msg.value != 0, "must have fund");
-        unstakePoolBalances += msg.value;
     }
 
     //1. claim income operatorPoolBalances
