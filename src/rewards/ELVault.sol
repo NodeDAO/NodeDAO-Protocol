@@ -13,7 +13,7 @@ import "src/interfaces/IVNFT.sol";
  */
 contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     IVNFT public nftContract;
-    address public liquidStakingAddress;
+    address public liquidStakingContract;
 
     uint256 public operatorId;
     // dao address
@@ -43,7 +43,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     event Settle(uint256 _blockNumber, uint256 _settleRewards);
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingAddress == msg.sender, "Not allowed to touch funds");
+        require(liquidStakingContract == msg.sender, "Not allowed to touch funds");
         _;
     }
 
@@ -198,9 +198,9 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     function claimRewardsOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 nftRewards = liquidStakingReward;
         liquidStakingReward = 0;
-        transfer(nftRewards, liquidStakingAddress);
+        transfer(nftRewards, liquidStakingContract);
 
-        emit RewardClaimed(liquidStakingAddress, nftRewards);
+        emit RewardClaimed(liquidStakingContract, nftRewards);
 
         return nftRewards;
     }
@@ -260,10 +260,10 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /**
      * @notice Sets the liquidStaking address
      */
-    function setLiquidStaking(address liquidStakingAddress_) external onlyDao {
-        require(liquidStakingAddress_ != address(0), "LiquidStaking address provided invalid");
-        emit LiquidStakingChanged(liquidStakingAddress, liquidStakingAddress_);
-        liquidStakingAddress = liquidStakingAddress_;
+    function setLiquidStaking(address liquidStaking_) external onlyDao {
+        require(liquidStaking_ != address(0), "LiquidStaking address provided invalid");
+        emit LiquidStakingChanged(liquidStakingContract, liquidStaking_);
+        liquidStakingContract = liquidStaking_;
     }
 
     /**
@@ -300,7 +300,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     }
 
     function liquidStaking() external view returns (address) {
-        return liquidStakingAddress;
+        return address(liquidStakingContract);
     }
 
     receive() external payable {}

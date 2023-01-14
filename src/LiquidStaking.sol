@@ -31,20 +31,16 @@ contract LiquidStaking is
     uint256 public constant DEPOSIT_SIZE = 32 ether;
 
     INodeOperatorsRegistry public nodeOperatorRegistryContract;
-    address public nodeOperatorRegistryContractAddress;
 
     INETH public nETHContract;
-    address public nETHContractAddress;
 
     IVNFT public vNFTContract;
-    address public vNFTContractAddress;
 
     IBeaconOracle public beaconOracleContract;
-    address public beaconOracleContractAddress;
 
     uint256[] private _liquidNfts; // The validator tokenid owned by the stake pool
     mapping(uint256 => uint256[]) private _operatorNfts;
-    mapping(uint256 => bool) private _liquidUserNft; // The nft purchased from the staking pool using neth
+    mapping(uint256 => bool) private _liquidUserNfts; // The nft purchased from the staking pool using neth
 
     uint256 public unstakePoolSize; // nETH unstake pool size
     uint256 public unstakePoolBalances;
@@ -53,6 +49,7 @@ contract LiquidStaking is
 
     uint256 public wrapOperator; // When buying nft next time, sell the operator id of nft
     uint256 public nftWrapNonce;
+
     // dao address
     address public dao;
     // dao treasury address
@@ -96,16 +93,13 @@ contract LiquidStaking is
 
         depositContract = IDepositContract(_depositContractAddress);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContractAddress);
-        nodeOperatorRegistryContractAddress = _nodeOperatorRegistryContractAddress;
 
         nETHContract = INETH(_nETHContractAddress);
-        nETHContractAddress = _nETHContractAddress;
 
         vNFTContract = IVNFT(_nVNFTContractAddress);
-        vNFTContractAddress = _nVNFTContractAddress;
 
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
-        beaconOracleContractAddress = _beaconOracleContractAddress;
+
         unstakeFeeRate = 5;
         unstakePoolSize = 1000 ether;
         wrapOperator = 1;
@@ -254,7 +248,7 @@ contract LiquidStaking is
     //4. Transfer user neth to the stake pool
     //5. Trigger the operator's claim once, and transfer the nft to the user
     //6. Increment wrapOperator loop
-    //7. Record _liquidUserNft as true
+    //7. Record _liquidUserNfts as true
     //8. Set the vault contract setUserNft to block.number
     function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
@@ -280,7 +274,7 @@ contract LiquidStaking is
             wrapOperator = wrapOperator + 1;
         }
 
-        _liquidUserNft[tokenId] = true;
+        _liquidUserNfts[tokenId] = true;
 
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).setUserNft(tokenId, block.number);
@@ -309,7 +303,7 @@ contract LiquidStaking is
 
         uint256 amountOut = _getNethOut(value);
 
-        _liquidUserNft[tokenId] = false;
+        _liquidUserNfts[tokenId] = false;
 
         _settle(operatorId);
         claimRewardsOfUser(tokenId);
@@ -451,7 +445,7 @@ contract LiquidStaking is
         uint256 i;
         for (i = 0; i < _liquidNfts.length; i++) {
             uint256 tokenId = _liquidNfts[i];
-            if (_liquidUserNft[tokenId]) {
+            if (_liquidUserNfts[tokenId]) {
                 nftCount += 1;
             }
         }
@@ -459,7 +453,7 @@ contract LiquidStaking is
         liquidNfts = new uint256[] (nftCount);
         for (i = 0; i < _liquidNfts.length; i++) {
             uint256 tokenId = _liquidNfts[i];
-            if (_liquidUserNft[tokenId]) {
+            if (_liquidUserNfts[tokenId]) {
                 liquidNfts[i] = tokenId;
             }
         }
@@ -475,7 +469,7 @@ contract LiquidStaking is
         uint256 i;
         for (i = 0; i < nfts.length; i++) {
             uint256 tokenId = nfts[i];
-            if (_liquidUserNft[tokenId]) {
+            if (_liquidUserNfts[tokenId]) {
                 nftCount += 1;
             }
         }
@@ -483,7 +477,7 @@ contract LiquidStaking is
         operatorNfts = new uint256[] (nftCount);
         for (i = 0; i < nfts.length; i++) {
             uint256 tokenId = nfts[i];
-            if (_liquidUserNft[tokenId]) {
+            if (_liquidUserNfts[tokenId]) {
                 operatorNfts[i] = tokenId;
             }
         }

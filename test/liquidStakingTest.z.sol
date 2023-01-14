@@ -107,7 +107,7 @@ contract LiquidStakingTest is Test {
         console.log("rate: 3 ", liquidStaking.getNethOut(1 ether));
         vm.prank(address(21));
         liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
-        console.log("balance: 21",neth.balanceOf(address(21)));
+        console.log("balance: 21", neth.balanceOf(address(21)));
         console.log("rate: 4 ", liquidStaking.getNethOut(1 ether));
 
         vm.deal(address(23), 5 ether);
@@ -115,7 +115,7 @@ contract LiquidStakingTest is Test {
         console.log("rate: 4 ", liquidStaking.getNethOut(3 ether));
         vm.prank(address(23));
         liquidStaking.stakeETH{value: 3 ether}(_referral, 1);
-        console.log("balance: 23",neth.balanceOf(address(23)));
+        console.log("balance: 23", neth.balanceOf(address(23)));
     }
 
     function testStakeNFT() public {

@@ -14,13 +14,13 @@ contract VNFTTest is Test {
 
     function testSetLiquidStaking() public {
         vnft.setLiquidStaking(address(1));
-        assertEq(address(1), vnft.liquidStakingAddress());
+        assertEq(address(1), vnft.liquidStakingContract());
     }
 
     function testFailSetLiquidStaking() public {
         vm.prank(address(0));
         vnft.setLiquidStaking(address(1));
-        assertEq(address(1), vnft.liquidStakingAddress());
+        assertEq(address(1), vnft.liquidStakingContract());
     }
 
     function testWhiteListMint() public {

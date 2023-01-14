@@ -9,7 +9,7 @@ import "lib/ERC721A-Upgradeable/contracts/ERC721AUpgradeable.sol";
 import "src/interfaces/ILiquidStaking.sol";
 
 contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
-    address public liquidStakingAddress;
+    address public liquidStakingContract;
 
     uint256 public constant MAX_SUPPLY = 6942069420;
 
@@ -42,7 +42,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
     }
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingAddress == msg.sender, "Not allowed to mint/burn nft");
+        require(liquidStakingContract == msg.sender, "Not allowed to mint/burn nft");
         _;
     }
 
@@ -253,8 +253,8 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
      */
     function setLiquidStaking(address _liqStakingAddress) external onlyOwner {
         require(_liqStakingAddress != address(0), "LiquidStaking address provided invalid");
-        emit LiquidStakingChanged(liquidStakingAddress, _liqStakingAddress);
-        liquidStakingAddress = _liqStakingAddress;
+        emit LiquidStakingChanged(liquidStakingContract, _liqStakingAddress);
+        liquidStakingContract = _liqStakingAddress;
     }
 
     function numberMinted(address owner) external view returns (uint256) {
@@ -266,7 +266,7 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
         // Get a reference to OpenSea's proxy registry contract by instantiating
         // the contract using the already existing address.
 
-        if (operator == liquidStakingAddress) {
+        if (operator == liquidStakingContract) {
             return true;
         }
 
