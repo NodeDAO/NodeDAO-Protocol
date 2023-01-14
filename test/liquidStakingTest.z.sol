@@ -106,12 +106,12 @@ contract LiquidStakingTest is Test {
         vm.prank(address(20));
         vm.deal(address(20), 330 ether);
         vm.roll(10000);
-        
+
         liquidStaking.stakeNFT{value: 320 ether}(_referral, 1);
         assertEq(10, vnft.balanceOf(address(20)));
-       
+
         assertEq(vnft.operatorEmptyNftIndex(1), 0);
-       
+
         assertEq(vnft.operatorEmptyNfts(1, 0), 0);
         assertEq(vnft.operatorEmptyNfts(1, 1), 1);
         assertEq(vnft.operatorEmptyNfts(1, 2), 2);
