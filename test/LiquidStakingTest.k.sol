@@ -59,6 +59,8 @@ contract LiquidStakingTest is Test {
 
         vaultContract = new ELVault();
         vaultContract.initialize(address(vnft), _dao, 1);
+        vm.prank(_dao);
+        vaultContract.setLiquidStaking(address(liquidStaking));
 
         operatorRegistry = new NodeOperatorRegistry();
         operatorRegistry.initialize(_dao, _daoValutAddress);
@@ -191,35 +193,9 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeNFT() public {
-        bytes[] memory myBytesArray = new bytes[](1);
-        bytes memory pubkey =
-            bytes(hex"97b92f678f7c5f79c1b64844c639ccc12b8c6ff196a06d7db5969a889309bbe15d3a9befdb3fd8e97eb65084876d64de");
-        bytes memory withdrawal_credentials =
-            bytes(hex"004f58172d06b6d54c015d688511ad5656450933aff85dac123cd09410a0825c");
-        bytes memory signature = bytes(
-            hex"81037db57034ff28a8a703ba2f79af3edbd4766e732d4d51c89acc28094bc761a5cbed5317c0d4bb0a37d82a560d215e0f9097508914ae12fbd0258b6938e2b2d5d4daff91ea2b715c5b64f3d0bbda60321a4aacb9afe7034c567193705f82ad"
-        );
-        bytes memory deposit_data_root = bytes(hex"7559c8495faab971d962d7a257ca37a4ba6fb69832fb1b3cbd12a805a51298c7");
-
-        bytes memory packedBytes = abi.encodePacked(
-            bytes(string("0000000000000000")), pubkey, withdrawal_credentials, signature, deposit_data_root
-        );
-
-        while (packedBytes.length < 320) {
-            packedBytes = abi.encodePacked(packedBytes, bytes(hex"00"));
-        }
-
-        console.log(packedBytes.length);
-
-        bytes memory operatorId = bytes(hex"0000000000000000000000000000000000000000000000000000000000000001");
-
-        packedBytes = abi.encodePacked(packedBytes, operatorId);
-
-        console.log(packedBytes.length);
-
-        myBytesArray[0] = packedBytes;
-
-        liquidStaking.stakeNFT{value: 32 ether}(myBytesArray);
+        vm.prank(address(2));
+        vm.deal(address(2), 32 ether);
+        liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
     }
 
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {
