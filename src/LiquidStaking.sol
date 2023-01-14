@@ -158,7 +158,7 @@ contract LiquidStaking is
 
     //1. depost
     //2. _operatorId must be a trusted operator
-    function stakeNFT(address _referral, uint256 _operatorId) external payable nonReentrant returns (bool) {
+    function stakeNFT(address _referral, uint256 _operatorId) external payable nonReentrant {
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
 
@@ -176,7 +176,6 @@ contract LiquidStaking is
         }
 
         emit NftStake(msg.sender, mintNftsCount, _referral);
-        return true;
     }
 
     //1. Check whether msg.sender is the controllerAddress of the operator
