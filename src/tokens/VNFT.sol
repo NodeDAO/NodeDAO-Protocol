@@ -12,7 +12,6 @@ import "src/interfaces/ILiquidStaking.sol";
 contract VNFT is
     Initializable,
     OwnableUpgradeable,
-    ERC721AUpgradeable,
     ERC721AQueryableUpgradeable,
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable
