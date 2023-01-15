@@ -6,9 +6,17 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
+import "ERC721A-Upgradeable/extensions/ERC721AQueryableUpgradeable.sol";
 import "src/interfaces/ILiquidStaking.sol";
 
-contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+contract VNFT is
+    Initializable,
+    OwnableUpgradeable,
+    ERC721AUpgradeable,
+    ERC721AQueryableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    UUPSUpgradeable
+{
     address public liquidStakingContract;
 
     uint256 public constant MAX_SUPPLY = 6942069420;
@@ -96,6 +104,35 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
      * @param owner - The particular address
      */
     function validatorsOfOwner(address owner) public view returns (bytes[] memory) {
+        unchecked {
+            //slither-disable-next-line uninitialized-local
+            uint256 tokenIdsIdx;
+            //slither-disable-next-line uninitialized-local
+            address currOwnershipAddr;
+            uint256 tokenIdsLength = balanceOf(owner);
+            bytes[] memory pubkeys = new bytes[](tokenIdsLength);
+            TokenOwnership memory ownership;
+            for (uint256 i = 0; tokenIdsIdx != tokenIdsLength; ++i) {
+                ownership = _ownershipAt(i);
+                if (ownership.burned) {
+                    continue;
+                }
+                if (ownership.addr != address(0)) {
+                    currOwnershipAddr = ownership.addr;
+                }
+                if (currOwnershipAddr == owner) {
+                    pubkeys[tokenIdsIdx++] = validators[i].pubkey;
+                }
+            }
+            return pubkeys;
+        }
+    }
+
+    /**
+     * @notice Finds all the tokenId key of a particular address
+     * @param owner - The particular address
+     */
+    function tokenIdsOfOwner(address owner) public view returns (bytes[] memory) {
         unchecked {
             //slither-disable-next-line uninitialized-local
             uint256 tokenIdsIdx;
@@ -262,7 +299,12 @@ contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, Reentran
     }
 
     ////////below is the new code//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    function isApprovedForAll(address owner, address operator) public view override returns (bool) {
+    function isApprovedForAll(address owner, address operator)
+        public
+        view
+        override (ERC721AUpgradeable, IERC721AUpgradeable)
+        returns (bool)
+    {
         // Get a reference to OpenSea's proxy registry contract by instantiating
         // the contract using the already existing address.
 
