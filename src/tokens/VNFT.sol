@@ -128,35 +128,6 @@ contract VNFT is
     }
 
     /**
-     * @notice Finds all the tokenId key of a particular address
-     * @param owner - The particular address
-     */
-    function tokenIdsOfOwner(address owner) public view returns (bytes[] memory) {
-        unchecked {
-            //slither-disable-next-line uninitialized-local
-            uint256 tokenIdsIdx;
-            //slither-disable-next-line uninitialized-local
-            address currOwnershipAddr;
-            uint256 tokenIdsLength = balanceOf(owner);
-            bytes[] memory pubkeys = new bytes[](tokenIdsLength);
-            TokenOwnership memory ownership;
-            for (uint256 i = 0; tokenIdsIdx != tokenIdsLength; ++i) {
-                ownership = _ownershipAt(i);
-                if (ownership.burned) {
-                    continue;
-                }
-                if (ownership.addr != address(0)) {
-                    currOwnershipAddr = ownership.addr;
-                }
-                if (currOwnershipAddr == owner) {
-                    pubkeys[tokenIdsIdx++] = validators[i].pubkey;
-                }
-            }
-            return pubkeys;
-        }
-    }
-
-    /**
      * @notice Finds the tokenId of a validator
      * @dev Returns MAX_SUPPLY if not found
      * @param pubkey - A 48 bytes representing the validator's public key
