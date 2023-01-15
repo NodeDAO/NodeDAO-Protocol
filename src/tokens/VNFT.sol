@@ -5,7 +5,7 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "lib/ERC721A-Upgradeable/contracts/ERC721AUpgradeable.sol";
+import "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 import "src/interfaces/ILiquidStaking.sol";
 
 contract VNFT is Initializable, OwnableUpgradeable, ERC721AUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
