@@ -121,6 +121,36 @@ contract LiquidStakingTest is Test {
         assertEq(liquidStaking.operatorPoolBalances(1), 4.5 ether);
     }
 
+    function testStakeETHWithDepositFee() public {
+        vm.deal(address(20), 2 ether);
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
+        console.log("rate: 2", liquidStaking.getNethOut(1 ether));
+        vm.deal(address(21), 2 ether);
+
+        console.log("rate: 3 ", liquidStaking.getNethOut(1 ether));
+        vm.prank(address(21));
+        liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
+        console.log("balance: 21", neth.balanceOf(address(21)));
+        console.log("rate: 4 ", liquidStaking.getNethOut(1 ether));
+
+        vm.deal(address(23), 5 ether);
+
+        console.log("rate: 4 ", liquidStaking.getNethOut(3 ether));
+        vm.prank(address(23));
+        liquidStaking.stakeETH{value: 3 ether}(_referral, 1);
+        console.log("balance: 23", neth.balanceOf(address(23)));
+
+        assertEq(liquidStaking.unstakePoolBalances(), 0.5 ether);
+        assertEq(liquidStaking.operatorPoolBalances(1), 4.5 ether);
+
+        vm.prank(_dao);  
+        liquidStaking.setDepositFeeRate(2000);
+
+        vm.deal(address(24), 500 ether);
+        liquidStaking.stakeETH{value: 500 ether}(_referral, 1);
+    }
+
     function testStakeNFT() public {
         vm.expectEmit(true, true, false, true);
         emit NftStake(address(20), 10, _referral);
@@ -153,4 +183,5 @@ contract LiquidStakingTest is Test {
         assertEq(pubkey, bytes(""));
         assertEq(initHeight, 10000);
     }
+
 }

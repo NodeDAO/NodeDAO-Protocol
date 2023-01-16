@@ -127,7 +127,7 @@ contract LiquidStaking is
 
         // 1. Convert depositAmount according to the exchange rate of nETH
         // 2. Mint nETH
-        uint256 amountOut = _getNethOut(depositPoolAmount);
+        uint256 amountOut = _getNethOut(depositPoolAmount, depositFeeAmount);
         nETHContract.whiteListMint(amountOut, msg.sender);
 
         if (unstakePoolBalances < unstakePoolSize) {
@@ -176,7 +176,7 @@ contract LiquidStaking is
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
 
-        uint256 amountOut = _getNethOut(msg.value);
+        uint256 amountOut = _getNethOut(msg.value, 0);
         nETHContract.whiteListMint(amountOut, address(this));
 
         uint256 mintNftsCount = msg.value / DEPOSIT_SIZE;
@@ -267,7 +267,7 @@ contract LiquidStaking is
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
         require(operatorId == wrapOperator, "The selected token id does not belong to the operator being sold");
 
-        uint256 amountOut = _getNethOut(value);
+        uint256 amountOut = _getNethOut(value, 0);
 
         bytes memory pubkey = vNFTContract.validatorOf(tokenId);
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
@@ -314,7 +314,7 @@ contract LiquidStaking is
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
         require(success, "verifyNftValue fail");
 
-        uint256 amountOut = _getNethOut(value);
+        uint256 amountOut = _getNethOut(value, 0);
 
         _liquidUserNfts[tokenId] = false;
 
@@ -416,8 +416,8 @@ contract LiquidStaking is
         return _nethAmountIn * (totalEth) / (nethSupply);
     }
 
-    function _getNethOut(uint256 _ethAmountIn) internal returns (uint256) {
-        uint256 totalEth = getTotalEthValue() - msg.value;
+    function _getNethOut(uint256 _ethAmountIn, uint256 _fee) internal returns (uint256) {
+        uint256 totalEth = getTotalEthValue() - (msg.value - _fee);
         uint256 nethSupply = nETHContract.totalSupply();
         if (nethSupply == 0) {
             return _ethAmountIn;
