@@ -25,9 +25,12 @@ interface IVNFT is IERC721AUpgradeable {
 
     function lastOwnerOf(uint256 tokenId) external view returns (address);
 
-    function whiteListMint(bytes calldata data, address to, uint256 operatorId) external payable;
+    function whiteListMint(bytes calldata data, address to, uint256 operatorId)
+        external
+        payable
+        returns (bool, uint256);
 
     function whiteListBurn(uint256 tokenId) external;
 
-    function getLatestTokenId() external view returns (uint256);
+    function getNextTokenId() external view returns (uint256);
 }

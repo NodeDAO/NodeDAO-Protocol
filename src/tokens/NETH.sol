@@ -6,17 +6,17 @@ import "openzeppelin-contracts/access/Ownable.sol";
 import "src/interfaces/INETH.sol";
 
 contract NETH is INETH, ERC20, Ownable {
-    address public liquidStakingAddress;
+    address public liquidStakingContract;
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingAddress == msg.sender, "Not allowed to touch funds");
+        require(liquidStakingContract == msg.sender, "Not allowed to touch funds");
         _;
     }
 
     constructor() ERC20("Node ETH", "nETH") {}
 
     function setLiquidStaking(address _liquidStaking) public onlyOwner {
-        liquidStakingAddress = _liquidStaking;
+        liquidStakingContract = _liquidStaking;
     }
 
     function whiteListMint(uint256 amount, address account) external onlyLiquidStaking {
