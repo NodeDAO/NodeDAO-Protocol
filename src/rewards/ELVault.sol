@@ -55,7 +55,10 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
-    function initialize(address _nVNFTContractAddress, address dao_, uint256 operatorId_) external initializer {
+    function initialize(address _nVNFTContractAddress, address dao_, uint256 operatorId_, address liquidStakingAddress_)
+        external
+        initializer
+    {
         vNFTContract = IVNFT(_nVNFTContractAddress);
         dao = dao_;
 
@@ -68,6 +71,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         comissionRate = 1000;
         daoComissionRate = 3000;
         operatorId = operatorId_;
+        liquidStakingAddress = liquidStakingAddress_;
     }
 
     /**
