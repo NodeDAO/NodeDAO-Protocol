@@ -116,6 +116,12 @@ contract LiquidStakingTest is Test {
         failed();
     }
 
+    function testSetLiquidStakingWithdrawalCredentials(bytes memory randomBytes) public {
+        vm.prank(_dao);
+        liquidStaking.setLiquidStakingWithdrawalCredentials(randomBytes);
+        assertEq(liquidStaking.liquidStakingWithdrawalCredentials(), randomBytes);
+    }
+
     function testSetDepositFeeRate(uint256 feeRate) public {
         vm.assume(feeRate < 10000);
         vm.prank(_dao);
@@ -196,6 +202,29 @@ contract LiquidStakingTest is Test {
         vm.prank(address(2));
         vm.deal(address(2), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
+    }
+
+
+    function testUnstakeETH(uint256 ethAmount) public {
+        address randomPerson = address(888);
+        address randomRichPerson = address(887);
+        vm.assume(ethAmount > 1000 wei);
+        vm.assume(ethAmount < 1000000 ether);
+        ethAmount = 10000 wei;
+        vm.prank(_dao);
+        liquidStaking.setDaoAddress(_dao);
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(3000);
+        uint256 currentNethBal = neth.balanceOf(randomPerson);
+        vm.prank(randomPerson);
+        vm.deal(randomPerson, ethAmount);
+        liquidStaking.stakeETH{value: (ethAmount)}(_referral, 1);
+        vm.prank(randomRichPerson);
+        vm.deal(randomRichPerson, 10000000 ether);
+        liquidStaking.stakeETH{value: (10000000 ether)}(_referral, 1);
+        uint256 afterNethBal = neth.balanceOf(randomPerson);
+        vm.prank(randomPerson);
+        liquidStaking.unstakeETH(afterNethBal);
     }
 
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {
