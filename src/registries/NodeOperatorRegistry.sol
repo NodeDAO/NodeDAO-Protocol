@@ -42,7 +42,7 @@ contract NodeOperatorRegistry is
     // dao treasury address
     address public daoVaultAddress;
     // operator registration fee
-    uint256 public registrationFee = 0.1 ether;
+    uint256 public registrationFee;
 
     event Transferred(address _to, uint256 _amount);
 
@@ -67,10 +67,11 @@ contract NodeOperatorRegistry is
     constructor() {}
 
     function initialize(address _dao, address _daoVaultAddress) public initializer {
-        dao = _dao;
-        daoVaultAddress = _daoVaultAddress;
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+        dao = _dao;
+        daoVaultAddress = _daoVaultAddress;
+        registrationFee = 0.1 ether;
     }
 
     /**
@@ -274,12 +275,5 @@ contract NodeOperatorRegistry is
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);
-    }
-
-    /**
-     * @notice transfer amount to msg sender
-     */
-    receive() external payable {
-        transfer(msg.value, msg.sender);
     }
 }
