@@ -46,8 +46,8 @@ contract NodeOperatorRegistryTest is Test {
     function checkOperator(
         bool _trusted,
         string memory _name,
-        address _rewardAddress,
-        address _controllerAddress
+        address _rewardAddr,
+        address _controllerAddr
     ) public {
         bool trusted;
         string memory name;
@@ -58,8 +58,8 @@ contract NodeOperatorRegistryTest is Test {
             operatorRegistry.getNodeOperator(1, true);
         assertEq(trusted, _trusted);
         assertEq(name, _name);
-        assertEq(rewardAddress, _rewardAddress);
-        assertEq(controllerAddress, _controllerAddress);
+        assertEq(rewardAddress, _rewardAddr);
+        assertEq(controllerAddress, _controllerAddr);
         console.log("vaultContractAddress: ", vaultContractAddress);
     }
 
