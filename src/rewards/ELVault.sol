@@ -119,9 +119,10 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         outstandingRewards -= comission;
         unclaimedRewards += outstandingRewards;
 
-        uint256 averageRewards = outstandingRewards / vNFTContract.getNftCountsOfOperator(operatorId);
+        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        uint256 averageRewards = outstandingRewards / operatorNftCounts;
 
-        liquidStakingReward += averageRewards * userNftsCount;
+        liquidStakingReward += averageRewards * (operatorNftCounts - userNftsCount);
 
         uint256 currentValue = cumArr[cumArr.length - 1].value + averageRewards;
         RewardMetadata memory r = RewardMetadata({value: currentValue, height: block.number});
