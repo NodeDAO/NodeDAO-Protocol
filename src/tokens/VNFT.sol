@@ -75,6 +75,27 @@ contract VNFT is
     }
 
     /**
+     * @notice Returns the tokenId that are active (may contain validator that are yet active on beacon chain)
+     */
+    function activeNfts() external view returns (uint256[] memory) {
+        uint256 total = _nextTokenId();
+        uint256 tokenIdsIdx;
+        uint256[] memory _nfts = new uint256[](total);
+        TokenOwnership memory ownership;
+
+        for (uint256 i = _startTokenId(); i < total; ++i) {
+            ownership = _ownershipAt(i);
+            if (ownership.burned) {
+                continue;
+            }
+
+            _nfts[tokenIdsIdx++] = i;
+        }
+
+        return _nfts;
+    }
+
+    /**
      * @notice Checks if a validator exists
      * @param pubkey - A 48 bytes representing the validator's public key
      */
@@ -133,6 +154,7 @@ contract VNFT is
      * @param pubkey - A 48 bytes representing the validator's public key
      */
     function tokenOfValidator(bytes calldata pubkey) external view returns (uint256) {
+        require(pubkey.length != 0, "Invalid pubkey");
         for (uint256 i = 0; i < validators.length; i++) {
             if (keccak256(validators[i].pubkey) == keccak256(pubkey) && _exists(i)) {
                 return i;

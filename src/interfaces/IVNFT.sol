@@ -5,6 +5,8 @@ pragma solidity ^0.8.7;
 import "lib/ERC721A-Upgradeable/contracts/IERC721AUpgradeable.sol";
 
 interface IVNFT is IERC721AUpgradeable {
+    function activeNfts() external view returns (uint256[] memory);
+
     function activeValidators() external view returns (bytes[] memory);
 
     function validatorExists(bytes calldata pubkey) external view returns (bool);
