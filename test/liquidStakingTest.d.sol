@@ -96,9 +96,18 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeEthFailRequireCases() public {
+        vm.expectRevert("Stake amount must be minimum  1000 wei");
         vm.prank(address(2));
         vm.deal(address(2), 12 ether);
-        liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
+        liquidStaking.stakeETH{value: 100 wei}(_referral, 1);
+
+        vm.expectRevert("Referral address must be provided");
+        vm.prank(address(2));
+        liquidStaking.stakeETH{value: 1 ether }(address(0), 1);
+
+        vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
+        vm.prank(address(2));
+        liquidStaking.stakeETH{value: 1 ether }(_referral, 3);  
     }
 
     function testStakeNFT() public {
@@ -110,8 +119,6 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeETH() public {
-
-
         vm.prank(_dao);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -140,11 +147,16 @@ contract LiquidStakingTest is Test {
         liquidStaking.stakeNFT{value: 1 ether}(_referral, 1);
         failed();
 
-
     }
 
-
-
+    // function testWrapNFTRequireCases() public {
+    //     vm.expectRevert("The selected token id does not belong to the operator being sold");
+    //     vm.prank(address(4));
+    //     vm.deal(address(4), 32 ether); 
+    //     bytes32[] memory proof1 ;
+    //     proof1 ="0x212" ;
+    //     liquidStaking.wrapNFT(3, proof1, 2);
+    // }
 
 }
 
