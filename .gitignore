@@ -6,6 +6,7 @@ temp
 # Ignores development broadcast logs
 !/broadcast
 /broadcast/*/31337/
+/broadcast/*/5/
 /broadcast/**/dry-run/
 
 # Dotenv file
