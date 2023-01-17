@@ -14,7 +14,7 @@ import "src/oracles/BeaconOracle.sol";
 import "src/rewards/ELVaultFactory.sol";
 
 contract LiquidStakingTest is Test {
-   event Transfer(address indexed from, address indexed to, uint256 value);
+    event Transfer(address indexed from, address indexed to, uint256 value);
     event EthStake(address indexed from, uint256 amount, uint256 amountOut, address indexed _referral);
     event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
     event NftStake(address indexed from, uint256 count);
@@ -106,7 +106,7 @@ contract LiquidStakingTest is Test {
         vm.prank(address(20));
         vm.deal(address(20), 2 ether);
         liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
-        assertEq(address(liquidStaking).balance, 1 ether );
+        assertEq(address(liquidStaking).balance, 1 ether);
     }
 
     // function testClaimRewards() public {
@@ -119,6 +119,4 @@ contract LiquidStakingTest is Test {
     //     assertEq(address(liquidStaking).balance, 1 ether );
     //     liquidStaking.claimRewardsOfOperator(1) ;
     // }
-
-
 }

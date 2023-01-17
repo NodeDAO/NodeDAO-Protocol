@@ -43,12 +43,7 @@ contract NodeOperatorRegistryTest is Test {
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
 
-    function checkOperator(
-        bool _trusted,
-        string memory _name,
-        address _rewardAddr,
-        address _controllerAddr
-    ) public {
+    function checkOperator(bool _trusted, string memory _name, address _rewardAddr, address _controllerAddr) public {
         bool trusted;
         string memory name;
         address rewardAddress;

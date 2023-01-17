@@ -189,4 +189,63 @@ contract LiquidStakingTest is Test {
         assertEq(pubkey, bytes(""));
         assertEq(initHeight, 10000);
     }
+
+    function testGetExchangeRate() public {
+        vm.roll(10000);
+
+        vm.prank(address(20));
+        vm.deal(address(20), 330 ether);
+        liquidStaking.stakeETH{value: 30 ether}(_referral, 1);
+
+        vm.prank(address(21));
+        vm.deal(address(21), 330 ether);
+        liquidStaking.stakeETH{value: 31 ether}(_referral, 1);
+
+        vm.prank(address(22));
+        vm.deal(address(22), 330 ether);
+        liquidStaking.stakeETH{value: 3.2 ether}(_referral, 1);
+
+        vm.prank(address(23));
+        vm.deal(address(23), 330 ether);
+        liquidStaking.stakeETH{value: 0.32 ether}(_referral, 1);
+
+        vm.prank(address(24));
+        vm.deal(address(24), 330 ether);
+        liquidStaking.stakeETH{value: 0.1457 ether}(_referral, 1);
+
+        vm.prank(address(25));
+        vm.deal(address(25), 330 ether);
+        liquidStaking.stakeETH{value: 0.325878 ether}(_referral, 1);
+
+        vm.prank(address(26));
+        vm.deal(address(26), 330 ether);
+        liquidStaking.stakeETH{value: 30.09987 ether}(_referral, 1);
+
+        assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
+        assertEq(liquidStaking.getNethOut(1 ether), 1 ether);
+
+        vm.prank(address(20));
+        liquidStaking.unstakeETH(0.00931 ether);
+
+        vm.prank(address(21));
+        liquidStaking.unstakeETH(0.131 ether);
+
+        vm.prank(address(22));
+        liquidStaking.unstakeETH(0.22231 ether);
+
+        vm.prank(address(23));
+        liquidStaking.unstakeETH(0.11112 ether);
+
+        vm.prank(address(24));
+        liquidStaking.unstakeETH(0.1011157 ether);
+
+        vm.prank(address(25));
+        liquidStaking.unstakeETH(0.11125878 ether);
+
+        vm.prank(address(26));
+        liquidStaking.unstakeETH(0.0003009987 ether);
+
+        assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
+        assertEq(liquidStaking.getNethOut(1 ether), 1 ether);
+    }
 }
