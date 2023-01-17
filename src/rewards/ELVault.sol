@@ -55,7 +55,10 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
-    function initialize(address _nVNFTContractAddress, address dao_, uint256 operatorId_) external initializer {
+    function initialize(address _nVNFTContractAddress, address dao_, uint256 operatorId_, address liquidStakingAddress_)
+        external
+        initializer
+    {
         vNFTContract = IVNFT(_nVNFTContractAddress);
         dao = dao_;
 
@@ -68,6 +71,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         comissionRate = 1000;
         daoComissionRate = 3000;
         operatorId = operatorId_;
+        liquidStakingContract = liquidStakingAddress_;
     }
 
     /**
@@ -115,9 +119,10 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         outstandingRewards -= comission;
         unclaimedRewards += outstandingRewards;
 
-        uint256 averageRewards = outstandingRewards / vNFTContract.getNftCountsOfOperator(operatorId);
+        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        uint256 averageRewards = outstandingRewards / operatorNftCounts;
 
-        liquidStakingReward += averageRewards * userNftsCount;
+        liquidStakingReward += averageRewards * (operatorNftCounts - userNftsCount);
 
         uint256 currentValue = cumArr[cumArr.length - 1].value + averageRewards;
         RewardMetadata memory r = RewardMetadata({value: currentValue, height: block.number});

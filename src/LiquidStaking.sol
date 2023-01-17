@@ -165,9 +165,9 @@ contract LiquidStaking is
             transfer(feeAmount, daoVaultAddress);
         }
 
-        transfer(amountOut, msg.sender);
+        transfer(userAmount, msg.sender);
 
-        emit EthUnstake(msg.sender, amount, amountOut);
+        emit EthUnstake(msg.sender, amount, userAmount);
     }
 
     //1. depost
@@ -177,6 +177,9 @@ contract LiquidStaking is
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
 
         uint256 amountOut = _getNethOut(msg.value, 0);
+
+        _settle(_operatorId);
+
         nETHContract.whiteListMint(amountOut, address(this));
 
         uint256 mintNftsCount = msg.value / DEPOSIT_SIZE;
@@ -188,6 +191,8 @@ contract LiquidStaking is
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
             IELVault(vaultContractAddress).setUserNft(tokenId, block.number);
         }
+
+        operatorPoolBalances[_operatorId] += msg.value;
 
         emit NftStake(msg.sender, mintNftsCount, _referral);
     }
@@ -276,7 +281,6 @@ contract LiquidStaking is
         success = nETHContract.transferFrom(msg.sender, address(this), amountOut);
         require(success, "Failed to transfer neth");
 
-        _settle(operatorId);
         claimRewardsOfOperator(operatorId);
 
         vNFTContract.safeTransferFrom(address(this), msg.sender, tokenId);
@@ -318,7 +322,6 @@ contract LiquidStaking is
 
         _liquidUserNfts[tokenId] = false;
 
-        _settle(operatorId);
         claimRewardsOfUser(tokenId);
 
         vNFTContract.safeTransferFrom(msg.sender, address(this), tokenId);

@@ -12,6 +12,7 @@ import "src/tokens/VNFT.sol";
 import "src/rewards/ELVault.sol";
 import "src/mocks/DepositContract.sol";
 import "../src/registries/NodeOperatorRegistry.sol";
+import "src/rewards/ELVaultFactory.sol";
 
 contract LiquidStakingTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -34,9 +35,10 @@ contract LiquidStakingTest is Test {
     BeaconOracle beaconOracle;
     DepositContract depositContract;
     ELVault vaultContract;
+    ELVaultFactory vaultFactoryContract;
 
-    address _dao = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
-    address _daoValutAddress = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
+    address _dao = address(1);
+    address _daoValutAddress = address(2);
     address _rewardAddress = address(3);
     address _controllerAddress = address(4);
     address _referral = address(5);
@@ -45,7 +47,6 @@ contract LiquidStakingTest is Test {
     address _oracleMember3 = address(13);
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
-    bytes withdrawalCreds = hex"3031";
 
     function setUp() public {
         liquidStaking = new LiquidStaking();
@@ -58,15 +59,19 @@ contract LiquidStakingTest is Test {
         vnft.setLiquidStaking(address(liquidStaking));
 
         vaultContract = new ELVault();
-        vaultContract.initialize(address(vnft), _dao, 1);
+        vaultContract.initialize(address(vnft), _dao, 1, address(liquidStaking));
         vm.prank(_dao);
         vaultContract.setLiquidStaking(address(liquidStaking));
 
+        vaultFactoryContract = new ELVaultFactory();
+        vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
+
         operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress);
-        operatorRegistry.registerOperator{value: 0.1 ether}(
-            "one", address(_rewardAddress), address(_controllerAddress), address(vaultContract)
-        );
+        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract));
+        vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
+
+        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(_rewardAddress), address(_controllerAddress));
+
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
 
