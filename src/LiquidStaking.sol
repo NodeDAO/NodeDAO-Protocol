@@ -165,9 +165,9 @@ contract LiquidStaking is
             transfer(feeAmount, daoVaultAddress);
         }
 
-        transfer(amountOut, msg.sender);
+        transfer(userAmount, msg.sender);
 
-        emit EthUnstake(msg.sender, amount, amountOut);
+        emit EthUnstake(msg.sender, amount, userAmount);
     }
 
     //1. depost
