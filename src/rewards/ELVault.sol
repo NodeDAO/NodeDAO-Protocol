@@ -71,7 +71,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         comissionRate = 1000;
         daoComissionRate = 3000;
         operatorId = operatorId_;
-        liquidStakingAddress = liquidStakingAddress_;
+        liquidStakingContract = liquidStakingAddress_;
     }
 
     /**

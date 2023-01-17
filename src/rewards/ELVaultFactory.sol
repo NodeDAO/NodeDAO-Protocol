@@ -7,7 +7,7 @@ import "openzeppelin-contracts/proxy/beacon/BeaconProxy.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./ELVault.sol";
+import "src/rewards/ELVault.sol";
 
 contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public dao;
@@ -29,7 +29,6 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         address _ELVaultImplementationAddress,
         address _nVNFTContractAddress,
         address _liquidStakingAddress,
-        address _nodeOperatorRegistryAddress,
         address _dao
     ) external initializer {
         __Ownable_init();
@@ -41,9 +40,8 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
         _beacon.transferOwnership(_dao);
         beacon = address(_beacon);
-        nftContract = _nVNFTContractAddress;
+        vNFTContract = _nVNFTContractAddress;
         dao = _dao;
-        nodeOperatorRegistryAddress = _nodeOperatorRegistryAddress;
         liquidStakingAddress = _liquidStakingAddress;
     }
 
