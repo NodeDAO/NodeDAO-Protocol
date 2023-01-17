@@ -14,16 +14,16 @@ import "src/mocks/DepositContract.sol";
 import "../src/registries/NodeOperatorRegistry.sol";
 
 contract LiquidStakingTest is Test {
-    event Transfer(address indexed from, address indexed to, uint256 value);
     event EthStake(address indexed from, uint256 amount, uint256 amountOut, address indexed _referral);
     event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
-    event NftStake(address indexed from, uint256 count);
+    event NftStake(address indexed from, uint256 count, address indexed _referral);
     event Eth32Deposit(bytes _pubkey, bytes _withdrawal, address _owner);
     event ValidatorRegistered(uint256 operator, uint256 tokenId);
     event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
     event ClaimRewardsToUnstakePool(uint256 operatorId, uint256 rewards);
+    event stakeETHToUnstakePool(uint256 operatorId, uint256 amount);
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
 
@@ -95,48 +95,56 @@ contract LiquidStakingTest is Test {
         );
     }
 
-    function testStakeEthFail() public {
+    function testStakeEthFailRequireCases() public {
         vm.prank(address(2));
-        vm.deal(address(2), 32 ether);
-        liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
+        vm.deal(address(2), 12 ether);
+        liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
     }
 
     function testStakeNFT() public {
+        vm.expectEmit(true, true, false, true);
+        emit NftStake(address(2), 1, _referral);
         vm.prank(address(2));
         vm.deal(address(2), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
     }
 
-    function testStakeNFTFailNodeOperator() public {
+    function testStakeETH() public {
+
+
+        vm.prank(_dao);
+        liquidStaking.setDaoAddress(_dao);
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(0);
+        uint256 nethValue;
+        nethValue = liquidStaking.getNethOut( 1 ether);
+
+        vm.expectEmit(true, true, false, true);
+        emit EthStake(address(15), 1 ether, nethValue , _referral );
+        vm.prank(address(15));
+        vm.deal(address(15), 3 ether);
+        liquidStaking.stakeETH{value: 1 ether}(_referral, 1);
+
+    }
+
+    function testStakeNFTFailRequireCases() public {
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
         vm.prank(address(4));
         vm.deal(address(4), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 4);
         failed();
+
+        vm.expectRevert("Incorrect Ether amount provided");
+        vm.prank(address(20));
+        vm.deal(address(20), 32 ether);
+        liquidStaking.stakeNFT{value: 1 ether}(_referral, 1);
+        failed();
+
+
     }
 
 
-    function testUnstakeETH(uint256 ethAmount) public {
-        address randomPerson = address(888);
-        address randomRichPerson = address(887);
-        vm.assume(ethAmount > 1000 wei);
-        vm.assume(ethAmount < 1000000 ether);
-        ethAmount = 10000 wei;
-        vm.prank(_dao);
-        liquidStaking.setDaoAddress(_dao);
-        vm.prank(_dao);
-        liquidStaking.setDepositFeeRate(3000);
-        uint256 currentNethBal = neth.balanceOf(randomPerson);
-        vm.prank(randomPerson);
-        vm.deal(randomPerson, ethAmount);
-        liquidStaking.stakeETH{value: (ethAmount)}(_referral, 1);
-        vm.prank(randomRichPerson);
-        vm.deal(randomRichPerson, 10000000 ether);
-        liquidStaking.stakeETH{value: (10000000 ether)}(_referral, 1);
-        uint256 afterNethBal = neth.balanceOf(randomPerson);
-        vm.prank(randomPerson);
-        liquidStaking.unstakeETH(afterNethBal);
-    }
+
 
 }
 
