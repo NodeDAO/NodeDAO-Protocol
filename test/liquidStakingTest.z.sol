@@ -10,6 +10,7 @@ import "src/mocks/DepositContract.sol";
 import "src/rewards/ELVault.sol";
 import "src/oracles/BeaconOracle.sol";
 import "forge-std/console.sol";
+import "src/rewards/ELVaultFactory.sol";
 
 contract LiquidStakingTest is Test {
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -32,6 +33,7 @@ contract LiquidStakingTest is Test {
     BeaconOracle beaconOracle;
     DepositContract depositContract;
     ELVault vaultContract;
+    ELVaultFactory vaultFactoryContract;
 
     address _dao = address(1);
     address _daoValutAddress = address(2);
@@ -55,15 +57,19 @@ contract LiquidStakingTest is Test {
         vnft.setLiquidStaking(address(liquidStaking));
 
         vaultContract = new ELVault();
-        vaultContract.initialize(address(vnft), _dao, 1);
+        vaultContract.initialize(address(vnft), _dao, 1, address(liquidStaking));
         vm.prank(_dao);
         vaultContract.setLiquidStaking(address(liquidStaking));
 
+        vaultFactoryContract = new ELVaultFactory();
+        vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
+
         operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress);
-        operatorRegistry.registerOperator{value: 0.1 ether}(
-            "one", address(_rewardAddress), address(_controllerAddress), address(vaultContract)
-        );
+        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract));
+        vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
+
+        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(_rewardAddress), address(_controllerAddress));
+
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
 
@@ -144,7 +150,7 @@ contract LiquidStakingTest is Test {
         assertEq(liquidStaking.unstakePoolBalances(), 0.5 ether);
         assertEq(liquidStaking.operatorPoolBalances(1), 4.5 ether);
 
-        vm.prank(_dao);  
+        vm.prank(_dao);
         liquidStaking.setDepositFeeRate(2000);
 
         vm.deal(address(24), 500 ether);
@@ -183,5 +189,4 @@ contract LiquidStakingTest is Test {
         assertEq(pubkey, bytes(""));
         assertEq(initHeight, 10000);
     }
-
 }

@@ -87,4 +87,16 @@ contract VNFTTest is Test {
         assertEq(vnft.validatorOf(2), bytes("3"));
         assertEq(3, vnft.balanceOf(address(2)));
     }
+
+    function testActiveValidators() public {
+        vnft.setLiquidStaking(address(1));
+        vm.startPrank(address(1));
+
+        vnft.whiteListMint(bytes("1"), address(2), 1);
+        assertEq(vnft.validatorOf(0), bytes("1"));
+        assertEq(vnft.activeValidators().length, 1);
+        vnft.whiteListMint(bytes(""), address(2), 1);
+        assertEq(vnft.activeValidators().length, 2);
+        assertEq(vnft.activeValidators().length, vnft.activeNfts().length);
+    }
 }
