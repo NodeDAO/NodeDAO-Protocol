@@ -190,6 +190,14 @@ contract LiquidStakingTest is Test {
         assertEq(initHeight, 10000);
     }
 
+    function testStakeNFT2() public {
+        vm.prank(address(20));
+        vm.roll(10000);
+
+        liquidStaking.stakeNFT{value: 0 ether}(_referral, 1);
+        assertEq(0, vnft.balanceOf(address(20)));
+    }
+
     function testGetExchangeRate() public {
         vm.roll(10000);
 

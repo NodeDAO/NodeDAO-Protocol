@@ -207,6 +207,12 @@ contract LiquidStaking is
         bytes[] calldata signatures,
         bytes32[] calldata depositDataRoots
     ) external nonReentrant {
+        require(
+            pubkeys.length == signatures.length &&
+            pubkeys.length == depositDataRoots.length,
+            "All parameter array's must have the same length."
+        );
+
         uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
         require(operatorId != 0, "msg.sender must be the controllerAddress of the trusted operator");
         require(getOperatorPoolEtherMultiple(operatorId) >= pubkeys.length, "Insufficient balance");
