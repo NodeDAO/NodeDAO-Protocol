@@ -47,6 +47,8 @@ contract NodeOperatorRegistry is
 
     IELVaultFactory public vaultFactory;
 
+    mapping(address => bool) public usedControllerAddress;
+
     event Transferred(address _to, uint256 _amount);
 
     modifier onlyDao() {
@@ -70,6 +72,7 @@ contract NodeOperatorRegistry is
     constructor() {}
 
     function initialize(address _dao, address _daoVaultAddress, address _vaultFactory) public initializer {
+        __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
@@ -95,7 +98,7 @@ contract NodeOperatorRegistry is
         returns (uint256 id)
     {
         require(msg.value == registrationFee, "Invalid registration operator fee");
-
+        require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
         id = totalOperators + 1;
 
         totalOperators = id;
@@ -109,6 +112,8 @@ contract NodeOperatorRegistry is
             vaultContractAddress: vaultContractAddress,
             name: _name
         });
+
+        usedControllerAddress[_controllerAddress] = true;
 
         transfer(registrationFee, daoVaultAddress);
 
@@ -171,11 +176,16 @@ contract NodeOperatorRegistry is
      * @param _controllerAddress Ethereum 1 address for the operator's management authority
      */
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
+        require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
+
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.controllerAddress || msg.sender == dao, "AUTH_FAILED");
-        trustedControllerAddress[operator.controllerAddress] = 0;
+        if (trustedControllerAddress[operator.controllerAddress] == _id) {
+            trustedControllerAddress[operator.controllerAddress] = 0;
+            trustedControllerAddress[_controllerAddress] = _id;
+        }
+
         operators[_id].controllerAddress = _controllerAddress;
-        trustedControllerAddress[_controllerAddress] = _id;
         emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
     }
 
