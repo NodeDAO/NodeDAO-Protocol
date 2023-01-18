@@ -290,12 +290,7 @@ contract VNFT is
     }
 
     ////////below is the new code//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    function isApprovedForAll(address owner, address operator)
-        public
-        view
-        override
-        returns (bool)
-    {
+    function isApprovedForAll(address owner, address operator) public view override returns (bool) {
         // Get a reference to OpenSea's proxy registry contract by instantiating
         // the contract using the already existing address.
 
