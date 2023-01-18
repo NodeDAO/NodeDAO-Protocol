@@ -151,7 +151,7 @@ contract LiquidStakingTest is Test {
         assertEq(liquidStaking.operatorPoolBalances(1), 4.5 ether);
 
         vm.prank(_dao);
-        liquidStaking.setDepositFeeRate(2000);
+        liquidStaking.setDepositFeeRate(1000);
 
         vm.deal(address(24), 500 ether);
         liquidStaking.stakeETH{value: 500 ether}(_referral, 1);
