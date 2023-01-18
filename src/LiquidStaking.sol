@@ -48,7 +48,6 @@ contract LiquidStaking is
 
     mapping(uint256 => uint256) public operatorPoolBalances; // operator's private stake pool, key is operator_id
 
-    uint256 public wrapOperator; // When buying nft next time, sell the operator id of nft
     uint256 public nftWrapNonce;
 
     // dao address
@@ -103,7 +102,6 @@ contract LiquidStaking is
 
         unstakeFeeRate = 5;
         unstakePoolSize = 1000 ether;
-        wrapOperator = 1;
         unstakePoolDrawnRate = 1000;
     }
 
@@ -244,17 +242,14 @@ contract LiquidStaking is
     }
 
     //wrap neth to nft
-    //1. Check whether the wrapOperator corresponding to the token id is correct
-    //2. Check if the value matches the oracle
-    //3. Check if the neth balance is satisfied -not required
-    //4. Transfer user neth to the stake pool
-    //5. Trigger the operator's claim once, and transfer the nft to the user
-    //6. Increment wrapOperator loop
-    //7. Record _liquidUserNfts as true
-    //8. Set the vault contract setUserNft to block.number
+    //1. Check if the value matches the oracle
+    //2. Check if the neth balance is satisfied -not required
+    //3. Transfer user neth to the stake pool
+    //4. Trigger the operator's claim once, and transfer the nft to the user
+    //5. Record _liquidUserNfts as true
+    //6. Set the vault contract setUserNft to block.number
     function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
-        require(operatorId == wrapOperator, "The selected token id does not belong to the operator being sold");
 
         uint256 amountOut = _getNethOut(value, 0);
 
@@ -268,12 +263,6 @@ contract LiquidStaking is
         claimRewardsOfOperator(operatorId);
 
         vNFTContract.safeTransferFrom(address(this), msg.sender, tokenId);
-
-        if (wrapOperator == nodeOperatorRegistryContract.getNodeOperatorsCount()) {
-            wrapOperator = 1;
-        } else {
-            wrapOperator = wrapOperator + 1;
-        }
 
         _liquidUserNfts[tokenId] = true;
 
