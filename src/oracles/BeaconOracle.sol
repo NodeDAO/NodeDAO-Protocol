@@ -73,6 +73,7 @@ contract BeaconOracle is
     address[] private oracleMembers;
 
     function initialize(address _dao) public initializer {
+        __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
