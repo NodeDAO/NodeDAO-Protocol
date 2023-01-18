@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.7.0) (governance/TimelockController.sol)
 
-pragma solidity ^0.8.7;
+pragma solidity 0.8.8;
 
 import "openzeppelin-contracts/access/AccessControl.sol";
 import "openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";

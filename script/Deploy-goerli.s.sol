@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+pragma solidity 0.8.8;
 
 import "src/oracles/BeaconOracle.sol";
 import "src/LiquidStaking.sol";
@@ -38,42 +38,42 @@ contract DeployGoerliScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        DeployProxy deployer = new DeployProxy();
-        deployer.setType("uups");
+        // DeployProxy deployer = new DeployProxy();
+        // deployer.setType("uups");
 
-        neth = new NETH(); // no proxy
-        vaultContract = new ELVault(); // no proxy
+        // neth = new NETH(); // no proxy
+        // vaultContract = new ELVault(); // no proxy
 
-        vnft = new VNFT();
-        operatorRegistry = new NodeOperatorRegistry();
-        beaconOracle = new BeaconOracle();
+        // vnft = new VNFT();
+        // operatorRegistry = new NodeOperatorRegistry();
+        // beaconOracle = new BeaconOracle();
         liquidStaking = new LiquidStaking();
 
-        vnftProxy = deployer.deploy(address(vnft));
-        operatorRegistryProxy = deployer.deploy(address(operatorRegistry));
-        beaconOracleProxy = deployer.deploy(address(beaconOracle));
-        liquidStakingProxy = deployer.deploy(address(liquidStaking));
+        // vnftProxy = deployer.deploy(address(vnft));
+        // operatorRegistryProxy = deployer.deploy(address(operatorRegistry));
+        // beaconOracleProxy = deployer.deploy(address(beaconOracle));
+        // liquidStakingProxy = deployer.deploy(address(liquidStaking));
 
-        // initialize
-        VNFT(vnftProxy).initialize();
-        vaultContract.initialize(address(vnftProxy), _dao, 1);
-        NodeOperatorRegistry(operatorRegistryProxy).initialize(_dao, _daoValutAddress);
-        BeaconOracle(beaconOracleProxy).initialize(_dao);
-        LiquidStaking(liquidStakingProxy).initialize(
-            _dao,
-            _daoValutAddress,
-            bytes("01"),
-            address(operatorRegistryProxy),
-            address(neth),
-            address(vnftProxy),
-            address(beaconOracleProxy),
-            address(depositContract)
-        );
+        // // initialize
+        // VNFT(vnftProxy).initialize();
+        // vaultContract.initialize(address(vnftProxy), _dao, 1);
+        // NodeOperatorRegistry(operatorRegistryProxy).initialize(_dao, _daoValutAddress);
+        // BeaconOracle(beaconOracleProxy).initialize(_dao);
+        // LiquidStaking(liquidStakingProxy).initialize(
+        //     _dao,
+        //     _daoValutAddress,·
+        //     bytes("01"),
+        //     address(operatorRegistryProxy),
+        //     address(neth),
+        //     address(vnftProxy),
+        //     address(beaconOracleProxy),
+        //     address(depositContract)
+        // );
 
-        // setLiquidStaking
-        neth.setLiquidStaking(address(liquidStakingProxy));
-        VNFT(vnftProxy).setLiquidStaking(address(liquidStakingProxy));
-        vaultContract.setLiquidStaking(address(liquidStakingProxy));
+        // // setLiquidStaking
+        // neth.setLiquidStaking(address(liquidStakingProxy));
+        // VNFT(vnftProxy).setLiquidStaking(address(liquidStakingProxy));
+        // vaultContract.setLiquidStaking(address(liquidStakingProxy));
 
         vm.stopBroadcast();
     }

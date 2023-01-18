@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.7;
+pragma solidity 0.8.8;
 
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -7,7 +7,6 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 import "ERC721A-Upgradeable/extensions/ERC721AQueryableUpgradeable.sol";
-import "src/interfaces/ILiquidStaking.sol";
 
 contract VNFT is
     Initializable,
@@ -294,7 +293,7 @@ contract VNFT is
     function isApprovedForAll(address owner, address operator)
         public
         view
-        override (ERC721AUpgradeable, IERC721AUpgradeable)
+        override
         returns (bool)
     {
         // Get a reference to OpenSea's proxy registry contract by instantiating
