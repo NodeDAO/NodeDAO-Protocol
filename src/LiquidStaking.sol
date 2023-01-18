@@ -461,10 +461,12 @@ contract LiquidStaking is
         }
 
         liquidNfts = new uint256[] (nftCount);
+        uint256 j;
         for (i = 0; i < _liquidNfts.length; i++) {
             uint256 tokenId = _liquidNfts[i];
             if (_liquidUserNfts[tokenId]) {
-                liquidNfts[i] = tokenId;
+                liquidNfts[j] = tokenId;
+                j += 1;
             }
         }
 
@@ -485,10 +487,12 @@ contract LiquidStaking is
         }
 
         operatorNfts = new uint256[] (nftCount);
+        uint256 j;
         for (i = 0; i < nfts.length; i++) {
             uint256 tokenId = nfts[i];
             if (_liquidUserNfts[tokenId]) {
-                operatorNfts[i] = tokenId;
+                operatorNfts[j] = tokenId;
+                j += 1;
             }
         }
 
@@ -507,12 +511,12 @@ contract LiquidStaking is
     }
 
     function setDepositFeeRate(uint256 _feeRate) external onlyDao {
-        require(_feeRate < totalBasisPoints, "cannot be 100%");
+        require(_feeRate <= 1000, "Rate too high");
         depositFeeRate = _feeRate;
     }
 
     function setUnstakeFeeRate(uint256 _feeRate) external onlyDao {
-        require(_feeRate < totalBasisPoints, "cannot be 100%");
+        require(_feeRate <= 1000, "Rate too high");
         unstakeFeeRate = _feeRate;
     }
 
