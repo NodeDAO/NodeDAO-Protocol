@@ -35,12 +35,12 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
      *         ReentrancyGuardUpgradeable, OwnableUpgradeable, UUPSUpgradeable and `_aggregatorProxyAddress`
      * @dev initializer - A modifier that defines a protected initializer function that can be invoked at most once
      */
-    function initialize() external initializer {
+    function initialize(address _dao, address liquidStakingProxyAddress_) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
-
-        _liquidStakingProxyAddress = address(0x1);
+        dao = _dao;
+        _liquidStakingProxyAddress = liquidStakingProxyAddress_;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
