@@ -220,7 +220,7 @@ contract BeaconOracle is
         if (i < currentReportVariants.length) {
             if (sameCount + 1 >= quorum) {
                 _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
-                emit ReportSuccess(_epochId, quorum, sameCount);
+                emit ReportSuccess(_epochId, quorum, sameCount+1);
             } else {
                 // increment report counter, see ReportUtils for details
                 currentReportVariants[i] = ReportUtils.compressReportData(
@@ -230,7 +230,7 @@ contract BeaconOracle is
         } else {
             if (quorum == 1) {
                 _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
-                emit ReportSuccess(_epochId, quorum, sameCount);
+                emit ReportSuccess(_epochId, quorum, sameCount+1);
             } else {
                 currentReportVariants.push(
                     ReportUtils.compressReportData(
