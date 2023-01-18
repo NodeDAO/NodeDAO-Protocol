@@ -529,4 +529,8 @@ contract LiquidStaking is
     function getOperatorPoolEtherMultiple(uint256 operator) internal view returns (uint256) {
         return operatorPoolBalances[operator] / 32 ether;
     }
+
+    function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
+        beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
+    }
 }
