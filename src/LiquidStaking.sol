@@ -521,4 +521,6 @@ contract LiquidStaking is
     function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
     }
+
+    receive() external payable {}
 }
