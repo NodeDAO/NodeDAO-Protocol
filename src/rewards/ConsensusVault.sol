@@ -12,12 +12,18 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
  */
 contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     address private _liquidStakingProxyAddress;
+    address public dao;
 
     event LiquidStakingChanged(address _from, address _to);
     event Transferred(address _to, uint256 _amount);
 
     modifier onlyLiquidStaking() {
         require(_liquidStakingProxyAddress == msg.sender, "Not allowed to touch funds");
+        _;
+    }
+
+    modifier onlyDao() {
+        require(msg.sender == dao, "AUTH_FAILED");
         _;
     }
 
@@ -54,7 +60,7 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
      * @param liquidStakingProxyAddress_ proxy address of LiquidStaking
      * @dev will only allow call of function by the address registered as the owner
      */
-    function setLiquidStaking(address liquidStakingProxyAddress_) external onlyOwner {
+    function setLiquidStaking(address liquidStakingProxyAddress_) external onlyDao {
         require(liquidStakingProxyAddress_ != address(0), "Aggregator address provided invalid");
         emit LiquidStakingChanged(_liquidStakingProxyAddress, liquidStakingProxyAddress_);
         _liquidStakingProxyAddress = liquidStakingProxyAddress_;
