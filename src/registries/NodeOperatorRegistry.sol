@@ -244,7 +244,7 @@ contract NodeOperatorRegistry is
     /**
      * @notice Returns whether an operator is trusted
      */
-    function isTrustedOperator(address _controllerAddress) external view returns (uint256) {
+    function isTrustedOperatorOfControllerAddress(address _controllerAddress) external view returns (uint256) {
         return trustedControllerAddress[_controllerAddress];
     }
 
