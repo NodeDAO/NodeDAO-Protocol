@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.7;
+pragma solidity 0.8.8;
 
 /**
  * @title Node Operator registry
@@ -92,7 +92,7 @@ interface INodeOperatorsRegistry {
     /**
      * @notice Returns whether an operator is trusted
      */
-    function isTrustedOperator(address _controllerAddress) external view returns (uint256);
+    function isTrustedOperatorOfControllerAddress(address _controllerAddress) external view returns (uint256);
 
     event NodeOperatorRegistered(
         uint256 id, string name, address rewardAddress, address controllerAddress, address _vaultContractAddress

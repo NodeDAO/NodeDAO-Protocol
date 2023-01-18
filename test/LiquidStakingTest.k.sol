@@ -47,6 +47,10 @@ contract LiquidStakingTest is Test {
     address _oracleMember3 = address(13);
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
+    bytes withdrawalCreds = hex"00e6959a366e85294d398057f19c6d413b2de2385119ab51298b8a25504f3de1";
+    bytes tempSignature = hex"938eda26f3dbd003bde75195d82e5aa445827284f8961f1abf5da1b2f6b51b0f21eb9fe807e27bb593d22f4bc9d5498d068f2855087eab6ac7b099a0c8919b24e379ec253bdfe02a0c760f01a51a008f8487c2afe6e57f25953a3270d85511e3";
+    bytes32 tempDepositDataRoot = hex"e8066e21802a6eb322aa4f8c2e53d432176b495ee08f6863170b2ed2f0b90953";
+    bytes pubKey = hex"a1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864";
 
     function setUp() public {
         liquidStaking = new LiquidStaking();
@@ -91,7 +95,7 @@ contract LiquidStakingTest is Test {
         liquidStaking.initialize(
             _dao,
             _daoValutAddress,
-            bytes("01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106"),
+            withdrawalCreds,
             address(operatorRegistry),
             address(neth),
             address(vnft),
@@ -201,6 +205,51 @@ contract LiquidStakingTest is Test {
         vm.prank(address(2));
         vm.deal(address(2), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
+    }
+
+    function testUnstakeETH(uint256 ethAmount) public {
+        address randomPerson = address(888);
+        address randomRichPerson = address(887);
+        vm.assume(ethAmount > 1000 wei);
+        vm.assume(ethAmount < 1000000 ether);
+        ethAmount = 10000 wei;
+        vm.prank(_dao);
+        liquidStaking.setDaoAddress(_dao);
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(3000);
+        uint256 currentNethBal = neth.balanceOf(randomPerson);
+        vm.prank(randomPerson);
+        vm.deal(randomPerson, ethAmount);
+        liquidStaking.stakeETH{value: (ethAmount)}(_referral, 1);
+        vm.prank(randomRichPerson);
+        vm.deal(randomRichPerson, 10000000 ether);
+        liquidStaking.stakeETH{value: (10000000 ether)}(_referral, 1);
+        uint256 afterNethBal = neth.balanceOf(randomPerson);
+        vm.prank(randomPerson);
+        liquidStaking.unstakeETH(afterNethBal);
+    }
+
+    function testRegisterValidator() public {
+        bytes[] memory localpk = new bytes[](1);
+        bytes[] memory localSig = new bytes[](1);
+        bytes32[] memory localDataRoot = new bytes32[](1);
+        // address localAddress = 0xa1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864; //  bytesToAddress(pubKey);
+        // address(uint160(uint256(b)))
+        localpk[0] = pubKey;
+        localSig[0] = tempSignature;
+        localDataRoot[0] = tempDepositDataRoot;
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(0);
+        vm.prank(_rewardAddress);
+        vm.deal(_rewardAddress, 1000000 ether);
+        liquidStaking.stakeETH{value: 1000000 ether}(_referral, 1);
+        vm.prank(_controllerAddress);
+        liquidStaking.registerValidator(
+            localpk,
+            localSig,
+            localDataRoot
+        );
+        
     }
 
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {

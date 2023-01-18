@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.7;
+pragma solidity 0.8.8;
 
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -30,7 +30,9 @@ contract BeaconOracle is
     uint64 internal constant SLOTS_PER_EPOCH = 32;
 
     // Base time (default beacon creation time)
-    uint64 public constant GENESIS_TIME = 1606824023;
+    // goerli: 1616508000
+    // mainnet: 1606824023
+    uint64 public constant GENESIS_TIME = 1616508000;
 
     // Seconds for each slot
     uint64 internal constant SECONDS_PER_SLOT = 12;
@@ -71,6 +73,7 @@ contract BeaconOracle is
     address[] private oracleMembers;
 
     function initialize(address _dao) public initializer {
+        __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 

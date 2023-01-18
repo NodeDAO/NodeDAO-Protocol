@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
+pragma solidity 0.8.8;
 
 import "src/oracles/BeaconOracle.sol";
 import "src/LiquidStaking.sol";
@@ -9,19 +9,22 @@ import "src/registries/NodeOperatorRegistry.sol";
 import "src/rewards/ELVault.sol";
 import "forge-std/Script.sol";
 import "./utils/DeployProxy.sol";
+import "src/rewards/ConsensusVault.sol";
+import "src/rewards/ELVaultFactory.sol";
 
-contract DeployGoerliScript is Script {
+contract DeployAllScript is Script {
     address _dao = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
     address _daoValutAddress = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
-    address _rewardAddress = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
-    address _controllerAddress = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
     address depositContract = 0xff50ed3d0ec03aC01D4C79aAd74928BFF48a7b2b;
 
     LiquidStaking liquidStaking;
-    address liquidStakingProxy;
+    address payable liquidStakingProxy;
 
     NETH neth;
     ELVault vaultContract;
+
+    ELVaultFactory vaultFactoryContract;
+    address vaultFactoryContractProxy;
 
     VNFT vnft;
     address vnftProxy;
@@ -32,6 +35,9 @@ contract DeployGoerliScript is Script {
     BeaconOracle beaconOracle;
     address beaconOracleProxy;
 
+    ConsensusVault  consensusVault;
+    address payable consensusVaultProxy;
+
     function setUp() public {}
 
     function run() public {
@@ -41,8 +47,12 @@ contract DeployGoerliScript is Script {
         DeployProxy deployer = new DeployProxy();
         deployer.setType("uups");
 
-        neth = new NETH(); // no proxy
-        vaultContract = new ELVault(); // no proxy
+        // no proxy
+        neth = new NETH();
+
+        // ELVaultFactory
+        vaultContract = new ELVault();
+        vaultFactoryContract = new ELVaultFactory();
 
         vnft = new VNFT();
         operatorRegistry = new NodeOperatorRegistry();
@@ -51,13 +61,22 @@ contract DeployGoerliScript is Script {
 
         vnftProxy = deployer.deploy(address(vnft));
         operatorRegistryProxy = deployer.deploy(address(operatorRegistry));
+    
         beaconOracleProxy = deployer.deploy(address(beaconOracle));
-        liquidStakingProxy = deployer.deploy(address(liquidStaking));
+        liquidStakingProxy = payable(deployer.deploy(address(liquidStaking)));
+
+        // ConsensusVault
+        consensusVault = new ConsensusVault();
+        consensusVaultProxy = payable(deployer.deploy(address(consensusVault)));
+        ConsensusVault(consensusVaultProxy).initialize(_dao, address(liquidStakingProxy));
+
+        vaultFactoryContractProxy = deployer.deploy(address(vaultFactoryContract));
+        ELVaultFactory(vaultFactoryContractProxy).initialize(address(vaultContract), address(vnftProxy), address(liquidStakingProxy), _dao);
+        ELVaultFactory(vaultFactoryContractProxy).setNodeOperatorRegistry(address(operatorRegistryProxy));
 
         // initialize
         VNFT(vnftProxy).initialize();
-        vaultContract.initialize(address(vnftProxy), _dao, 1);
-        NodeOperatorRegistry(operatorRegistryProxy).initialize(_dao, _daoValutAddress);
+        NodeOperatorRegistry(operatorRegistryProxy).initialize(_dao, _daoValutAddress, address(vaultFactoryContractProxy));
         BeaconOracle(beaconOracleProxy).initialize(_dao);
         LiquidStaking(liquidStakingProxy).initialize(
             _dao,
@@ -73,7 +92,8 @@ contract DeployGoerliScript is Script {
         // setLiquidStaking
         neth.setLiquidStaking(address(liquidStakingProxy));
         VNFT(vnftProxy).setLiquidStaking(address(liquidStakingProxy));
-        vaultContract.setLiquidStaking(address(liquidStakingProxy));
+
+        // todo set dao
 
         vm.stopBroadcast();
     }

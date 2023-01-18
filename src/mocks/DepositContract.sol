@@ -9,7 +9,7 @@
 
 // SPDX-License-Identifier: CC0-1.0
 
-pragma solidity ^0.8.7;
+pragma solidity 0.8.8;
 
 import "src/interfaces/IDepositContract.sol";
 

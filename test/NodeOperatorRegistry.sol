@@ -251,15 +251,15 @@ contract NodeOperatorRegistryTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         console.log("vaultContractAddress: ", vaultContractAddress);
 
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(5));
         address vaultContractAddress2 = operatorRegistry.getNodeOperatorVaultContract(2);
         console.log("vaultContractAddress2: ", vaultContractAddress2);
 
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(6));
         address vaultContractAddress3 = operatorRegistry.getNodeOperatorVaultContract(3);
         console.log("vaultContractAddress3: ", vaultContractAddress3);
 
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(7));
         address vaultContractAddress4 = operatorRegistry.getNodeOperatorVaultContract(4);
         console.log("vaultContractAddress4: ", vaultContractAddress4);
 
