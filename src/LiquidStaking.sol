@@ -64,7 +64,6 @@ contract LiquidStaking is
     event EthStake(address indexed from, uint256 amount, uint256 amountOut, address indexed _referral);
     event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
     event NftStake(address indexed from, uint256 count, address indexed _referral);
-    event Eth32Deposit(bytes _pubkey, bytes _withdrawal, address _owner);
     event ValidatorRegistered(uint256 operator, uint256 tokenId);
     event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
@@ -238,21 +237,6 @@ contract LiquidStaking is
         }
 
         emit ValidatorRegistered(operatorId, tokenId);
-    }
-
-    /**
-     * @notice Allows transfer funds of 32 ETH to the ETH2 Official Deposit Contract
-     */
-    //slither-disable-next-line reentrancy-events
-    function deposit(bytes calldata data) private {
-        bytes calldata pubkey = data[16:64];
-        bytes calldata withdrawalCredentials = data[64:96];
-        bytes calldata signature = data[96:192];
-        bytes32 depositDataRoot = bytes32(data[192:224]);
-
-        depositContract.deposit{value: 32 ether}(pubkey, withdrawalCredentials, signature, depositDataRoot);
-
-        emit Eth32Deposit(pubkey, withdrawalCredentials, msg.sender);
     }
 
     function unstakeNFT(bytes[] calldata data) public nonReentrant returns (bool) {
