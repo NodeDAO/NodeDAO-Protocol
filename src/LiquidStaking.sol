@@ -18,7 +18,7 @@ contract LiquidStaking is
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
     OwnableUpgradeable,
-    PausableUpgradeable
+    PausableUpgradeable,
 {
     IDepositContract public depositContract;
 
@@ -71,6 +71,7 @@ contract LiquidStaking is
     event stakeETHToUnstakePool(uint256 operatorId, uint256 amount);
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
+    event NFTMinted(uint256 tokenId);
 
     function initialize(
         address _dao,
@@ -183,6 +184,7 @@ contract LiquidStaking is
         for (uint256 i = 0; i < mintNftsCount; i++) {
             uint256 tokenId;
             (, tokenId) = vNFTContract.whiteListMint(bytes(""), msg.sender, _operatorId);
+            emit NFTMinted(tokenId);
             _liquidNfts.push(tokenId);
             _operatorNfts[_operatorId].push(tokenId);
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
