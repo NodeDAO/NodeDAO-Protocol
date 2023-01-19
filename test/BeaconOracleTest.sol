@@ -109,6 +109,14 @@ contract BeaconOracleTest is Test {
             vm.stopPrank();
         }
 
+        vm.startPrank(address(11));
+        assertFalse(beaconOracle.isReportBeacon(address(11)));
+        if (beaconOracle.isCurrentFrame()) {
+            beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+            assertEq(beaconOracle.isReportBeacon(address(11)), true);
+        }
+        vm.stopPrank();
+
         assertEq(beaconOracle.beaconBalances(), 123456789);
         assertEq(beaconOracle.getBeaconBalances(), 123456789);
         assertEq(beaconOracle.beaconValidators(), 12345);
