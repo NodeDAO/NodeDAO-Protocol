@@ -64,13 +64,13 @@ contract BeaconOracle is
     uint8 public oracleMemberCount;
 
     // reportBeacon merkleTreeRoot storage
-    bytes32 private merkleTreeRoot;
+    bytes32 internal merkleTreeRoot;
 
     // reportBeacon storge
-    bytes[] private currentReportVariants;
+    bytes[] internal currentReportVariants;
 
     // oracle commit members
-    address[] private oracleMembers;
+    address[] internal oracleMembers;
 
     function initialize(address _dao) public initializer {
         __Ownable_init();

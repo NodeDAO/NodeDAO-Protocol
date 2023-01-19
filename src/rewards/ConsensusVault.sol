@@ -11,13 +11,19 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
  * @title ConsensusVault responsible for managing initial capital and reward
  */
 contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
-    address private _liquidStakingProxyAddress;
+    address internal _liquidStakingProxyAddress;
+    address public dao;
 
     event LiquidStakingChanged(address _from, address _to);
     event Transferred(address _to, uint256 _amount);
 
     modifier onlyLiquidStaking() {
         require(_liquidStakingProxyAddress == msg.sender, "Not allowed to touch funds");
+        _;
+    }
+
+    modifier onlyDao() {
+        require(msg.sender == dao, "AUTH_FAILED");
         _;
     }
 
@@ -29,12 +35,12 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
      *         ReentrancyGuardUpgradeable, OwnableUpgradeable, UUPSUpgradeable and `_aggregatorProxyAddress`
      * @dev initializer - A modifier that defines a protected initializer function that can be invoked at most once
      */
-    function initialize() external initializer {
+    function initialize(address _dao, address liquidStakingProxyAddress_) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
-
-        _liquidStakingProxyAddress = address(0x1);
+        dao = _dao;
+        _liquidStakingProxyAddress = liquidStakingProxyAddress_;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -54,7 +60,7 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
      * @param liquidStakingProxyAddress_ proxy address of LiquidStaking
      * @dev will only allow call of function by the address registered as the owner
      */
-    function setLiquidStaking(address liquidStakingProxyAddress_) external onlyOwner {
+    function setLiquidStaking(address liquidStakingProxyAddress_) external onlyDao {
         require(liquidStakingProxyAddress_ != address(0), "Aggregator address provided invalid");
         emit LiquidStakingChanged(_liquidStakingProxyAddress, liquidStakingProxyAddress_);
         _liquidStakingProxyAddress = liquidStakingProxyAddress_;

@@ -47,6 +47,8 @@ contract NodeOperatorRegistry is
 
     IELVaultFactory public vaultFactory;
 
+    mapping(address => bool) public usedControllerAddress;
+
     event Transferred(address _to, uint256 _amount);
 
     modifier onlyDao() {
@@ -70,6 +72,7 @@ contract NodeOperatorRegistry is
     constructor() {}
 
     function initialize(address _dao, address _daoVaultAddress, address _vaultFactory) public initializer {
+        __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
@@ -95,7 +98,7 @@ contract NodeOperatorRegistry is
         returns (uint256 id)
     {
         require(msg.value == registrationFee, "Invalid registration operator fee");
-
+        require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
         id = totalOperators + 1;
 
         totalOperators = id;
@@ -110,6 +113,8 @@ contract NodeOperatorRegistry is
             name: _name
         });
 
+        usedControllerAddress[_controllerAddress] = true;
+
         transfer(registrationFee, daoVaultAddress);
 
         emit NodeOperatorRegistered(id, _name, _rewardAddress, _controllerAddress, vaultContractAddress);
@@ -121,6 +126,7 @@ contract NodeOperatorRegistry is
      */
     function setTrustedOperator(uint256 _id) external onlyDao operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
+        require(!operator.trusted, "The operator is already trusted");
         operators[_id].trusted = true;
         totalTrustedOperators += 1;
         trustedControllerAddress[operator.controllerAddress] = _id;
@@ -133,6 +139,7 @@ contract NodeOperatorRegistry is
      */
     function removeTrustedOperator(uint256 _id) external onlyDao operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
+        require(operator.trusted, "operator is not trusted");
         operators[_id].trusted = false;
         totalTrustedOperators -= 1;
         trustedControllerAddress[operator.controllerAddress] = 0;
@@ -171,11 +178,16 @@ contract NodeOperatorRegistry is
      * @param _controllerAddress Ethereum 1 address for the operator's management authority
      */
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
+        require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
+
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.controllerAddress || msg.sender == dao, "AUTH_FAILED");
-        trustedControllerAddress[operator.controllerAddress] = 0;
+        if (trustedControllerAddress[operator.controllerAddress] == _id) {
+            trustedControllerAddress[operator.controllerAddress] = 0;
+            trustedControllerAddress[_controllerAddress] = _id;
+        }
+
         operators[_id].controllerAddress = _controllerAddress;
-        trustedControllerAddress[_controllerAddress] = _id;
         emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
     }
 
@@ -244,7 +256,7 @@ contract NodeOperatorRegistry is
     /**
      * @notice Returns whether an operator is trusted
      */
-    function isTrustedOperator(address _controllerAddress) external view returns (uint256) {
+    function isTrustedOperatorOfControllerAddress(address _controllerAddress) external view returns (uint256) {
         return trustedControllerAddress[_controllerAddress];
     }
 
@@ -272,7 +284,7 @@ contract NodeOperatorRegistry is
     /**
      * @notice transfer amount to an address
      */
-    function transfer(uint256 amount, address to) private {
+    function transfer(uint256 amount, address to) internal {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);

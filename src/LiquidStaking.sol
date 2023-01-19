@@ -38,17 +38,16 @@ contract LiquidStaking is
 
     IBeaconOracle public beaconOracleContract;
 
-    uint256[] private _liquidNfts; // The validator tokenid owned by the stake pool
-    mapping(uint256 => uint256[]) private _operatorNfts;
-    mapping(uint256 => bool) private _liquidUserNfts; // The nft purchased from the staking pool using neth
+    uint256[] internal _liquidNfts; // The validator tokenid owned by the stake pool
+    mapping(uint256 => uint256[]) internal _operatorNfts;
+    mapping(uint256 => bool) internal _liquidUserNfts; // The nft purchased from the staking pool using neth
 
     uint256 public unstakePoolSize; // nETH unstake pool size
     uint256 public unstakePoolDrawnRate;
     uint256 public unstakePoolBalances;
 
-    mapping(uint256 => uint256) public operatorPoolBalances; // operator's private stake pool, key is operator_id
+    mapping(uint256 => uint256) public operatorPoolBalances; // operator's internal stake pool, key is operator_id
 
-    uint256 public wrapOperator; // When buying nft next time, sell the operator id of nft
     uint256 public nftWrapNonce;
 
     // dao address
@@ -64,7 +63,6 @@ contract LiquidStaking is
     event EthStake(address indexed from, uint256 amount, uint256 amountOut, address indexed _referral);
     event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
     event NftStake(address indexed from, uint256 count, address indexed _referral);
-    event Eth32Deposit(bytes _pubkey, bytes _withdrawal, address _owner);
     event ValidatorRegistered(uint256 operator, uint256 tokenId);
     event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
@@ -73,6 +71,7 @@ contract LiquidStaking is
     event stakeETHToUnstakePool(uint256 operatorId, uint256 amount);
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
+    event NFTMinted(uint256 tokenId);
 
     function initialize(
         address _dao,
@@ -104,7 +103,6 @@ contract LiquidStaking is
 
         unstakeFeeRate = 5;
         unstakePoolSize = 1000 ether;
-        wrapOperator = 1;
         unstakePoolDrawnRate = 1000;
     }
 
@@ -186,6 +184,7 @@ contract LiquidStaking is
         for (uint256 i = 0; i < mintNftsCount; i++) {
             uint256 tokenId;
             (, tokenId) = vNFTContract.whiteListMint(bytes(""), msg.sender, _operatorId);
+            emit NFTMinted(tokenId);
             _liquidNfts.push(tokenId);
             _operatorNfts[_operatorId].push(tokenId);
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
@@ -210,7 +209,12 @@ contract LiquidStaking is
         bytes[] calldata signatures,
         bytes32[] calldata depositDataRoots
     ) external nonReentrant {
-        uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperator(msg.sender);
+        require(
+            pubkeys.length == signatures.length && pubkeys.length == depositDataRoots.length,
+            "All parameter array's must have the same length."
+        );
+
+        uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
         require(operatorId != 0, "msg.sender must be the controllerAddress of the trusted operator");
         require(getOperatorPoolEtherMultiple(operatorId) >= pubkeys.length, "Insufficient balance");
 
@@ -240,37 +244,19 @@ contract LiquidStaking is
         emit ValidatorRegistered(operatorId, tokenId);
     }
 
-    /**
-     * @notice Allows transfer funds of 32 ETH to the ETH2 Official Deposit Contract
-     */
-    //slither-disable-next-line reentrancy-events
-    function deposit(bytes calldata data) private {
-        bytes calldata pubkey = data[16:64];
-        bytes calldata withdrawalCredentials = data[64:96];
-        bytes calldata signature = data[96:192];
-        bytes32 depositDataRoot = bytes32(data[192:224]);
-
-        depositContract.deposit{value: 32 ether}(pubkey, withdrawalCredentials, signature, depositDataRoot);
-
-        emit Eth32Deposit(pubkey, withdrawalCredentials, msg.sender);
-    }
-
     function unstakeNFT(bytes[] calldata data) public nonReentrant returns (bool) {
         return data.length == 0;
     }
 
     //wrap neth to nft
-    //1. Check whether the wrapOperator corresponding to the token id is correct
-    //2. Check if the value matches the oracle
-    //3. Check if the neth balance is satisfied -not required
-    //4. Transfer user neth to the stake pool
-    //5. Trigger the operator's claim once, and transfer the nft to the user
-    //6. Increment wrapOperator loop
-    //7. Record _liquidUserNfts as true
-    //8. Set the vault contract setUserNft to block.number
+    //1. Check if the value matches the oracle
+    //2. Check if the neth balance is satisfied -not required
+    //3. Transfer user neth to the stake pool
+    //4. Trigger the operator's claim once, and transfer the nft to the user
+    //5. Record _liquidUserNfts as true
+    //6. Set the vault contract setUserNft to block.number
     function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
-        require(operatorId == wrapOperator, "The selected token id does not belong to the operator being sold");
 
         uint256 amountOut = _getNethOut(value, 0);
 
@@ -284,12 +270,6 @@ contract LiquidStaking is
         claimRewardsOfOperator(operatorId);
 
         vNFTContract.safeTransferFrom(address(this), msg.sender, tokenId);
-
-        if (wrapOperator == nodeOperatorRegistryContract.getNodeOperatorsCount()) {
-            wrapOperator = 1;
-        } else {
-            wrapOperator = wrapOperator + 1;
-        }
 
         _liquidUserNfts[tokenId] = true;
 
@@ -326,7 +306,7 @@ contract LiquidStaking is
 
         vNFTContract.safeTransferFrom(msg.sender, address(this), tokenId);
 
-        success = nETHContract.transferFrom(msg.sender, address(this), amountOut);
+        success = nETHContract.transferFrom(address(this), msg.sender, amountOut);
         require(success, "Failed to transfer neth");
 
         IELVault(vaultContractAddress).setUserNft(tokenId, 0);
@@ -461,10 +441,12 @@ contract LiquidStaking is
         }
 
         liquidNfts = new uint256[] (nftCount);
+        uint256 j;
         for (i = 0; i < _liquidNfts.length; i++) {
             uint256 tokenId = _liquidNfts[i];
             if (_liquidUserNfts[tokenId]) {
-                liquidNfts[i] = tokenId;
+                liquidNfts[j] = tokenId;
+                j += 1;
             }
         }
 
@@ -485,10 +467,12 @@ contract LiquidStaking is
         }
 
         operatorNfts = new uint256[] (nftCount);
+        uint256 j;
         for (i = 0; i < nfts.length; i++) {
             uint256 tokenId = nfts[i];
             if (_liquidUserNfts[tokenId]) {
-                operatorNfts[i] = tokenId;
+                operatorNfts[j] = tokenId;
+                j += 1;
             }
         }
 
@@ -507,12 +491,12 @@ contract LiquidStaking is
     }
 
     function setDepositFeeRate(uint256 _feeRate) external onlyDao {
-        require(_feeRate < totalBasisPoints, "cannot be 100%");
+        require(_feeRate <= 1000, "Rate too high");
         depositFeeRate = _feeRate;
     }
 
     function setUnstakeFeeRate(uint256 _feeRate) external onlyDao {
-        require(_feeRate < totalBasisPoints, "cannot be 100%");
+        require(_feeRate <= 1000, "Rate too high");
         unstakeFeeRate = _feeRate;
     }
 
@@ -520,7 +504,7 @@ contract LiquidStaking is
         liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
     }
 
-    function transfer(uint256 amount, address to) private {
+    function transfer(uint256 amount, address to) internal {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);
@@ -533,4 +517,6 @@ contract LiquidStaking is
     function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
     }
+
+    receive() external payable {}
 }

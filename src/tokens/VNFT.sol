@@ -264,7 +264,7 @@ contract VNFT is
     }
 
     // // metadata URI
-    string private _baseTokenURI;
+    string internal _baseTokenURI;
 
     function _baseURI() internal view virtual override returns (string memory) {
         return _baseTokenURI;
@@ -290,12 +290,7 @@ contract VNFT is
     }
 
     ////////below is the new code//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    function isApprovedForAll(address owner, address operator)
-        public
-        view
-        override
-        returns (bool)
-    {
+    function isApprovedForAll(address owner, address operator) public view override returns (bool) {
         // Get a reference to OpenSea's proxy registry contract by instantiating
         // the contract using the already existing address.
 

@@ -151,7 +151,7 @@ contract LiquidStakingTest is Test {
         assertEq(liquidStaking.operatorPoolBalances(1), 4.5 ether);
 
         vm.prank(_dao);
-        liquidStaking.setDepositFeeRate(2000);
+        liquidStaking.setDepositFeeRate(1000);
 
         vm.deal(address(24), 500 ether);
         liquidStaking.stakeETH{value: 500 ether}(_referral, 1);
@@ -188,6 +188,14 @@ contract LiquidStakingTest is Test {
         assertEq(operatorId, 1);
         assertEq(pubkey, bytes(""));
         assertEq(initHeight, 10000);
+    }
+
+    function testStakeNFT2() public {
+        vm.prank(address(20));
+        vm.roll(10000);
+
+        liquidStaking.stakeNFT{value: 0 ether}(_referral, 1);
+        assertEq(0, vnft.balanceOf(address(20)));
     }
 
     function testGetExchangeRate() public {
