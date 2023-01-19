@@ -12,13 +12,15 @@ import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IDepositContract.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
+import { ERC721A__IERC721ReceiverUpgradeable } from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 
 contract LiquidStaking is
     Initializable,
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
     OwnableUpgradeable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    ERC721A__IERC721ReceiverUpgradeable
 {
     IDepositContract public depositContract;
 
@@ -71,6 +73,7 @@ contract LiquidStaking is
     event stakeETHToUnstakePool(uint256 operatorId, uint256 amount);
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
+    event NFTMinted(uint256 tokenId);
 
     function initialize(
         address _dao,
@@ -107,6 +110,14 @@ contract LiquidStaking is
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external override returns (bytes4){
+        return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
+    }
     function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
@@ -183,6 +194,7 @@ contract LiquidStaking is
         for (uint256 i = 0; i < mintNftsCount; i++) {
             uint256 tokenId;
             (, tokenId) = vNFTContract.whiteListMint(bytes(""), msg.sender, _operatorId);
+            emit NFTMinted(tokenId);
             _liquidNfts.push(tokenId);
             _operatorNfts[_operatorId].push(tokenId);
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
