@@ -18,7 +18,7 @@ contract LiquidStaking is
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
     OwnableUpgradeable,
-    PausableUpgradeable,
+    PausableUpgradeable
 {
     IDepositContract public depositContract;
 
