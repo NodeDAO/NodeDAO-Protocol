@@ -35,7 +35,7 @@ contract DeployAllScript is Script {
     BeaconOracle beaconOracle;
     address beaconOracleProxy;
 
-    ConsensusVault  consensusVault;
+    ConsensusVault consensusVault;
     address payable consensusVaultProxy;
 
     function setUp() public {}
@@ -61,7 +61,7 @@ contract DeployAllScript is Script {
 
         vnftProxy = deployer.deploy(address(vnft));
         operatorRegistryProxy = deployer.deploy(address(operatorRegistry));
-    
+
         beaconOracleProxy = deployer.deploy(address(beaconOracle));
         liquidStakingProxy = payable(deployer.deploy(address(liquidStaking)));
 
@@ -71,12 +71,16 @@ contract DeployAllScript is Script {
         ConsensusVault(consensusVaultProxy).initialize(_dao, address(liquidStakingProxy));
 
         vaultFactoryContractProxy = deployer.deploy(address(vaultFactoryContract));
-        ELVaultFactory(vaultFactoryContractProxy).initialize(address(vaultContract), address(vnftProxy), address(liquidStakingProxy), _dao);
+        ELVaultFactory(vaultFactoryContractProxy).initialize(
+            address(vaultContract), address(vnftProxy), address(liquidStakingProxy), _dao
+        );
         ELVaultFactory(vaultFactoryContractProxy).setNodeOperatorRegistry(address(operatorRegistryProxy));
 
         // initialize
         VNFT(vnftProxy).initialize();
-        NodeOperatorRegistry(operatorRegistryProxy).initialize(_dao, _daoValutAddress, address(vaultFactoryContractProxy));
+        NodeOperatorRegistry(operatorRegistryProxy).initialize(
+            _dao, _daoValutAddress, address(vaultFactoryContractProxy)
+        );
         BeaconOracle(beaconOracleProxy).initialize(_dao);
         LiquidStaking(liquidStakingProxy).initialize(
             _dao,
