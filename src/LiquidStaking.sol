@@ -12,7 +12,6 @@ import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IDepositContract.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
-import { ERC721A__IERC721ReceiverUpgradeable } from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 
 contract LiquidStaking is
     Initializable,
@@ -20,7 +19,6 @@ contract LiquidStaking is
     ReentrancyGuardUpgradeable,
     OwnableUpgradeable,
     PausableUpgradeable,
-    ERC721A__IERC721ReceiverUpgradeable
 {
     IDepositContract public depositContract;
 
@@ -110,14 +108,6 @@ contract LiquidStaking is
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external override returns (bytes4){
-        return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
-    }
     function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
