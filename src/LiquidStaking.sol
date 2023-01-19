@@ -208,8 +208,7 @@ contract LiquidStaking is
         bytes32[] calldata depositDataRoots
     ) external nonReentrant {
         require(
-            pubkeys.length == signatures.length &&
-            pubkeys.length == depositDataRoots.length,
+            pubkeys.length == signatures.length && pubkeys.length == depositDataRoots.length,
             "All parameter array's must have the same length."
         );
 
