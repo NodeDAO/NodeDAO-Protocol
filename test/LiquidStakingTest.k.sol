@@ -309,6 +309,50 @@ contract LiquidStakingTest is Test {
         // liquidStaking.wrapNFT(tokenIds[1], proof, 32 ether);
     }
 
+    function testGetLiquidValidatorsCount() public {
+        // bytes[] memory localpk = new bytes[](1);
+        // bytes[] memory localSig = new bytes[](1);
+        // bytes32[] memory localDataRoot = new bytes32[](1);
+        // // address localAddress = 0xa1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864; //  bytesToAddress(pubKey);
+        // // address(uint160(uint256(b)))
+        // localpk[0] = pubKey;
+        // localSig[0] = tempSignature;
+        // localDataRoot[0] = tempDepositDataRoot;
+        // vm.prank(_dao);
+        // liquidStaking.setDepositFeeRate(0);
+        // vm.prank(_rewardAddress);
+        // vm.deal(_rewardAddress, 1000000 ether);
+        // liquidStaking.stakeETH{value: 1000000 ether}(_referral, 1);
+        // vm.prank(_controllerAddress);
+        // liquidStaking.registerValidator(
+        //     localpk,
+        //     localSig,
+        //     localDataRoot
+        // );
+
+        // vm.prank(address(2));
+        // vm.deal(address(2), 32 ether);
+        // liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
+
+        // require more for WRAPNFT to proceed
+        uint256 validatorsCount = liquidStaking.getLiquidValidatorsCount();
+        console.log("validatorsCount");
+        console.log(validatorsCount);
+        assertEq(validatorsCount, 0);
+    }
+
+    function testGetLiquidNfts() public {
+        uint256[] memory liquidNfts = liquidStaking.getLiquidNfts();
+        console.log(liquidNfts.length);
+        assertEq(liquidNfts.length, 0);
+    }
+
+    function testGetOperatorNfts() public {
+        uint256[] memory operatorNfts = liquidStaking.getOperatorNfts(1);
+        console.log(operatorNfts.length);
+        assertEq(operatorNfts.length, 0);
+    }
+
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {
     //     vm.assume(nethAmount > 1000 wei);
     //     vm.assume(nethAmount < 1000000 ether);
