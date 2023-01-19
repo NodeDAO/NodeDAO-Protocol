@@ -106,7 +106,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
      * @dev Current active validator nft will equally recieve all rewards earned in this era
      */
     function _settle() internal {
-        uint256 outstandingRewards = address(this).balance - unclaimedRewards - operatorRewards;
+        uint256 outstandingRewards = address(this).balance - unclaimedRewards - operatorRewards - daoRewards;
         if (outstandingRewards == 0 || cumArr[cumArr.length - 1].height == block.number) {
             return;
         }
@@ -202,6 +202,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
 
     function claimRewardsOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 nftRewards = liquidStakingReward;
+        unclaimedRewards -= nftRewards;
         liquidStakingReward = 0;
         transfer(nftRewards, liquidStakingContract);
 
