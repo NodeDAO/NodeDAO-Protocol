@@ -84,6 +84,7 @@ contract LiquidStakingTest is Test {
         vm.warp(1673161943);
         beaconOracle = new BeaconOracle();
         beaconOracle.initialize(_dao);
+
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(_oracleMember1);
         beaconOracle.addOracleMember(_oracleMember2);
@@ -91,6 +92,10 @@ contract LiquidStakingTest is Test {
         beaconOracle.addOracleMember(_oracleMember4);
         beaconOracle.addOracleMember(_oracleMember5);
         vm.stopPrank();
+
+        bytes32 root = 0xa934c462ec150e180a501144c494ec0d63878c1a9caca5b3d409787177c99798;
+        vm.prank(_oracleMember1);
+        beaconOracle.reportBeacon(147375, 123456789123456789, 12345, root);
 
         liquidStaking.initialize(
             _dao,
@@ -250,6 +255,58 @@ contract LiquidStakingTest is Test {
             localDataRoot
         );
         
+    }
+
+    function testWrapNFT() public {
+        vm.prank(address(2));
+        vm.deal(address(2), 100 ether);
+        // "0x3495a5c67a5ac9c051fcbdb9580b2e942561eaea51843c20cffa990145635a78"
+        liquidStaking.stakeNFT{value: 64 ether}(_referral, 1);
+        uint256[] memory tokenIds = vnft.tokensOfOwner(address(2));
+        assertEq(vnft.ownerOf(0), address(2));
+        assertEq(tokenIds.length, 2);
+        console.logAddress(vnft.ownerOf(1));
+        // bytes32[] memory proof;
+        // bytes32 temp0 = hex"3495a5c67a5ac9c051fcbdb9580b2e942561eaea51843c20cffa990145635a78";
+        // bytes32 temp1 = hex"2955d7769ed0eee83e6f49b40835537ec10bd3d50d2f9ca0122c5d105dfbf9ce";
+
+        bytes32[] memory proof = new bytes32[](2);
+        proof[0] = 0x877794ba7ca53549ef847bec0cf7a76f50f7f2c3a192f8daf952583741b8580e;
+        proof[1] = 0xab2e0accab37b2e656021ad27eb3c7b975672f09b9c5e94ec87e50acad3373ec;
+
+        // proof = new bytes32[](2);
+        // proof[0] = temp0;
+        // proof[1] = temp1;
+        for (uint256 index = 0; index < tokenIds.length; index++) {
+            console.log("token:");
+            console.log(index);
+            console.log(tokenIds[index]);
+        }
+
+        // bytes[] memory localpk = new bytes[](1);
+        // bytes[] memory localSig = new bytes[](1);
+        // bytes32[] memory localDataRoot = new bytes32[](1);
+        // // address localAddress = 0xa1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864; //  bytesToAddress(pubKey);
+        // // address(uint160(uint256(b)))
+        // bytes memory pubkey =
+        //     hex"80000001677f23a227dfed6f61b132d114be83b8ad0aa5f3c5d1d77e6ee0bf5f73b0af750cc34e8f2dae73c21dc36f4a";
+        // localpk[0] = pubKey;
+        // localSig[0] = tempSignature;
+        // localDataRoot[0] = tempDepositDataRoot;
+        // vm.prank(_dao);
+        // liquidStaking.setDepositFeeRate(0);
+        // vm.prank(_rewardAddress);
+        // vm.deal(_rewardAddress, 1000000 ether);
+        // liquidStaking.stakeETH{value: 1000000 ether}(_referral, 1);
+        // vm.prank(_controllerAddress);
+        // liquidStaking.registerValidator(
+        //     localpk,
+        //     localSig,
+        //     localDataRoot
+        // );
+        // vm.prank(address(2));
+
+        // liquidStaking.wrapNFT(tokenIds[1], proof, 32 ether);
     }
 
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {

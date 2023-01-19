@@ -11,7 +11,7 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
  * @title ConsensusVault responsible for managing initial capital and reward
  */
 contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
-    address private _liquidStakingProxyAddress;
+    address internal _liquidStakingProxyAddress;
     address public dao;
 
     event LiquidStakingChanged(address _from, address _to);

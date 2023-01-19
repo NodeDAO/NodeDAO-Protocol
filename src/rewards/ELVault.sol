@@ -78,7 +78,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
      * @notice Computes the reward a nft has
      * @param tokenId - tokenId of the validator nft
      */
-    function _rewards(uint256 tokenId) private view returns (uint256) {
+    function _rewards(uint256 tokenId) internal view returns (uint256) {
         uint256 gasHeight = userGasHeight[tokenId];
         if (gasHeight == 0) {
             gasHeight = liquidStakingGasHeight;
@@ -105,8 +105,8 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
      * @notice Settles outstanding rewards
      * @dev Current active validator nft will equally recieve all rewards earned in this era
      */
-    function _settle() private {
-        uint256 outstandingRewards = address(this).balance - unclaimedRewards - operatorRewards;
+    function _settle() internal {
+        uint256 outstandingRewards = address(this).balance - unclaimedRewards - operatorRewards - daoRewards;
         if (outstandingRewards == 0 || cumArr[cumArr.length - 1].height == block.number) {
             return;
         }
@@ -194,7 +194,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     }
 
     //slither-disable-next-line arbitrary-send
-    function transfer(uint256 amount, address to) private {
+    function transfer(uint256 amount, address to) internal {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);
@@ -202,6 +202,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
 
     function claimRewardsOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 nftRewards = liquidStakingReward;
+        unclaimedRewards -= nftRewards;
         liquidStakingReward = 0;
         transfer(nftRewards, liquidStakingContract);
 

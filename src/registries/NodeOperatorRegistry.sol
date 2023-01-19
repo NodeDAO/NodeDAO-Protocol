@@ -126,6 +126,7 @@ contract NodeOperatorRegistry is
      */
     function setTrustedOperator(uint256 _id) external onlyDao operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
+        require(!operator.trusted, "The operator is already trusted");
         operators[_id].trusted = true;
         totalTrustedOperators += 1;
         trustedControllerAddress[operator.controllerAddress] = _id;
@@ -138,6 +139,7 @@ contract NodeOperatorRegistry is
      */
     function removeTrustedOperator(uint256 _id) external onlyDao operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
+        require(operator.trusted, "operator is not trusted");
         operators[_id].trusted = false;
         totalTrustedOperators -= 1;
         trustedControllerAddress[operator.controllerAddress] = 0;
@@ -282,7 +284,7 @@ contract NodeOperatorRegistry is
     /**
      * @notice transfer amount to an address
      */
-    function transfer(uint256 amount, address to) private {
+    function transfer(uint256 amount, address to) internal {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);

@@ -38,15 +38,15 @@ contract LiquidStaking is
 
     IBeaconOracle public beaconOracleContract;
 
-    uint256[] private _liquidNfts; // The validator tokenid owned by the stake pool
-    mapping(uint256 => uint256[]) private _operatorNfts;
-    mapping(uint256 => bool) private _liquidUserNfts; // The nft purchased from the staking pool using neth
+    uint256[] internal _liquidNfts; // The validator tokenid owned by the stake pool
+    mapping(uint256 => uint256[]) internal _operatorNfts;
+    mapping(uint256 => bool) internal _liquidUserNfts; // The nft purchased from the staking pool using neth
 
     uint256 public unstakePoolSize; // nETH unstake pool size
     uint256 public unstakePoolDrawnRate;
     uint256 public unstakePoolBalances;
 
-    mapping(uint256 => uint256) public operatorPoolBalances; // operator's private stake pool, key is operator_id
+    mapping(uint256 => uint256) public operatorPoolBalances; // operator's internal stake pool, key is operator_id
 
     uint256 public nftWrapNonce;
 
@@ -71,6 +71,7 @@ contract LiquidStaking is
     event stakeETHToUnstakePool(uint256 operatorId, uint256 amount);
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
+    event NFTMinted(uint256 tokenId);
 
     function initialize(
         address _dao,
@@ -183,6 +184,7 @@ contract LiquidStaking is
         for (uint256 i = 0; i < mintNftsCount; i++) {
             uint256 tokenId;
             (, tokenId) = vNFTContract.whiteListMint(bytes(""), msg.sender, _operatorId);
+            emit NFTMinted(tokenId);
             _liquidNfts.push(tokenId);
             _operatorNfts[_operatorId].push(tokenId);
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
@@ -208,8 +210,7 @@ contract LiquidStaking is
         bytes32[] calldata depositDataRoots
     ) external nonReentrant {
         require(
-            pubkeys.length == signatures.length &&
-            pubkeys.length == depositDataRoots.length,
+            pubkeys.length == signatures.length && pubkeys.length == depositDataRoots.length,
             "All parameter array's must have the same length."
         );
 
@@ -503,7 +504,7 @@ contract LiquidStaking is
         liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
     }
 
-    function transfer(uint256 amount, address to) private {
+    function transfer(uint256 amount, address to) internal {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);
