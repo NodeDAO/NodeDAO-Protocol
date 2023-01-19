@@ -38,15 +38,15 @@ contract LiquidStaking is
 
     IBeaconOracle public beaconOracleContract;
 
-    uint256[] private _liquidNfts; // The validator tokenid owned by the stake pool
-    mapping(uint256 => uint256[]) private _operatorNfts;
-    mapping(uint256 => bool) private _liquidUserNfts; // The nft purchased from the staking pool using neth
+    uint256[] internal _liquidNfts; // The validator tokenid owned by the stake pool
+    mapping(uint256 => uint256[]) internal _operatorNfts;
+    mapping(uint256 => bool) internal _liquidUserNfts; // The nft purchased from the staking pool using neth
 
     uint256 public unstakePoolSize; // nETH unstake pool size
     uint256 public unstakePoolDrawnRate;
     uint256 public unstakePoolBalances;
 
-    mapping(uint256 => uint256) public operatorPoolBalances; // operator's private stake pool, key is operator_id
+    mapping(uint256 => uint256) public operatorPoolBalances; // operator's internal stake pool, key is operator_id
 
     uint256 public nftWrapNonce;
 
@@ -503,7 +503,7 @@ contract LiquidStaking is
         liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
     }
 
-    function transfer(uint256 amount, address to) private {
+    function transfer(uint256 amount, address to) internal {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);

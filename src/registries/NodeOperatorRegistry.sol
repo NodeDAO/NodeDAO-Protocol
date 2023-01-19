@@ -282,7 +282,7 @@ contract NodeOperatorRegistry is
     /**
      * @notice transfer amount to an address
      */
-    function transfer(uint256 amount, address to) private {
+    function transfer(uint256 amount, address to) internal {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);

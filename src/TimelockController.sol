@@ -30,8 +30,8 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     bytes32 public constant CANCELLER_ROLE = keccak256("CANCELLER_ROLE");
     uint256 internal constant _DONE_TIMESTAMP = uint256(1);
 
-    mapping(bytes32 => uint256) private _timestamps;
-    uint256 private _minDelay;
+    mapping(bytes32 => uint256) internal _timestamps;
+    uint256 internal _minDelay;
 
     /**
      * @dev Emitted when a call is scheduled as part of operation `id`.
@@ -260,7 +260,7 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     /**
      * @dev Schedule an operation that is to becomes valid after a given delay.
      */
-    function _schedule(bytes32 id, uint256 delay) private {
+    function _schedule(bytes32 id, uint256 delay) internal {
         require(!isOperation(id), "TimelockController: operation already scheduled");
         require(delay >= getMinDelay(), "TimelockController: insufficient delay");
         _timestamps[id] = block.timestamp + delay;
@@ -349,7 +349,7 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     /**
      * @dev Checks before execution of an operation's calls.
      */
-    function _beforeCall(bytes32 id, bytes32 predecessor) private view {
+    function _beforeCall(bytes32 id, bytes32 predecessor) internal view {
         require(isOperationReady(id), "TimelockController: operation is not ready");
         require(predecessor == bytes32(0) || isOperationDone(predecessor), "TimelockController: missing dependency");
     }
@@ -357,7 +357,7 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     /**
      * @dev Checks after execution of an operation's calls.
      */
-    function _afterCall(bytes32 id) private {
+    function _afterCall(bytes32 id) internal {
         require(isOperationReady(id), "TimelockController: operation is not ready");
         _timestamps[id] = _DONE_TIMESTAMP;
     }

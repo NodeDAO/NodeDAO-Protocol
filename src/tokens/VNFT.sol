@@ -264,7 +264,7 @@ contract VNFT is
     }
 
     // // metadata URI
-    string private _baseTokenURI;
+    string internal _baseTokenURI;
 
     function _baseURI() internal view virtual override returns (string memory) {
         return _baseTokenURI;
