@@ -183,7 +183,7 @@ contract BeaconOracle is
         uint32 _beaconValidators,
         bytes32 _validatorRankingRoot
     ) external {
-        require(getCurrentEpochId() >= expectedEpochId, "EPOCH_IS_TOO_OLD");
+        require(getCurrentEpochId() >= expectedEpochId, "EPOCH_IS_NOT_CURRENT_FRAME");
         require(_epochId >= expectedEpochId, "EPOCH_IS_TOO_OLD");
 
         // if expected epoch has advanced, check that this is the first epoch of the current frame
