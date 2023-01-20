@@ -48,7 +48,8 @@ contract LiquidStakingTest is Test {
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
     bytes withdrawalCreds = hex"00e6959a366e85294d398057f19c6d413b2de2385119ab51298b8a25504f3de1";
-    bytes tempSignature = hex"938eda26f3dbd003bde75195d82e5aa445827284f8961f1abf5da1b2f6b51b0f21eb9fe807e27bb593d22f4bc9d5498d068f2855087eab6ac7b099a0c8919b24e379ec253bdfe02a0c760f01a51a008f8487c2afe6e57f25953a3270d85511e3";
+    bytes tempSignature =
+        hex"938eda26f3dbd003bde75195d82e5aa445827284f8961f1abf5da1b2f6b51b0f21eb9fe807e27bb593d22f4bc9d5498d068f2855087eab6ac7b099a0c8919b24e379ec253bdfe02a0c760f01a51a008f8487c2afe6e57f25953a3270d85511e3";
     bytes32 tempDepositDataRoot = hex"e8066e21802a6eb322aa4f8c2e53d432176b495ee08f6863170b2ed2f0b90953";
     bytes pubKey = hex"a1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864";
 
@@ -249,12 +250,7 @@ contract LiquidStakingTest is Test {
         vm.deal(_rewardAddress, 1000000 ether);
         liquidStaking.stakeETH{value: 1000000 ether}(_referral, 1);
         vm.prank(_controllerAddress);
-        liquidStaking.registerValidator(
-            localpk,
-            localSig,
-            localDataRoot
-        );
-        
+        liquidStaking.registerValidator(localpk, localSig, localDataRoot);
     }
 
     function testWrapNFT() public {

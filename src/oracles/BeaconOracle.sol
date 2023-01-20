@@ -52,9 +52,6 @@ contract BeaconOracle is
     // The expected epoch Id is required by oracle for report Beacon
     uint256 public expectedEpochId;
 
-    // Whether the current frame has reached Quorum
-    bool public isQuorum;
-
     // current reportBeacon beaconBalances
     uint128 public beaconBalances;
 
@@ -80,7 +77,7 @@ contract BeaconOracle is
         dao = _dao;
         epochsPerFrame = 225;
         // So the initial is the first epochId
-        expectedEpochId = _getFrameFirstEpochOfDay(_getCurrentEpochId());
+        expectedEpochId = _getFrameFirstEpochOfDay(getCurrentEpochId());
     }
 
     modifier onlyDao() {
@@ -95,6 +92,21 @@ contract BeaconOracle is
     function getQuorum() public view returns (uint8) {
         uint8 n = (oracleMemberCount * 2) / 3;
         return n + 1;
+    }
+
+    /**
+     * Return the epoch calculated from current timestamp
+     */
+    function getCurrentEpochId() public view returns (uint256) {
+        // The number of epochs after the base time
+        return (_getTime() - GENESIS_TIME) / (SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
+    }
+
+    /**
+     * Whether it's in the middle of the voting cycle
+     */
+    function isCurrentFrame() public view returns (bool) {
+        return getCurrentEpochId() >= expectedEpochId;
     }
 
     /**
@@ -171,16 +183,13 @@ contract BeaconOracle is
         uint32 _beaconValidators,
         bytes32 _validatorRankingRoot
     ) external {
-        if (isQuorum) {
-            emit achieveQuorum(_epochId, isQuorum, getQuorum());
-            return;
-        }
+        require(getCurrentEpochId() >= expectedEpochId, "EPOCH_IS_NOT_CURRENT_FRAME");
         require(_epochId >= expectedEpochId, "EPOCH_IS_TOO_OLD");
 
         // if expected epoch has advanced, check that this is the first epoch of the current frame
         // and clear the last unsuccessful reporting
         if (_epochId > expectedEpochId) {
-            require(_epochId == _getFrameFirstEpochOfDay(_getCurrentEpochId()), "UNEXPECTED_EPOCH");
+            require(_epochId == _getFrameFirstEpochOfDay(getCurrentEpochId()), "UNEXPECTED_EPOCH");
             _clearReportingAndAdvanceTo(_epochId);
         }
 
@@ -220,7 +229,7 @@ contract BeaconOracle is
         if (i < currentReportVariants.length) {
             if (sameCount + 1 >= quorum) {
                 _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
-                emit ReportSuccess(_epochId, quorum, sameCount);
+                emit ReportSuccess(_epochId, quorum, sameCount + 1);
             } else {
                 // increment report counter, see ReportUtils for details
                 currentReportVariants[i] = ReportUtils.compressReportData(
@@ -230,7 +239,7 @@ contract BeaconOracle is
         } else {
             if (quorum == 1) {
                 _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
-                emit ReportSuccess(_epochId, quorum, sameCount);
+                emit ReportSuccess(_epochId, quorum, sameCount + 1);
             } else {
                 currentReportVariants.push(
                     ReportUtils.compressReportData(
@@ -293,8 +302,6 @@ contract BeaconOracle is
         uint32 _beaconValidators,
         bytes32 _validatorRankingRoot
     ) internal {
-        // The report passed on the same day
-        isQuorum = true;
         beaconBalances = _beaconBalance;
         beaconValidators = _beaconValidators;
         merkleTreeRoot = _validatorRankingRoot;
@@ -326,14 +333,6 @@ contract BeaconOracle is
      */
     function _getFrameFirstEpochOfDay(uint256 _epochId) internal view returns (uint256) {
         return (_epochId / epochsPerFrame) * epochsPerFrame;
-    }
-
-    /**
-     * Return the epoch calculated from current timestamp
-     */
-    function _getCurrentEpochId() internal view returns (uint256) {
-        // The number of epochs after the base time
-        return (_getTime() - GENESIS_TIME) / (SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
     }
 
     /**
