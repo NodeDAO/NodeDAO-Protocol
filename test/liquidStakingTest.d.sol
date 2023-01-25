@@ -167,11 +167,65 @@ contract LiquidStakingTest is Test {
     }
 
     function testRegisterValidatorFailCases() public {
+        prepRegisterValidator() ;
+        bytes[] memory pubkeys = new bytes[](1);
+
+
+        bytes[] memory signatures = new bytes[](1);
+
+        bytes32[] memory depositDataRoots = new bytes32[](1);
+        vm.prank(_dao);
+        liquidStaking.setLiquidStakingWithdrawalCredentials(bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106"));
+        bytes memory pubkey = bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
+        bytes memory sign = bytes( hex"8c9270550945d18f6500e11d0db074d52408cde8a3a30108c8e341ba6e0b92a4d82efb24097dc808313a0145ba096e0c16455aa1c3a7a1019ae34ddf540d9fa121e498c43f757bc6f4105fe31dd5ea8d67483ab435e5a371874dddffa5e65b58" );
+        bytes32 root = bytes32(hex"2c6181bcae0df24f047332b10657ee75faa7c42657b6577d7efac6672376bc33");
+        
+        pubkeys[0] = pubkey;
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+
+        assertEq(vnft.validatorExists(pubkey), false);
+
+        vm.prank(address(_controllerAddress));
+        bytes[] memory pubkeys2 = new bytes[](5);
+        bytes[] memory pubkeys3 = new bytes[](2);
+
+        pubkeys2[0] = pubkey;
+
+        pubkeys3[0] = pubkey;
+        pubkeys3[1] = pubkey;
+
+        vm.expectRevert("All parameter array's must have the same length.");
+        liquidStaking.registerValidator(pubkeys2, signatures, depositDataRoots);
+        vm.expectRevert("msg.sender must be the controllerAddress of the trusted operator");
+        liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+
+
+
+        bytes[] memory signatures2 = new bytes[](5);
+        bytes[] memory signatures3 = new bytes[](2);
+        signatures2[0] = sign;
+        signatures3[0] = sign;
+        signatures3[1] = sign;
+
+        bytes32[] memory depositDataRoots2 = new bytes32[](5);
+        bytes32[] memory depositDataRoots3 = new bytes32[](2);
+        depositDataRoots2[0] = root;
+        depositDataRoots3[0] = root;
+        depositDataRoots3[1] = root;
+
+        vm.expectRevert("Insufficient balance");
+        vm.prank(address(_controllerAddress));
+        liquidStaking.registerValidator(pubkeys2, signatures2, depositDataRoots2);
+
+        vm.expectRevert("Pub key already in used");
+        vm.prank(address(_controllerAddress));
+        liquidStaking.registerValidator(pubkeys3, signatures3, depositDataRoots3);
 
     }
 
-    function testRegisterValidatorCorrect() public {
-        vm.roll(2000);
+    function prepRegisterValidator() private {
+                vm.roll(2000);
 
         vm.deal(address(77), 21 ether);
         vm.prank(address(77));
@@ -218,7 +272,11 @@ contract LiquidStakingTest is Test {
 
 
         assertEq(82 ether, liquidStaking.operatorPoolBalances(1));
+    }
 
+    function testRegisterValidatorCorrect() public {
+        
+        prepRegisterValidator() ;
         // registerValidator
         bytes[] memory pubkeys = new bytes[](1);
         bytes[] memory signatures = new bytes[](1);
