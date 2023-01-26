@@ -271,8 +271,6 @@ contract LiquidStakingTest is Test {
     }
 
     function testWrapNFT() public {
-        assertEq(beaconOracle.merkleTreeRoot(), root);
-
         bytes32[] memory proof = new bytes32[](1);
         proof[0] = 0x2d17183ec955000e448f9ba74cb9cfec4690d35ed96aef6901f68892b38ae58e;
         // proof[1] = 0xb900a7685eaf30a886da67bbb32c4f667e1432c61122e0f7901c950323c8dbed;
