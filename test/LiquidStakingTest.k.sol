@@ -47,11 +47,11 @@ contract LiquidStakingTest is Test {
     address _oracleMember3 = address(13);
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
-    bytes withdrawalCreds = hex"00e6959a366e85294d398057f19c6d413b2de2385119ab51298b8a25504f3de1";
+    bytes withdrawalCreds = hex"00baaf6f093e5f5ea02487e58fbc2733b6716b106ceb2bc9fa95e454fb25b4d0";
     bytes tempSignature =
-        hex"938eda26f3dbd003bde75195d82e5aa445827284f8961f1abf5da1b2f6b51b0f21eb9fe807e27bb593d22f4bc9d5498d068f2855087eab6ac7b099a0c8919b24e379ec253bdfe02a0c760f01a51a008f8487c2afe6e57f25953a3270d85511e3";
-    bytes32 tempDepositDataRoot = hex"e8066e21802a6eb322aa4f8c2e53d432176b495ee08f6863170b2ed2f0b90953";
-    bytes pubKey = hex"a1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864";
+        hex"b6f352fbd336da8a0d7ba52e0a42d31d207cafac2694f200da9d867e74ca9b5c5ccff6277bb091c57b954cbefc76764802d3bf47602070dca2abce2085af039f14983c082c27038d9c8a012aa6ff48d85886dd638520f7b1bd9ecfa041d56310";
+    bytes32 tempDepositDataRoot = hex"b19b9c1e5c576ac4af90e281617de1e0e949968c0a343d821a5383a6997f4964";
+    bytes pubKey = hex"90e8c1460fdb55b944ad4b9ec73275c2ef701311715d6f8766a02d0b0b8f37a21c871fdc9784276ec74515e7a219cbcf";
 
     function setUp() public {
         liquidStaking = new LiquidStaking();
@@ -254,38 +254,18 @@ contract LiquidStakingTest is Test {
     }
 
     function testWrapNFT() public {
-        vm.prank(address(2));
-        vm.deal(address(2), 100 ether);
-        // "0x3495a5c67a5ac9c051fcbdb9580b2e942561eaea51843c20cffa990145635a78"
-        liquidStaking.stakeNFT{value: 64 ether}(_referral, 1);
-        uint256[] memory tokenIds = vnft.tokensOfOwner(address(2));
-        assertEq(vnft.ownerOf(0), address(2));
-        assertEq(tokenIds.length, 2);
-        console.logAddress(vnft.ownerOf(1));
-        // bytes32[] memory proof;
-        // bytes32 temp0 = hex"3495a5c67a5ac9c051fcbdb9580b2e942561eaea51843c20cffa990145635a78";
-        // bytes32 temp1 = hex"2955d7769ed0eee83e6f49b40835537ec10bd3d50d2f9ca0122c5d105dfbf9ce";
+        // bytes32[] memory proof = new bytes32[](1);
+        // proof[0] = 0xbda56ae2c802b39947b0e67c36af69b91ad0d82f1e4c355e4e62e5682e6bc0cb;
 
-        bytes32[] memory proof = new bytes32[](2);
-        proof[0] = 0x877794ba7ca53549ef847bec0cf7a76f50f7f2c3a192f8daf952583741b8580e;
-        proof[1] = 0xab2e0accab37b2e656021ad27eb3c7b975672f09b9c5e94ec87e50acad3373ec;
-
-        // proof = new bytes32[](2);
-        // proof[0] = temp0;
-        // proof[1] = temp1;
-        for (uint256 index = 0; index < tokenIds.length; index++) {
-            console.log("token:");
-            console.log(index);
-            console.log(tokenIds[index]);
-        }
+        // vm.prank(address(2));
+        // vm.deal(address(2), 1000000 ether);
+        // liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
 
         // bytes[] memory localpk = new bytes[](1);
         // bytes[] memory localSig = new bytes[](1);
         // bytes32[] memory localDataRoot = new bytes32[](1);
-        // // address localAddress = 0xa1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864; //  bytesToAddress(pubKey);
-        // // address(uint160(uint256(b)))
-        // bytes memory pubkey =
-        //     hex"80000001677f23a227dfed6f61b132d114be83b8ad0aa5f3c5d1d77e6ee0bf5f73b0af750cc34e8f2dae73c21dc36f4a";
+        // // // address localAddress = 0xa1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864; //  bytesToAddress(pubKey);
+        // // // address(uint160(uint256(b)))
         // localpk[0] = pubKey;
         // localSig[0] = tempSignature;
         // localDataRoot[0] = tempDepositDataRoot;
@@ -293,7 +273,8 @@ contract LiquidStakingTest is Test {
         // liquidStaking.setDepositFeeRate(0);
         // vm.prank(_rewardAddress);
         // vm.deal(_rewardAddress, 1000000 ether);
-        // liquidStaking.stakeETH{value: 1000000 ether}(_referral, 1);
+        // liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
+        // uint256[] memory tokenIds = vnft.tokensOfOwner(address(2));
         // vm.prank(_controllerAddress);
         // liquidStaking.registerValidator(
         //     localpk,
@@ -301,8 +282,7 @@ contract LiquidStakingTest is Test {
         //     localDataRoot
         // );
         // vm.prank(address(2));
-
-        // liquidStaking.wrapNFT(tokenIds[1], proof, 32 ether);
+        // liquidStaking.wrapNFT(tokenIds[0], proof, 32 ether);
     }
 
     function testGetLiquidValidatorsCount() public {
