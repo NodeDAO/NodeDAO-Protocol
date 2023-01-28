@@ -2,15 +2,8 @@
 pragma solidity 0.8.8;
 
 import "src/oracles/BeaconOracle.sol";
-import "src/LiquidStaking.sol";
-import "src/tokens/NETH.sol";
-import "src/tokens/VNFT.sol";
-import "src/registries/NodeOperatorRegistry.sol";
-import "src/rewards/ELVault.sol";
 import "forge-std/Script.sol";
 import "./utils/DeployProxy.sol";
-import "src/rewards/ConsensusVault.sol";
-import "src/rewards/ELVaultFactory.sol";
 
 // deploy BeaconOracleScript
 // 1. export
@@ -43,3 +36,4 @@ contract DeployBeaconOracleScript is Script {
         vm.stopBroadcast();
     }
 }
+
