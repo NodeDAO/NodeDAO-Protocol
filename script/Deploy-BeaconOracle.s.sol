@@ -36,4 +36,3 @@ contract DeployBeaconOracleScript is Script {
         vm.stopBroadcast();
     }
 }
-
