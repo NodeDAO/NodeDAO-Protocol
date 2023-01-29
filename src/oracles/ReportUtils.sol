@@ -35,7 +35,8 @@ library ReportUtils {
         uint32 _beaconValidators
     ) internal pure returns (bool, uint16) {
         (bytes32 root, uint128 balance, uint32 validators, uint16 sameCount) = decompressReportData(value);
-        bool isDifferent = root != _validatorRankingRoot && balance != _beaconBalance && validators != _beaconValidators;
+        bool isDifferent =
+            !(root == _validatorRankingRoot && balance == _beaconBalance && validators == _beaconValidators);
         return (isDifferent, sameCount);
     }
 }

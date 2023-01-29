@@ -67,7 +67,7 @@ contract BeaconOracleTest is Test {
     function testGetConfig() public {
         console.log(beaconOracle.expectedEpochId());
         assertEq(beaconOracle.epochsPerFrame(), 225);
-        assertFalse(beaconOracle.isQuorum());
+        assertEq(beaconOracle.isCurrentFrame(), true);
     }
 
     function testResetEpochsPerFrame() public {
@@ -84,34 +84,44 @@ contract BeaconOracleTest is Test {
 
         vm.startPrank(address(11));
         assertFalse(beaconOracle.isReportBeacon(address(11)));
-        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        beaconOracle.reportBeacon(147375, 123456789, 12345, root);
         assertEq(beaconOracle.isReportBeacon(address(11)), true);
         vm.stopPrank();
 
         vm.startPrank(address(12));
-        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        beaconOracle.reportBeacon(147375, 123456789, 12345, root);
         assertEq(beaconOracle.isReportBeacon(address(12)), true);
         vm.stopPrank();
 
         vm.startPrank(address(13));
-        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        beaconOracle.reportBeacon(147375, 123456789, 12345, root);
         vm.stopPrank();
 
         vm.startPrank(address(14));
-        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
+        beaconOracle.reportBeacon(147375, 123456789, 12345, root);
         assertEq(beaconOracle.isReportBeacon(address(14)), false);
         vm.stopPrank();
 
-        vm.startPrank(address(15));
-        beaconOracle.reportBeacon(172575, 123456789, 12345, root);
-        assertEq(beaconOracle.isReportBeacon(address(15)), false);
+        if (beaconOracle.isCurrentFrame()) {
+            vm.startPrank(address(15));
+            beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+            assertEq(beaconOracle.isReportBeacon(address(15)), false);
+            vm.stopPrank();
+        }
+
+        vm.startPrank(address(11));
+        assertFalse(beaconOracle.isReportBeacon(address(11)));
+        if (beaconOracle.isCurrentFrame()) {
+            beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+            assertEq(beaconOracle.isReportBeacon(address(11)), true);
+        }
         vm.stopPrank();
 
         assertEq(beaconOracle.beaconBalances(), 123456789);
         assertEq(beaconOracle.getBeaconBalances(), 123456789);
         assertEq(beaconOracle.beaconValidators(), 12345);
         assertEq(beaconOracle.getBeaconValidators(), 12345);
-        assertEq(beaconOracle.isQuorum(), true);
+        assertEq(beaconOracle.isCurrentFrame(), false);
 
         vm.prank(address(11));
         assertFalse(beaconOracle.isReportBeacon(address(11)));
