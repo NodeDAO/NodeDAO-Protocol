@@ -520,6 +520,10 @@ contract LiquidStaking is
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
     }
 
+    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
+        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    }
+
     function onERC721Received(
         address operator,
         address from,
