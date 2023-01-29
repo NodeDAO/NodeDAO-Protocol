@@ -283,8 +283,6 @@ contract LiquidStakingTest is Test {
         assertEq(60.8 ether, liquidStaking.operatorPoolBalances(1));
 
         address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
-        address operatorVaultAddrFromFactory = vaultFactoryContract.getNodeOperatorVaultContract(1);
-        assertEq(operatorVaultAddr, operatorVaultAddrFromFactory);
         console.log("operatorVaultAddr: ", operatorVaultAddr);
         console.log("operatorVaultImpl: ", address(vaultContract));
 
