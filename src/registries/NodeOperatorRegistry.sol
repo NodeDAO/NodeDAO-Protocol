@@ -188,6 +188,8 @@ contract NodeOperatorRegistry is
         }
 
         operators[_id].controllerAddress = _controllerAddress;
+        usedControllerAddress[_controllerAddress] = true;
+
         emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
     }
 
