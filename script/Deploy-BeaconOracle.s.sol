@@ -31,7 +31,10 @@ contract DeployBeaconOracleScript is Script {
 
         beaconOracleProxy = deployer.deploy(address(beaconOracle));
 
-        BeaconOracle(beaconOracleProxy).initialize(_dao);
+        // goerli: 1616508000
+        // mainnet: 1606824023
+        uint64 genesisTime = 1616508000;
+        BeaconOracle(beaconOracleProxy).initialize(_dao, genesisTime);
 
         vm.stopBroadcast();
     }

@@ -29,22 +29,19 @@ contract BeaconOracle is
     // Number of slots corresponding to each epoch
     uint64 internal constant SLOTS_PER_EPOCH = 32;
 
-    // Base time (default beacon creation time)
-    // goerli: 1616508000
-    // mainnet: 1606824023
-    uint64 public constant GENESIS_TIME = 1616508000;
-
     // Seconds for each slot
     uint64 internal constant SECONDS_PER_SLOT = 12;
-
-    // Maximum number of oracle committee members
-    uint8 public constant MAX_MEMBERS = 255;
 
     /// The bitmask of the oracle members that pushed their reports (default:0)
     uint256 internal reportBitMaskPosition;
 
     // dao address
     address public dao;
+
+    // Base time (default beacon creation time)
+    // goerli: 1616508000
+    // mainnet: 1606824023
+    uint64 public genesisTime;
 
     // The epoch of each frame (currently 24h for 225)
     uint32 public epochsPerFrame;
@@ -58,7 +55,7 @@ contract BeaconOracle is
     // current reportBeacon beaconValidators
     uint64 public beaconValidators;
 
-    uint8 public oracleMemberCount;
+    uint256 public oracleMemberCount;
 
     // reportBeacon merkleTreeRoot storage
     bytes32 internal merkleTreeRoot;
@@ -69,12 +66,13 @@ contract BeaconOracle is
     // oracle commit members
     address[] internal oracleMembers;
 
-    function initialize(address _dao) public initializer {
+    function initialize(address _dao, uint64 _genesisTime) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
 
         dao = _dao;
+        genesisTime = _genesisTime;
         epochsPerFrame = 225;
         // So the initial is the first epochId
         expectedEpochId = _getFrameFirstEpochOfDay(getCurrentEpochId());
@@ -89,8 +87,8 @@ contract BeaconOracle is
      * description: get Quorum
      * @return {uint32} Quorum = oracleMemberCount * 2 / 3 + 1
      */
-    function getQuorum() public view returns (uint8) {
-        uint8 n = (oracleMemberCount * 2) / 3;
+    function getQuorum() public view returns (uint256) {
+        uint256 n = (oracleMemberCount * 2) / 3;
         return n + 1;
     }
 
@@ -99,7 +97,7 @@ contract BeaconOracle is
      */
     function getCurrentEpochId() public view returns (uint256) {
         // The number of epochs after the base time
-        return (_getTime() - GENESIS_TIME) / (SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
+        return (_getTime() - genesisTime) / (SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
     }
 
     /**
@@ -107,6 +105,19 @@ contract BeaconOracle is
      */
     function isCurrentFrame() public view returns (bool) {
         return getCurrentEpochId() >= expectedEpochId;
+    }
+
+    /**
+     * Return `_member` index in the members list or MEMBER_NOT_FOUND
+     */
+    function getMemberId(address _member) public view returns (uint256) {
+        uint256 length = oracleMembers.length;
+        for (uint256 i = 0; i < length; ++i) {
+            if (oracleMembers[i] == _member) {
+                return i;
+            }
+        }
+        return MEMBER_NOT_FOUND;
     }
 
     /**
@@ -121,10 +132,21 @@ contract BeaconOracle is
      */
     function addOracleMember(address _oracleMember) external onlyDao {
         require(address(0) != _oracleMember, "BAD_ARGUMENT");
-        require(oracleMemberCount < MAX_MEMBERS, "TOO_MANY_MEMBERS");
-        require(MEMBER_NOT_FOUND == _getMemberId(_oracleMember), "MEMBER_EXISTS");
+        require(MEMBER_NOT_FOUND == getMemberId(_oracleMember), "MEMBER_EXISTS");
 
-        oracleMembers.push(_oracleMember);
+        bool isAdd = false;
+        for (uint256 i = 0; i < oracleMembers.length; ++i) {
+            if (oracleMembers[i] == address(0)) {
+                oracleMembers[i] = _oracleMember;
+                isAdd = true;
+                break;
+            }
+        }
+
+        if (!isAdd) {
+            oracleMembers.push(_oracleMember);
+        }
+
         oracleMemberCount++;
 
         emit AddOracleMember(_oracleMember);
@@ -135,7 +157,7 @@ contract BeaconOracle is
      */
     function removeOracleMember(address _oracleMember) external onlyDao {
         require(address(0) != _oracleMember, "BAD_ARGUMENT");
-        uint256 index = _getMemberId(_oracleMember);
+        uint256 index = getMemberId(_oracleMember);
         require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
         require(oracleMemberCount > 0, "Member count is 0");
         delete oracleMembers[index];
@@ -203,7 +225,7 @@ contract BeaconOracle is
         }
 
         // make sure the oracle is from members list and has not yet voted
-        uint256 index = _getMemberId(msg.sender);
+        uint256 index = getMemberId(msg.sender);
         require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
 
         uint256 bitMask = reportBitMaskPosition;
@@ -265,7 +287,7 @@ contract BeaconOracle is
     function isReportBeacon(address _oracleMember) external view returns (bool) {
         require(_oracleMember != address(0), "address provided invalid");
         // make sure the oracle is from members list and has not yet voted
-        uint256 index = _getMemberId(_oracleMember);
+        uint256 index = getMemberId(_oracleMember);
         require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
         uint256 bitMask = reportBitMaskPosition;
         uint256 mask = 1 << index;
@@ -320,21 +342,8 @@ contract BeaconOracle is
     }
 
     function _isOracleMember(address _oracleMember) internal view returns (bool) {
-        uint256 index = _getMemberId(_oracleMember);
+        uint256 index = getMemberId(_oracleMember);
         return index != MEMBER_NOT_FOUND;
-    }
-
-    /**
-     * Return `_member` index in the members list or MEMBER_NOT_FOUND
-     */
-    function _getMemberId(address _member) internal view returns (uint256) {
-        uint256 length = oracleMembers.length;
-        for (uint256 i = 0; i < length; ++i) {
-            if (oracleMembers[i] == _member) {
-                return i;
-            }
-        }
-        return MEMBER_NOT_FOUND;
     }
 
     /**

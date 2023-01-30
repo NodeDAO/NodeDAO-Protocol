@@ -12,7 +12,7 @@ import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IDepositContract.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
-import { ERC721A__IERC721ReceiverUpgradeable } from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
+import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 
 contract LiquidStaking is
     Initializable,
@@ -305,10 +305,9 @@ contract LiquidStaking is
         _liquidUserNfts[tokenId] = false;
 
         claimRewardsOfUser(tokenId);
-
         vNFTContract.safeTransferFrom(msg.sender, address(this), tokenId);
-
-        success = nETHContract.transferFrom(address(this), msg.sender, amountOut);
+        // success = nETHContract.transferFrom(address(this), msg.sender, amountOut);
+        success = nETHContract.transfer(msg.sender, amountOut);
         require(success, "Failed to transfer neth");
 
         IELVault(vaultContractAddress).setUserNft(tokenId, 0);
@@ -524,12 +523,11 @@ contract LiquidStaking is
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
     }
 
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external override returns (bytes4){
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        override
+        returns (bytes4)
+    {
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
