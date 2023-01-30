@@ -14,8 +14,6 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public vNFTContract;
     address public liquidStakingAddress;
     address public beacon;
-    address[] public ELVaults;
-    mapping(uint256 => address) operatorVaults;
     address public nodeOperatorRegistryAddress;
 
     modifier onlyNodeOperatorRegistry() {
@@ -51,18 +49,8 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         address proxyAddress = address(
             new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, vNFTContract, dao, operatorId, liquidStakingAddress))
         );
-        ELVaults.push(proxyAddress);
         emit ELVaultProxyDeployed(proxyAddress);
-        operatorVaults[operatorId] = proxyAddress;
         return proxyAddress;
-    }
-
-    /**
-     * @notice Get information about an operator vault contract address
-     * @param operatorId operator id
-     */
-    function getNodeOperatorVaultContract(uint256 operatorId) external view returns (address vaultContractAddress) {
-        return operatorVaults[operatorId];
     }
 
     function setNodeOperatorRegistry(address _nodeOperatorRegistryAddress) public onlyOwner {

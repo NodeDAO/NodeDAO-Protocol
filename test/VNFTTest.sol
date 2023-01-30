@@ -98,5 +98,8 @@ contract VNFTTest is Test {
         vnft.whiteListMint(bytes(""), address(2), 1);
         assertEq(vnft.activeValidators().length, 2);
         assertEq(vnft.activeValidators().length, vnft.activeNfts().length);
+        vnft.whiteListMint(bytes("2"), address(2), 1);
+        assertEq(vnft.activeValidators()[0], bytes("1"));
+        assertEq(vnft.activeValidators()[1], bytes("2"));
     }
 }

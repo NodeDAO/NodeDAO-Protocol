@@ -12,13 +12,15 @@ import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IDepositContract.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
+import { ERC721A__IERC721ReceiverUpgradeable } from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 
 contract LiquidStaking is
     Initializable,
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
     OwnableUpgradeable,
-    PausableUpgradeable
+    PausableUpgradeable,
+    ERC721A__IERC721ReceiverUpgradeable
 {
     IDepositContract public depositContract;
 
@@ -516,6 +518,19 @@ contract LiquidStaking is
 
     function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
+    }
+
+    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
+        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    }
+
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes calldata data
+    ) external override returns (bytes4){
+        return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
     receive() external payable {}
