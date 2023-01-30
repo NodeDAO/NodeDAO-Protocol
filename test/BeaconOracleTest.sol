@@ -16,7 +16,11 @@ contract BeaconOracleTest is Test {
     function setUp() public {
         vm.warp(1673161943);
         beaconOracle = new BeaconOracle();
-        beaconOracle.initialize(_dao);
+
+        // goerli: 1616508000
+        // mainnet: 1606824023
+        uint64 genesisTime = 1616508000;
+        beaconOracle.initialize(_dao, genesisTime);
 
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(address(11));
@@ -32,8 +36,23 @@ contract BeaconOracleTest is Test {
     }
 
     function testAddOracleMember() public {
-        vm.prank(address(1));
-        beaconOracle.addOracleMember(address(0x1234567812345678123456781234567812345678));
+        vm.startPrank(address(1));
+
+        beaconOracle.addOracleMember(address(20));
+        beaconOracle.addOracleMember(address(21));
+        beaconOracle.addOracleMember(address(22));
+        beaconOracle.addOracleMember(address(23));
+
+        assertEq(beaconOracle.oracleMemberCount(), 9);
+
+        beaconOracle.removeOracleMember(address(21));
+        assertEq(beaconOracle.oracleMemberCount(), 8);
+
+        beaconOracle.addOracleMember(address(25));
+        assertEq(beaconOracle.getMemberId(address(25)), 6);
+        assertEq(beaconOracle.oracleMemberCount(), 9);
+
+        vm.stopPrank();
     }
 
     function testFailAuthOracleMember() public {
@@ -43,7 +62,7 @@ contract BeaconOracleTest is Test {
 
     function testIsOracleMember() public {
         testAddOracleMember();
-        bool isOracleMember = beaconOracle.isOracleMember(address(0x1234567812345678123456781234567812345678));
+        bool isOracleMember = beaconOracle.isOracleMember(address(20));
         assertEq(isOracleMember, true);
     }
 
@@ -60,12 +79,13 @@ contract BeaconOracleTest is Test {
     }
 
     function testGetQuorum() public {
-        uint32 quorum = beaconOracle.getQuorum();
+        uint256 quorum = beaconOracle.getQuorum();
         assertEq(quorum, 4);
     }
 
     function testGetConfig() public {
         console.log(beaconOracle.expectedEpochId());
+        console.log(beaconOracle.genesisTime());
         assertEq(beaconOracle.epochsPerFrame(), 225);
         assertEq(beaconOracle.isCurrentFrame(), true);
     }

@@ -21,7 +21,11 @@ contract ExampleScript is Script {
         deployer.setType("uups");
 
         address proxyAddress = deployer.deploy(address(implementation));
-        BeaconOracle(proxyAddress).initialize(_dao);
+
+        // goerli: 1616508000
+        // mainnet: 1606824023
+        uint64 genesisTime = 1616508000;
+        BeaconOracle(proxyAddress).initialize(_dao, genesisTime);
         vm.stopBroadcast();
     }
 }

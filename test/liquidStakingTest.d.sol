@@ -81,7 +81,10 @@ contract LiquidStakingTest is Test {
 
         vm.warp(1673161943);
         beaconOracle = new BeaconOracle();
-        beaconOracle.initialize(_dao);
+        // goerli: 1616508000
+        // mainnet: 1606824023
+        uint64 genesisTime = 1616508000;
+        beaconOracle.initialize(_dao, genesisTime);
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(_oracleMember1);
         beaconOracle.addOracleMember(_oracleMember2);
