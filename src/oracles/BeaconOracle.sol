@@ -110,6 +110,13 @@ contract BeaconOracle is
     }
 
     /**
+     * set dao vault address
+     */
+    function setDaoAddress(address _dao) external onlyDao {
+        dao = _dao;
+    }
+
+    /**
      * Add oracle member
      */
     function addOracleMember(address _oracleMember) external onlyDao {
@@ -127,6 +134,7 @@ contract BeaconOracle is
      * Add oracle member and configure all members to re-report
      */
     function removeOracleMember(address _oracleMember) external onlyDao {
+        require(address(0) != _oracleMember, "BAD_ARGUMENT");
         uint256 index = _getMemberId(_oracleMember);
         require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
         require(oracleMemberCount > 0, "Member count is 0");
@@ -144,6 +152,7 @@ contract BeaconOracle is
      * @return {bool} is oracleMember
      */
     function isOracleMember(address _oracleMember) external view returns (bool) {
+        require(address(0) != _oracleMember, "BAD_ARGUMENT");
         return _isOracleMember(_oracleMember);
     }
 
