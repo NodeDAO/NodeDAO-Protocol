@@ -305,10 +305,9 @@ contract LiquidStaking is
         _liquidUserNfts[tokenId] = false;
 
         claimRewardsOfUser(tokenId);
-
         vNFTContract.safeTransferFrom(msg.sender, address(this), tokenId);
-
-        success = nETHContract.transferFrom(address(this), msg.sender, amountOut);
+        // success = nETHContract.transferFrom(address(this), msg.sender, amountOut);
+        success = nETHContract.transfer(msg.sender, amountOut);
         require(success, "Failed to transfer neth");
 
         IELVault(vaultContractAddress).setUserNft(tokenId, 0);
