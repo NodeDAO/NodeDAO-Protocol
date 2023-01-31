@@ -126,8 +126,7 @@ contract LiquidStakingTest is Test {
         liquidStaking.stakeETH{value: 3 ether}(_referral, 1);
         console.log("balance: 23", neth.balanceOf(address(23)));
 
-        assertEq(liquidStaking.unstakePoolBalances(), 0.5 ether);
-        assertEq(liquidStaking.operatorPoolBalances(1), 4.5 ether);
+        assertEq(liquidStaking.operatorPoolBalances(1), 5 ether);
     }
 
     function testStakeETHWithDepositFee() public {
@@ -150,8 +149,7 @@ contract LiquidStakingTest is Test {
         liquidStaking.stakeETH{value: 3 ether}(_referral, 1);
         console.log("balance: 23", neth.balanceOf(address(23)));
 
-        assertEq(liquidStaking.unstakePoolBalances(), 0.5 ether);
-        assertEq(liquidStaking.operatorPoolBalances(1), 4.5 ether);
+        assertEq(liquidStaking.operatorPoolBalances(1), 5 ether);
 
         vm.prank(_dao);
         liquidStaking.setDepositFeeRate(1000);
@@ -236,27 +234,6 @@ contract LiquidStakingTest is Test {
         assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
         assertEq(liquidStaking.getNethOut(1 ether), 1 ether);
 
-        vm.prank(address(20));
-        liquidStaking.unstakeETH(0.00931 ether);
-
-        vm.prank(address(21));
-        liquidStaking.unstakeETH(0.131 ether);
-
-        vm.prank(address(22));
-        liquidStaking.unstakeETH(0.22231 ether);
-
-        vm.prank(address(23));
-        liquidStaking.unstakeETH(0.11112 ether);
-
-        vm.prank(address(24));
-        liquidStaking.unstakeETH(0.1011157 ether);
-
-        vm.prank(address(25));
-        liquidStaking.unstakeETH(0.11125878 ether);
-
-        vm.prank(address(26));
-        liquidStaking.unstakeETH(0.0003009987 ether);
-
         assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
         assertEq(liquidStaking.getNethOut(1 ether), 1 ether);
     }
@@ -272,18 +249,17 @@ contract LiquidStakingTest is Test {
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
 
-        assertEq(28.8 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
 
         vm.deal(address(21), 32 ether);
         vm.prank(address(21));
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
         assertEq(1, vnft.balanceOf(address(21)));
         assertEq(0, neth.balanceOf(address(21)));
-        assertEq(3.2 ether, liquidStaking.unstakePoolBalances());
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(32 ether, neth.balanceOf(address(liquidStaking)));
 
-        assertEq(60.8 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(64 ether, liquidStaking.operatorPoolBalances(1));
 
         address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
         console.log("operatorVaultAddr: ", operatorVaultAddr);
@@ -300,7 +276,7 @@ contract LiquidStakingTest is Test {
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(64 ether, neth.balanceOf(address(liquidStaking)));
 
-        assertEq(92.8 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(96 ether, liquidStaking.operatorPoolBalances(1));
 
         assertEq(address(21).balance, 0);
         assertEq(address(22).balance, 0);
@@ -310,29 +286,23 @@ contract LiquidStakingTest is Test {
         assertEq(address(22).balance, 0);
         assertEq(address(21).balance, 0.9 ether);
         assertEq(IELVault(operatorVaultAddr).getLiquidStakingReward(), 0);
-        assertEq(3.2 ether, liquidStaking.unstakePoolBalances());
 
-        assertEq(92.8 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(96 ether, liquidStaking.operatorPoolBalances(1));
 
         vm.deal(address(23), 33 ether);
         vm.prank(address(23));
         liquidStaking.stakeETH{value: 32 ether}(_referral, 1);
         assertEq(0, vnft.balanceOf(address(23)));
         assertEq(32 ether, neth.balanceOf(address(23)));
-        assertEq(6.4 ether, liquidStaking.unstakePoolBalances());
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(64 ether, neth.balanceOf(address(liquidStaking)));
 
-        assertEq(121.6 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(128 ether, liquidStaking.operatorPoolBalances(1));
 
         assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
         assertEq(liquidStaking.getNethOut(1 ether), 1 ether);
 
-        // unstakeETH
-        vm.prank(address(23));
-        liquidStaking.unstakeETH(1.1 ether);
-        assertEq(30.9 ether, neth.balanceOf(address(23)));
-        assertEq(5.3 ether, liquidStaking.unstakePoolBalances());
+        assertEq(32 ether, neth.balanceOf(address(23)));
         assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
         assertEq(liquidStaking.getNethOut(1 ether), 1 ether);
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
@@ -361,7 +331,7 @@ contract LiquidStakingTest is Test {
         vm.prank(address(_controllerAddress));
         liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
 
-        assertEq(89.6 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(96 ether, liquidStaking.operatorPoolBalances(1));
 
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(64 ether, neth.balanceOf(address(liquidStaking)));
@@ -392,7 +362,7 @@ contract LiquidStakingTest is Test {
 
         assertEq(vnft.validatorExists(pubkey), true);
         assertEq(vnft.tokenOfValidator(pubkey), 1);
-        assertEq(57.6 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(64 ether, liquidStaking.operatorPoolBalances(1));
 
         // unwrapNFT todo
     }
@@ -408,7 +378,7 @@ contract LiquidStakingTest is Test {
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
 
-        assertEq(45 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(50 ether, liquidStaking.operatorPoolBalances(1));
 
         // registerValidator
         bytes[] memory pubkeys = new bytes[](1);

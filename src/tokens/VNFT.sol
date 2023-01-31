@@ -34,9 +34,7 @@ contract VNFT is
     mapping(uint256 => address) public lastOwners;
 
     event BaseURIChanged(string _before, string _after);
-    event Transferred(address _to, uint256 _amount);
     event LiquidStakingChanged(address _before, address _after);
-    event OpenSeaState(bool _isActive);
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
