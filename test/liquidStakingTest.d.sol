@@ -235,19 +235,18 @@ contract LiquidStakingTest is Test {
         assertEq(20 ether, neth.balanceOf(address(77)));
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
-        assertEq(18 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(20 ether, liquidStaking.operatorPoolBalances(1));
 
         vm.deal(address(88), 32 ether);
         vm.prank(address(88));
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
         assertEq(1, vnft.balanceOf(address(88)));
         assertEq(0, neth.balanceOf(address(88)));
-        assertEq(2 ether, liquidStaking.unstakePoolBalances());
 
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(32 ether, neth.balanceOf(address(liquidStaking)));
 
-        assertEq(50 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(52 ether, liquidStaking.operatorPoolBalances(1));
 
         address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
         console.log("operatorVaultAddr: ", operatorVaultAddr);
@@ -264,12 +263,12 @@ contract LiquidStakingTest is Test {
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         assertEq(64 ether, neth.balanceOf(address(liquidStaking)));
 
-        assertEq(82 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(84 ether, liquidStaking.operatorPoolBalances(1));
 
         assertEq(address(21).balance, 0);
         assertEq(address(22).balance, 0);
 
-        assertEq(82 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(84 ether, liquidStaking.operatorPoolBalances(1));
     }
 
     function testRegisterValidatorCorrect() public {
@@ -297,7 +296,7 @@ contract LiquidStakingTest is Test {
         vm.prank(address(_controllerAddress));
         liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
 
-        assertEq(50 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(52 ether, liquidStaking.operatorPoolBalances(1));
 
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
         console.log("neth.balanceOf(address(liquidStaking): ", neth.balanceOf(address(liquidStaking)));
