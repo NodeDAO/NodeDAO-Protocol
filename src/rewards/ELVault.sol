@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.8;
 
-import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "src/interfaces/IELVault.sol";
@@ -11,7 +10,7 @@ import "src/interfaces/IVNFT.sol";
 /**
  * @title ELVault for managing rewards
  */
-contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
+contract ELVault is IELVault, ReentrancyGuard, Initializable {
     IVNFT public vNFTContract;
     address public liquidStakingContract;
 
@@ -200,7 +199,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
         emit Transferred(to, amount);
     }
 
-    function claimRewardsOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
+    function reinvestmentOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 nftRewards = liquidStakingReward;
         unclaimedRewards -= nftRewards;
         liquidStakingReward = 0;
@@ -250,17 +249,21 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /**
      * @notice Operater Claims the rewards
      */
-    function claimOperater(address to) external nonReentrant onlyOwner {
+    function claimOperaterRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
+        uint256 rewards = operatorRewards;
         transfer(operatorRewards, to);
         operatorRewards = 0;
+        return rewards;
     }
 
     /**
      * @notice Operater Claims the rewards
      */
-    function claimDao(address to) external nonReentrant onlyDao {
+    function claimDaoRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
+        uint256 rewards = daoRewards;
         transfer(daoRewards, to);
         daoRewards = 0;
+        return rewards;
     }
 
     /**
@@ -275,7 +278,7 @@ contract ELVault is IELVault, Ownable, ReentrancyGuard, Initializable {
     /**
      * @notice Sets the `PublicSettleLimit`. Determines how frequently this contract can be spammed
      */
-    function setPublicSettleLimit(uint256 publicSettleLimit_) external onlyOwner {
+    function setPublicSettleLimit(uint256 publicSettleLimit_) external onlyDao {
         emit PublicSettleLimitChanged(publicSettleLimit, publicSettleLimit_);
         publicSettleLimit = publicSettleLimit_;
     }

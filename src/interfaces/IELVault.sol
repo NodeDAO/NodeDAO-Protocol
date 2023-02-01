@@ -28,11 +28,15 @@ interface IELVault {
 
     function publicSettle() external;
 
-    function claimRewardsOfLiquidStaking() external returns (uint256);
+    function reinvestmentOfLiquidStaking() external returns (uint256);
 
     function claimRewardsOfUser(uint256 tokenId) external returns (uint256);
 
     function setUserNft(uint256 tokenId, uint256 number) external;
 
     function setLiquidStakingGasHeight(uint256 _gasHeight) external;
+
+    function claimOperaterRewards(address to) external returns (uint256);
+
+    function claimDaoRewards(address to) external returns (uint256);
 }
