@@ -484,7 +484,6 @@ contract LiquidStaking is
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
-    // receive() external payable {}
     function receiveRewards(uint256 rewards) external payable {
         emit RewardsReceive(rewards);
     }
