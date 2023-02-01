@@ -90,13 +90,13 @@ contract LiquidStakingTest is Test {
         // mainnet: 1606824023
         uint64 genesisTime = 1616508000;
         beaconOracle.initialize(_dao, genesisTime);
-
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(_oracleMember1);
         // beaconOracle.addOracleMember(_oracleMember2);
         // beaconOracle.addOracleMember(_oracleMember3);
         // beaconOracle.addOracleMember(_oracleMember4);
         // beaconOracle.addOracleMember(_oracleMember5);
+        beaconOracle.setLiquidStaking(address(liquidStaking));
         vm.stopPrank();
 
         vm.prank(_oracleMember1);
