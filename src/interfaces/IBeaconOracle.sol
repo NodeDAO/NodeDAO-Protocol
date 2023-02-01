@@ -21,9 +21,13 @@ interface IBeaconOracle {
 
     function removeOracleMember(address _oracleMember) external;
 
-    function getBeaconBalances() external view returns (uint128);
+    function getBeaconBalances() external view returns (uint256);
 
-    function getBeaconValidators() external view returns (uint64);
+    function getPendingBalances() external view returns (uint256);
+
+    function getBeaconValidators() external view returns (uint256);
+
+    function addPendingBalances(uint256 _pendingBalance) external;
 
     event AddOracleMember(address oracleMember);
     event RemoveOracleMember(address oracleMember);
@@ -32,4 +36,7 @@ interface IBeaconOracle {
     event ResetEpochsPerFrame(uint256 epochsPerFrame);
     event ReportBeacon(uint256 epochId, address oracleMember, uint32 sameReportCount);
     event ReportSuccess(uint256 epochId, uint256 sameReportCount, uint32 quorum);
+    event PendingBalancesAdd(uint256 addBalance, uint256 totalBalance);
+    event PendingBalancesReset(uint256 totalBalance);
+    event LiquidStakingChanged(address _before, address _after);
 }

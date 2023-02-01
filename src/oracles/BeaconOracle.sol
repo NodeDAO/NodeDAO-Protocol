@@ -41,19 +41,19 @@ contract BeaconOracle is
     // Base time (default beacon creation time)
     // goerli: 1616508000
     // mainnet: 1606824023
-    uint64 public genesisTime;
+    uint256 public genesisTime;
 
     // The epoch of each frame (currently 24h for 225)
-    uint32 public epochsPerFrame;
+    uint256 public epochsPerFrame;
 
     // The expected epoch Id is required by oracle for report Beacon
     uint256 public expectedEpochId;
 
     // current reportBeacon beaconBalances
-    uint128 public beaconBalances;
+    uint256 public beaconBalances;
 
     // current reportBeacon beaconValidators
-    uint64 public beaconValidators;
+    uint256 public beaconValidators;
 
     uint256 public oracleMemberCount;
 
@@ -66,7 +66,12 @@ contract BeaconOracle is
     // oracle commit members
     address[] internal oracleMembers;
 
-    function initialize(address _dao, uint64 _genesisTime) public initializer {
+    address public liquidStakingContract;
+
+    // current pending balance
+    uint256 public pendingBalances;
+
+    function initialize(address _dao, uint256 _genesisTime) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
@@ -81,6 +86,16 @@ contract BeaconOracle is
     modifier onlyDao() {
         require(msg.sender == dao, "AUTH_FAILED");
         _;
+    }
+
+    modifier onlyLiquidStaking() {
+        require(liquidStakingContract == msg.sender, "Not allowed addPendingBalances");
+        _;
+    }
+
+    function addPendingBalances(uint256 _pendingBalance) external onlyLiquidStaking {
+        pendingBalances += _pendingBalance;
+        emit PendingBalancesAdd(_pendingBalance, pendingBalances);
     }
 
     /**
@@ -181,7 +196,7 @@ contract BeaconOracle is
     /**
      * Example Reset the reporting frequency
      */
-    function resetEpochsPerFrame(uint32 _epochsPerFrame) external onlyDao {
+    function resetEpochsPerFrame(uint256 _epochsPerFrame) external onlyDao {
         epochsPerFrame = _epochsPerFrame;
 
         emit ResetEpochsPerFrame(_epochsPerFrame);
@@ -190,14 +205,21 @@ contract BeaconOracle is
     /**
      * @return {uint128} The total balance of the consensus layer
      */
-    function getBeaconBalances() external view returns (uint128) {
+    function getBeaconBalances() external view returns (uint256) {
         return beaconBalances;
+    }
+
+    /**
+     * @return {uint128} The total balance of the pending validators
+     */
+    function getPendingBalances() external view returns (uint256) {
+        return pendingBalances;
     }
 
     /**
      * @return {uint128} The total validator count of the consensus layer
      */
-    function getBeaconValidators() external view returns (uint64) {
+    function getBeaconValidators() external view returns (uint256) {
         return beaconValidators;
     }
 
@@ -210,8 +232,8 @@ contract BeaconOracle is
      */
     function reportBeacon(
         uint256 _epochId,
-        uint128 _beaconBalance,
-        uint32 _beaconValidators,
+        uint256 _beaconBalance,
+        uint256 _beaconValidators,
         bytes32 _validatorRankingRoot
     ) external {
         require(getCurrentEpochId() >= expectedEpochId, "EPOCH_IS_NOT_CURRENT_FRAME");
@@ -329,13 +351,16 @@ contract BeaconOracle is
      */
     function _dealReport(
         uint256 _nextExpectedEpochId,
-        uint128 _beaconBalance,
-        uint32 _beaconValidators,
+        uint256 _beaconBalance,
+        uint256 _beaconValidators,
         bytes32 _validatorRankingRoot
     ) internal {
         beaconBalances = _beaconBalance;
         beaconValidators = _beaconValidators;
         merkleTreeRoot = _validatorRankingRoot;
+
+        pendingBalances = 0;
+        emit PendingBalancesReset(0);
 
         // clear report array
         _clearReportingAndAdvanceTo(_nextExpectedEpochId);
@@ -361,4 +386,14 @@ contract BeaconOracle is
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /**
+     * @notice set LiquidStaking contract address
+     * @param _liqStakingAddress - contract address
+     */
+    function setLiquidStaking(address _liqStakingAddress) external onlyDao {
+        require(_liqStakingAddress != address(0), "LiquidStaking address provided invalid");
+        emit LiquidStakingChanged(liquidStakingContract, _liqStakingAddress);
+        liquidStakingContract = _liqStakingAddress;
+    }
 }
