@@ -45,7 +45,6 @@ contract LiquidStaking is
     mapping(uint256 => bool) internal _liquidUserNfts; // The nft purchased from the staking pool using neth
 
     mapping(uint256 => uint256) public operatorPoolBalances; // operator's internal stake pool, key is operator_id
-    uint256 internal operatorPoolBalancesSum;
 
     uint256 public nftWrapNonce;
 
@@ -53,6 +52,8 @@ contract LiquidStaking is
     address public dao;
     // dao treasury address
     address public daoVaultAddress;
+
+    uint256 internal operatorPoolBalancesSum;
 
     modifier onlyDao() {
         require(msg.sender == dao, "AUTH_FAILED");
@@ -195,6 +196,7 @@ contract LiquidStaking is
         uint256 stakeAmount = DEPOSIT_SIZE * pubkeys.length;
         operatorPoolBalances[operatorId] -= stakeAmount;
         operatorPoolBalancesSum -= stakeAmount;
+        beaconOracleContract.addPendingBalances(stakeAmount);
     }
 
     function _stakeAndMint(uint256 operatorId, bytes calldata pubkey, bytes calldata signature, bytes32 depositDataRoot)
@@ -350,8 +352,7 @@ contract LiquidStaking is
     }
 
     function getTotalEthValue() public view returns (uint256) {
-        uint256 beaconBalance = beaconOracleContract.getBeaconBalances();
-        return beaconBalance + operatorPoolBalancesSum;
+        return operatorPoolBalancesSum + beaconOracleContract.getBeaconBalances() + beaconOracleContract.getPendingBalances();
     }
 
     function getEthOut(uint256 _nethAmountIn) public view returns (uint256) {
