@@ -64,11 +64,12 @@ contract LiquidStaking is
     event ValidatorRegistered(uint256 operator, uint256 tokenId);
     event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
     event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
-    event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
-    event ClaimRewardsToUnstakePool(uint256 operatorId, uint256 rewards);
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
     event NFTMinted(uint256 tokenId);
+    event OperatorReinvestmentRewards(uint256 operatorId, uint256 rewards);
+    event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
+    event DaoClaimRewards(uint256 operatorId, uint256 rewards);
 
     function initialize(
         address _dao,
@@ -231,7 +232,7 @@ contract LiquidStaking is
         success = nETHContract.transferFrom(msg.sender, address(this), amountOut);
         require(success, "Failed to transfer neth");
 
-        claimRewardsOfOperator(operatorId);
+        reinvestmentRewardsOfOperator(operatorId);
 
         vNFTContract.safeTransferFrom(address(this), msg.sender, tokenId);
 
@@ -280,30 +281,30 @@ contract LiquidStaking is
 
     //1. claim income operatorPoolBalances
     //2. Earnings are settled setLiquidStakingGasHeight
-    function batchClaimRewardsOfOperator(uint256[] memory operatorIds) public {
+    function batchReinvestmentRewardsOfOperator(uint256[] memory operatorIds) public {
         for (uint256 i = 0; i < operatorIds.length; i++) {
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorIds[i]);
             IELVault(vaultContractAddress).settle();
 
-            uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfLiquidStaking();
+            uint256 nftRewards = IELVault(vaultContractAddress).reinvestmentOfLiquidStaking();
             IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
             operatorPoolBalances[operatorIds[i]] += nftRewards;
-            emit OperatorClaimRewards(operatorIds[i], nftRewards);
+            emit OperatorReinvestmentRewards(operatorIds[i], nftRewards);
         }
     }
 
     //1. claim income operatorPoolBalances
     //2. Earnings are settled setLiquidStakingGasHeight
-    function claimRewardsOfOperator(uint256 operatorId) public {
+    function reinvestmentRewardsOfOperator(uint256 operatorId) public {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
 
-        uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfLiquidStaking();
+        uint256 nftRewards = IELVault(vaultContractAddress).reinvestmentOfLiquidStaking();
         IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
         operatorPoolBalances[operatorId] += nftRewards;
-        emit OperatorClaimRewards(operatorId, nftRewards);
+        emit OperatorReinvestmentRewards(operatorId, nftRewards);
     }
 
     function claimRewardsOfUser(uint256 tokenId) public {
@@ -314,6 +315,26 @@ contract LiquidStaking is
         uint256 nftRewards = IELVault(vaultContractAddress).claimRewardsOfUser(tokenId);
 
         emit UserClaimRewards(operatorId, nftRewards);
+    }
+
+    function claimOperaterRewards(uint256 operatorId) public {
+        address rewardAddress;
+        address vaultContractAddress;
+        (,, rewardAddress,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
+
+        IELVault(vaultContractAddress).settle();
+        uint256 operatorRewards = IELVault(vaultContractAddress).claimOperaterRewards(rewardAddress);
+
+        emit OperatorClaimRewards(operatorId, operatorRewards);
+    }
+
+    function claimDaoRewards(uint256 operatorId) public {
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
+
+        IELVault(vaultContractAddress).settle();
+        uint256 daoRewards = IELVault(vaultContractAddress).claimDaoRewards(daoVaultAddress);
+
+        emit DaoClaimRewards(operatorId, daoRewards);
     }
 
     function _settle(uint256 operatorId) internal {
