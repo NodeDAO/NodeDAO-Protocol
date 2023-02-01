@@ -87,6 +87,7 @@ contract LiquidStaking is
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
+        __Pausable_init();
 
         dao = _dao;
         daoVaultAddress = _daoVaultAddress;
@@ -107,7 +108,7 @@ contract LiquidStaking is
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant {
+    function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant whenNotPaused {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
@@ -139,7 +140,7 @@ contract LiquidStaking is
 
     //1. depost
     //2. _operatorId must be a trusted operator
-    function stakeNFT(address _referral, uint256 _operatorId) external payable nonReentrant {
+    function stakeNFT(address _referral, uint256 _operatorId) external payable nonReentrant whenNotPaused {
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
 
@@ -178,7 +179,7 @@ contract LiquidStaking is
         bytes[] calldata pubkeys,
         bytes[] calldata signatures,
         bytes32[] calldata depositDataRoots
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         require(
             pubkeys.length == signatures.length && pubkeys.length == depositDataRoots.length,
             "All parameter array's must have the same length."
@@ -217,7 +218,7 @@ contract LiquidStaking is
         emit ValidatorRegistered(operatorId, tokenId);
     }
 
-    function unstakeNFT(bytes[] calldata data) public nonReentrant returns (bool) {
+    function unstakeNFT(bytes[] calldata data) public nonReentrant whenNotPaused returns (bool) {
         return data.length == 0;
     }
 
@@ -228,7 +229,7 @@ contract LiquidStaking is
     //4. Trigger the operator's claim once, and transfer the nft to the user
     //5. Record _liquidUserNfts as true
     //6. Set the vault contract setUserNft to block.number
-    function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
+    function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant whenNotPaused {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
 
         reinvestmentRewardsOfOperator(operatorId);
@@ -259,7 +260,7 @@ contract LiquidStaking is
     //3. Claim income for the user, and transfer the user's nft to the stake pool
     //4. Transfer neth to the user
     //5. Set the vault contract setUserNft to 0
-    function unwrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
+    function unwrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant whenNotPaused {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
 
         bool trusted;
@@ -289,7 +290,7 @@ contract LiquidStaking is
 
     //1. claim income operatorPoolBalances
     //2. Earnings are settled setLiquidStakingGasHeight
-    function batchReinvestmentRewardsOfOperator(uint256[] memory operatorIds) public {
+    function batchReinvestmentRewardsOfOperator(uint256[] memory operatorIds) public whenNotPaused {
         for (uint256 i = 0; i < operatorIds.length; i++) {
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorIds[i]);
             IELVault(vaultContractAddress).settle();
@@ -305,7 +306,7 @@ contract LiquidStaking is
 
     //1. claim income operatorPoolBalances
     //2. Earnings are settled setLiquidStakingGasHeight
-    function reinvestmentRewardsOfOperator(uint256 operatorId) public {
+    function reinvestmentRewardsOfOperator(uint256 operatorId) public whenNotPaused {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
 
@@ -317,7 +318,7 @@ contract LiquidStaking is
         emit OperatorReinvestmentRewards(operatorId, nftRewards);
     }
 
-    function claimRewardsOfUser(uint256 tokenId) public {
+    function claimRewardsOfUser(uint256 tokenId) public whenNotPaused {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
@@ -327,7 +328,7 @@ contract LiquidStaking is
         emit UserClaimRewards(operatorId, nftRewards);
     }
 
-    function claimOperaterRewards(uint256 operatorId) public {
+    function claimOperaterRewards(uint256 operatorId) public whenNotPaused {
         address rewardAddress;
         address vaultContractAddress;
         (,, rewardAddress,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
@@ -338,7 +339,7 @@ contract LiquidStaking is
         emit OperatorClaimRewards(operatorId, operatorRewards);
     }
 
-    function claimDaoRewards(uint256 operatorId) public {
+    function claimDaoRewards(uint256 operatorId) public whenNotPaused {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
 
         IELVault(vaultContractAddress).settle();
@@ -486,5 +487,17 @@ contract LiquidStaking is
 
     function receiveRewards(uint256 rewards) external payable {
         emit RewardsReceive(rewards);
+    }
+
+    function isPaused() public view returns (bool) {
+        paused();
+    }
+
+    function pause() external onlyDao {
+        _pause();
+    }
+
+    function unpause() external onlyDao {
+        _unpause();
     }
 }

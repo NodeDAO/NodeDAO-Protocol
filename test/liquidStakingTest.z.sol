@@ -404,4 +404,13 @@ contract LiquidStakingTest is Test {
         vm.prank(address(_controllerAddress));
         liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
     }
+
+    function testFailPause() public {
+        vm.prank(_dao);
+        liquidStaking.pause();
+
+        vm.deal(address(20), 55 ether);
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 50 ether}(_referral, 1);
+    }
 }
