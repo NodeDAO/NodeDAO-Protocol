@@ -4,7 +4,7 @@ pragma solidity 0.8.8;
 import "src/LiquidStaking.sol";
 import "forge-std/Script.sol";
 
-contract UpgradeConsensusVaultScript is Script {
+contract UpgradeLiquidStakingScript is Script {
     address payable liquidStakingProxy = payable(0x09F6E4018b091786890068F0e03DaaF344EA4768);
     LiquidStaking liquidStaking;
 
