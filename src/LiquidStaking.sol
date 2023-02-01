@@ -45,6 +45,7 @@ contract LiquidStaking is
     mapping(uint256 => bool) internal _liquidUserNfts; // The nft purchased from the staking pool using neth
 
     mapping(uint256 => uint256) public operatorPoolBalances; // operator's internal stake pool, key is operator_id
+    uint256 internal operatorPoolBalancesSum;
 
     uint256 public nftWrapNonce;
 
@@ -121,10 +122,11 @@ contract LiquidStaking is
 
         // 1. Convert depositAmount according to the exchange rate of nETH
         // 2. Mint nETH
-        uint256 amountOut = _getNethOut(depositPoolAmount, depositFeeAmount);
+        uint256 amountOut = getNethOut(depositPoolAmount);
         nETHContract.whiteListMint(amountOut, msg.sender);
 
         operatorPoolBalances[_operatorId] += depositPoolAmount;
+        operatorPoolBalancesSum += depositPoolAmount;
 
         emit EthStake(msg.sender, msg.value, amountOut, _referral);
     }
@@ -139,7 +141,7 @@ contract LiquidStaking is
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
 
-        uint256 amountOut = _getNethOut(msg.value, 0);
+        uint256 amountOut = getNethOut(msg.value);
 
         _settle(_operatorId);
 
@@ -157,6 +159,7 @@ contract LiquidStaking is
         }
 
         operatorPoolBalances[_operatorId] += msg.value;
+        operatorPoolBalancesSum += msg.value;
 
         emit NftStake(msg.sender, mintNftsCount, _referral);
     }
@@ -189,7 +192,9 @@ contract LiquidStaking is
             _stakeAndMint(operatorId, pubkeys[i], signatures[i], depositDataRoots[i]);
         }
 
-        operatorPoolBalances[operatorId] -= DEPOSIT_SIZE * pubkeys.length;
+        uint256 stakeAmount = DEPOSIT_SIZE * pubkeys.length;
+        operatorPoolBalances[operatorId] -= stakeAmount;
+        operatorPoolBalancesSum -= stakeAmount;
     }
 
     function _stakeAndMint(uint256 operatorId, bytes calldata pubkey, bytes calldata signature, bytes32 depositDataRoot)
@@ -225,7 +230,7 @@ contract LiquidStaking is
 
         reinvestmentRewardsOfOperator(operatorId);
 
-        uint256 amountOut = _getNethOut(value, 0);
+        uint256 amountOut = getNethOut(value);
 
         bytes memory pubkey = vNFTContract.validatorOf(tokenId);
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
@@ -263,7 +268,7 @@ contract LiquidStaking is
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
         require(success, "verifyNftValue fail");
 
-        uint256 amountOut = _getNethOut(value, 0);
+        uint256 amountOut = getNethOut(value);
 
         _liquidUserNfts[tokenId] = false;
 
@@ -290,6 +295,7 @@ contract LiquidStaking is
             IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
             operatorPoolBalances[operatorIds[i]] += nftRewards;
+            operatorPoolBalancesSum += nftRewards;
             emit OperatorReinvestmentRewards(operatorIds[i], nftRewards);
         }
     }
@@ -304,6 +310,7 @@ contract LiquidStaking is
         IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
         operatorPoolBalances[operatorId] += nftRewards;
+        operatorPoolBalancesSum += nftRewards;
         emit OperatorReinvestmentRewards(operatorId, nftRewards);
     }
 
@@ -344,7 +351,7 @@ contract LiquidStaking is
 
     function getTotalEthValue() public view returns (uint256) {
         uint256 beaconBalance = beaconOracleContract.getBeaconBalances();
-        return beaconBalance + address(this).balance;
+        return beaconBalance + operatorPoolBalancesSum;
     }
 
     function getEthOut(uint256 _nethAmountIn) public view returns (uint256) {
@@ -355,16 +362,6 @@ contract LiquidStaking is
         }
 
         return _nethAmountIn * (totalEth) / (nethSupply);
-    }
-
-    function _getNethOut(uint256 _ethAmountIn, uint256 _fee) internal returns (uint256) {
-        uint256 totalEth = getTotalEthValue() - (msg.value - _fee);
-        uint256 nethSupply = nETHContract.totalSupply();
-        if (nethSupply == 0) {
-            return _ethAmountIn;
-        }
-        require(totalEth > 0, "Cannot calculate nETH token amount while balance is zero");
-        return _ethAmountIn * (nethSupply) / (totalEth);
     }
 
     function getNethOut(uint256 _ethAmountIn) public view returns (uint256) {
@@ -465,7 +462,7 @@ contract LiquidStaking is
     }
 
     function getOperatorPoolEtherMultiple(uint256 operator) internal view returns (uint256) {
-        return operatorPoolBalances[operator] / 32 ether;
+        return operatorPoolBalances[operator] / DEPOSIT_SIZE;
     }
 
     function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
