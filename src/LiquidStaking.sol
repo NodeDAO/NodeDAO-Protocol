@@ -72,6 +72,7 @@ contract LiquidStaking is
     event OperatorReinvestmentRewards(uint256 operatorId, uint256 rewards);
     event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
     event DaoClaimRewards(uint256 operatorId, uint256 rewards);
+    event RewardsReceive(uint256 rewards);
 
     function initialize(
         address _dao,
@@ -352,7 +353,8 @@ contract LiquidStaking is
     }
 
     function getTotalEthValue() public view returns (uint256) {
-        return operatorPoolBalancesSum + beaconOracleContract.getBeaconBalances() + beaconOracleContract.getPendingBalances();
+        return operatorPoolBalancesSum + beaconOracleContract.getBeaconBalances()
+            + beaconOracleContract.getPendingBalances();
     }
 
     function getEthOut(uint256 _nethAmountIn) public view returns (uint256) {
@@ -482,5 +484,8 @@ contract LiquidStaking is
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
-    receive() external payable {}
+    // receive() external payable {}
+    function receiveRewards(uint256 rewards) external payable {
+        emit RewardsReceive(rewards);
+    }
 }

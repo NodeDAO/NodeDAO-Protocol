@@ -425,11 +425,7 @@ contract LiquidStakingTest is Test {
         localDataRoot[0] = tempDepositDataRoot;
 
         vm.prank(_controllerAddress);
-        liquidStaking.registerValidator(
-            localpk,
-            localSig,
-            localDataRoot
-        );
+        liquidStaking.registerValidator(localpk, localSig, localDataRoot);
         vm.prank(address(3));
         vm.deal(address(3), 1000000 ether);
         liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
@@ -443,7 +439,8 @@ contract LiquidStakingTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
-        liquidStaking.claimRewardsOfUser(tokenIds[0]);
+        liquidStaking.reinvestmentRewardsOfOperator(1);
+        // liquidStaking.claimRewardsOfUser must be called by the user
     }
 
     function testClaimOperaterRewards() public {
@@ -463,11 +460,7 @@ contract LiquidStakingTest is Test {
         localDataRoot[0] = tempDepositDataRoot;
 
         vm.prank(_controllerAddress);
-        liquidStaking.registerValidator(
-            localpk,
-            localSig,
-            localDataRoot
-        );
+        liquidStaking.registerValidator(localpk, localSig, localDataRoot);
         vm.prank(address(3));
         vm.deal(address(3), 1000000 ether);
         liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
@@ -501,11 +494,7 @@ contract LiquidStakingTest is Test {
         localDataRoot[0] = tempDepositDataRoot;
 
         vm.prank(_controllerAddress);
-        liquidStaking.registerValidator(
-            localpk,
-            localSig,
-            localDataRoot
-        );
+        liquidStaking.registerValidator(localpk, localSig, localDataRoot);
         vm.prank(address(3));
         vm.deal(address(3), 1000000 ether);
         liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
@@ -561,18 +550,14 @@ contract LiquidStakingTest is Test {
         // assertEq(true, isTrue);
         BeaconOracle tempBeaconOracle = new BeaconOracle();
         vm.prank(_dao);
-        liquidStaking.setBeaconOracleContract(
-            address(tempBeaconOracle)
-        );
+        liquidStaking.setBeaconOracleContract(address(tempBeaconOracle));
         assertEq(address(liquidStaking.beaconOracleContract()), address(tempBeaconOracle));
     }
 
     function testSetNodeOperatorRegistryContract(uint256 randomInt) public {
         NodeOperatorRegistry tempOperatorRegistry = new NodeOperatorRegistry();
         vm.prank(_dao);
-        liquidStaking.setNodeOperatorRegistryContract(
-            address(tempOperatorRegistry)
-        );
+        liquidStaking.setNodeOperatorRegistryContract(address(tempOperatorRegistry));
         assertEq(address(liquidStaking.nodeOperatorRegistryContract()), address(tempOperatorRegistry));
     }
 
