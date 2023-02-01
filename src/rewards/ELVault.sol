@@ -250,7 +250,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     /**
      * @notice Operater Claims the rewards
      */
-    function claimOperaterRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
+    function claimOperatorRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 rewards = operatorRewards;
         operatorRewards = 0;
         transfer(rewards, to);

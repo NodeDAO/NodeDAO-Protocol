@@ -328,13 +328,13 @@ contract LiquidStaking is
         emit UserClaimRewards(operatorId, nftRewards);
     }
 
-    function claimOperaterRewards(uint256 operatorId) public whenNotPaused {
+    function claimOperatorRewards(uint256 operatorId) public whenNotPaused {
         address rewardAddress;
         address vaultContractAddress;
         (,, rewardAddress,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
 
         IELVault(vaultContractAddress).settle();
-        uint256 operatorRewards = IELVault(vaultContractAddress).claimOperaterRewards(rewardAddress);
+        uint256 operatorRewards = IELVault(vaultContractAddress).claimOperatorRewards(rewardAddress);
 
         emit OperatorClaimRewards(operatorId, operatorRewards);
     }
