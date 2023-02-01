@@ -223,6 +223,8 @@ contract LiquidStaking is
     function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
 
+        reinvestmentRewardsOfOperator(operatorId);
+
         uint256 amountOut = _getNethOut(value, 0);
 
         bytes memory pubkey = vNFTContract.validatorOf(tokenId);
@@ -231,8 +233,6 @@ contract LiquidStaking is
 
         success = nETHContract.transferFrom(msg.sender, address(this), amountOut);
         require(success, "Failed to transfer neth");
-
-        reinvestmentRewardsOfOperator(operatorId);
 
         vNFTContract.safeTransferFrom(address(this), msg.sender, tokenId);
 
