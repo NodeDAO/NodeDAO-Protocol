@@ -364,7 +364,7 @@ contract LiquidStakingTest is Test {
         assertEq(vnft.validatorExists(pubkey), true);
         assertEq(vnft.tokenOfValidator(pubkey), 1);
         assertEq(64 ether, liquidStaking.operatorPoolBalances(1));
-
+        assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
         // unwrapNFT todo
     }
 
@@ -403,6 +403,8 @@ contract LiquidStakingTest is Test {
         assertEq(vnft.validatorExists(pubkey), false);
         vm.prank(address(_controllerAddress));
         liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+
+        assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
     }
 
     function testFailPause() public {
