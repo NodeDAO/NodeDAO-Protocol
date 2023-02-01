@@ -91,6 +91,7 @@ contract LiquidStakingTest is Test {
         beaconOracle.addOracleMember(_oracleMember3);
         beaconOracle.addOracleMember(_oracleMember4);
         beaconOracle.addOracleMember(_oracleMember5);
+        beaconOracle.setLiquidStaking(address(liquidStaking));
         vm.stopPrank();
 
         liquidStaking.initialize(

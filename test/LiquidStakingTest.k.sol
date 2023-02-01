@@ -90,13 +90,13 @@ contract LiquidStakingTest is Test {
         // mainnet: 1606824023
         uint64 genesisTime = 1616508000;
         beaconOracle.initialize(_dao, genesisTime);
-
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(_oracleMember1);
         // beaconOracle.addOracleMember(_oracleMember2);
         // beaconOracle.addOracleMember(_oracleMember3);
         // beaconOracle.addOracleMember(_oracleMember4);
         // beaconOracle.addOracleMember(_oracleMember5);
+        beaconOracle.setLiquidStaking(address(liquidStaking));
         vm.stopPrank();
 
         vm.prank(_oracleMember1);
@@ -109,6 +109,61 @@ contract LiquidStakingTest is Test {
         // beaconOracle.reportBeacon(147378, 123456789123456789, 12345, root);
         // vm.prank(_oracleMember5);
         // beaconOracle.reportBeacon(147379, 123456789123456789, 12345, root);
+
+        liquidStaking.initialize(
+            _dao,
+            _daoValutAddress,
+            withdrawalCreds,
+            address(operatorRegistry),
+            address(neth),
+            address(vnft),
+            address(beaconOracle),
+            address(depositContract)
+        );
+    }
+
+    function testInitialize() public {
+        liquidStaking = new LiquidStaking();
+
+        neth = new NETH();
+        neth.setLiquidStaking(address(liquidStaking));
+
+        vnft = new VNFT();
+        vnft.initialize();
+        vnft.setLiquidStaking(address(liquidStaking));
+
+        vaultContract = new ELVault();
+        vaultContract.initialize(address(vnft), _dao, 1, address(liquidStaking));
+        vm.prank(_dao);
+        vaultContract.setLiquidStaking(address(liquidStaking));
+
+        vaultFactoryContract = new ELVaultFactory();
+        vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
+
+        operatorRegistry = new NodeOperatorRegistry();
+        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract));
+        vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
+
+        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(_rewardAddress), address(_controllerAddress));
+
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(1);
+
+        depositContract = new DepositContract();
+
+        vm.warp(1673161943);
+        beaconOracle = new BeaconOracle();
+
+        uint64 genesisTime = 1616508000;
+        beaconOracle.initialize(_dao, genesisTime);
+
+        vm.startPrank(_dao);
+        beaconOracle.addOracleMember(_oracleMember1);
+
+        vm.stopPrank();
+
+        vm.prank(_oracleMember1);
+        beaconOracle.reportBeacon(147375, 123456789123456789, 12345, root);
 
         liquidStaking.initialize(
             _dao,
@@ -340,6 +395,170 @@ contract LiquidStakingTest is Test {
     function testGetOperatorNfts() public {
         uint256[] memory operatorNfts = liquidStaking.getOperatorNfts(1);
         assertEq(operatorNfts.length, 0);
+    }
+
+    function testBatchReinvestmentRewardsOfOperator() public {
+        uint256[] memory operatorIds = new uint256[](1);
+        operatorIds[0] = 1;
+        liquidStaking.batchReinvestmentRewardsOfOperator(operatorIds);
+    }
+
+    function testReinvestmentRewardsOfOperator() public {
+        uint256 operatorId = 1;
+        liquidStaking.reinvestmentRewardsOfOperator(operatorId);
+    }
+
+    function testClaimRewardsOfUser() public {
+        bytes32[] memory proof = new bytes32[](1);
+        proof[0] = 0x2d17183ec955000e448f9ba74cb9cfec4690d35ed96aef6901f68892b38ae58e;
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(0);
+        vm.prank(address(2));
+        vm.deal(address(2), 1000000 ether);
+        liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
+
+        bytes[] memory localpk = new bytes[](1);
+        bytes[] memory localSig = new bytes[](1);
+        bytes32[] memory localDataRoot = new bytes32[](1);
+        localpk[0] = pubKey;
+        localSig[0] = tempSignature;
+        localDataRoot[0] = tempDepositDataRoot;
+
+        vm.prank(_controllerAddress);
+        liquidStaking.registerValidator(localpk, localSig, localDataRoot);
+        vm.prank(address(3));
+        vm.deal(address(3), 1000000 ether);
+        liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
+        uint256[] memory tokenIds = vnft.tokensOfOwner(address(liquidStaking));
+        console.log("tokenIds.length");
+        console.log(tokenIds.length);
+        console.log("tokenIds[0]");
+        console.log(tokenIds[0]);
+        console.log("vaultContractAddress");
+        console.log(address(vaultContract));
+        address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
+        vm.prank(address(liquidStaking));
+        IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
+        liquidStaking.reinvestmentRewardsOfOperator(1);
+        // liquidStaking.claimRewardsOfUser must be called by the user
+    }
+
+    function testClaimOperaterRewards() public {
+        bytes32[] memory proof = new bytes32[](1);
+        proof[0] = 0x2d17183ec955000e448f9ba74cb9cfec4690d35ed96aef6901f68892b38ae58e;
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(0);
+        vm.prank(address(2));
+        vm.deal(address(2), 1000000 ether);
+        liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
+
+        bytes[] memory localpk = new bytes[](1);
+        bytes[] memory localSig = new bytes[](1);
+        bytes32[] memory localDataRoot = new bytes32[](1);
+        localpk[0] = pubKey;
+        localSig[0] = tempSignature;
+        localDataRoot[0] = tempDepositDataRoot;
+
+        vm.prank(_controllerAddress);
+        liquidStaking.registerValidator(localpk, localSig, localDataRoot);
+        vm.prank(address(3));
+        vm.deal(address(3), 1000000 ether);
+        liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
+        uint256[] memory tokenIds = vnft.tokensOfOwner(address(liquidStaking));
+        console.log("tokenIds.length");
+        console.log(tokenIds.length);
+        console.log("tokenIds[0]");
+        console.log(tokenIds[0]);
+        console.log("vaultContractAddress");
+        console.log(address(vaultContract));
+        address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
+        vm.prank(address(liquidStaking));
+        IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
+        liquidStaking.claimOperaterRewards(1);
+    }
+
+    function testClaimDaoRewards() public {
+        bytes32[] memory proof = new bytes32[](1);
+        proof[0] = 0x2d17183ec955000e448f9ba74cb9cfec4690d35ed96aef6901f68892b38ae58e;
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(0);
+        vm.prank(address(2));
+        vm.deal(address(2), 1000000 ether);
+        liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
+
+        bytes[] memory localpk = new bytes[](1);
+        bytes[] memory localSig = new bytes[](1);
+        bytes32[] memory localDataRoot = new bytes32[](1);
+        localpk[0] = pubKey;
+        localSig[0] = tempSignature;
+        localDataRoot[0] = tempDepositDataRoot;
+
+        vm.prank(_controllerAddress);
+        liquidStaking.registerValidator(localpk, localSig, localDataRoot);
+        vm.prank(address(3));
+        vm.deal(address(3), 1000000 ether);
+        liquidStaking.stakeETH{value: 1000 ether}(_referral, 1);
+        uint256[] memory tokenIds = vnft.tokensOfOwner(address(liquidStaking));
+        console.log("tokenIds.length");
+        console.log(tokenIds.length);
+        console.log("tokenIds[0]");
+        console.log(tokenIds[0]);
+        console.log("vaultContractAddress");
+        console.log(address(vaultContract));
+        address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
+        vm.prank(address(liquidStaking));
+        IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
+        liquidStaking.claimDaoRewards(1);
+    }
+
+    function testGetNethOut(uint256 ethAmount) public {
+        vm.assume(ethAmount > 1000 wei);
+        vm.assume(ethAmount < 1000000 ether);
+        vm.prank(_dao);
+        liquidStaking.setDaoAddress(_dao);
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(0);
+        liquidStaking.stakeETH{value: (ethAmount)}(_referral, 1);
+        uint256 nethValue;
+        nethValue = liquidStaking.getNethOut(ethAmount);
+        uint256 totalEth = liquidStaking.getTotalEthValue();
+        uint256 nethSupply = neth.totalSupply();
+        uint256 selfCalculated = ethAmount * (nethSupply) / (totalEth);
+        assertEq(nethValue, selfCalculated);
+    }
+
+    function testUnstakeETH(uint256 randomInt) public {
+        vm.expectRevert("Not supported yet");
+        liquidStaking.unstakeETH(randomInt);
+    }
+
+    // function test_authorizeUpgrade(address randomAdd) public {
+    //     vm.prank(address(liquidStaking));
+    //     vm.expectRevert("Not supported yet");
+    //     liquidStaking._authorizeUpgrade(randomAdd);
+    // }
+
+    function testUnstakeNFT(uint256 randomInt) public {
+        bytes[] memory data = new bytes[](0);
+        bool isTrue = liquidStaking.unstakeNFT(data);
+        assertEq(true, isTrue);
+    }
+
+    function testSetBeaconOracleContract(uint256 randomInt) public {
+        // bytes[] memory data = new bytes[](0);
+        // bool isTrue = liquidStaking.unstakeNFT(data);
+        // assertEq(true, isTrue);
+        BeaconOracle tempBeaconOracle = new BeaconOracle();
+        vm.prank(_dao);
+        liquidStaking.setBeaconOracleContract(address(tempBeaconOracle));
+        assertEq(address(liquidStaking.beaconOracleContract()), address(tempBeaconOracle));
+    }
+
+    function testSetNodeOperatorRegistryContract(uint256 randomInt) public {
+        NodeOperatorRegistry tempOperatorRegistry = new NodeOperatorRegistry();
+        vm.prank(_dao);
+        liquidStaking.setNodeOperatorRegistryContract(address(tempOperatorRegistry));
+        assertEq(address(liquidStaking.nodeOperatorRegistryContract()), address(tempOperatorRegistry));
     }
 
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {

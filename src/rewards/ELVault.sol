@@ -6,13 +6,14 @@ import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "src/interfaces/IELVault.sol";
 import "src/interfaces/IVNFT.sol";
+import "src/interfaces/ILiquidStaking.sol";
 
 /**
  * @title ELVault for managing rewards
  */
 contract ELVault is IELVault, ReentrancyGuard, Initializable {
     IVNFT public vNFTContract;
-    address public liquidStakingContract;
+    ILiquidStaking public liquidStakingContract;
 
     uint256 public operatorId;
     // dao address
@@ -42,7 +43,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     event Settle(uint256 _blockNumber, uint256 _settleRewards);
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingContract == msg.sender, "Not allowed to touch funds");
+        require(address(liquidStakingContract) == msg.sender, "Not allowed to touch funds");
         _;
     }
 
@@ -70,7 +71,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         comissionRate = 1000;
         daoComissionRate = 3000;
         operatorId = operatorId_;
-        liquidStakingContract = liquidStakingAddress_;
+        liquidStakingContract = ILiquidStaking(liquidStakingAddress_);
     }
 
     /**
@@ -203,9 +204,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         uint256 nftRewards = liquidStakingReward;
         unclaimedRewards -= nftRewards;
         liquidStakingReward = 0;
-        transfer(nftRewards, liquidStakingContract);
+        liquidStakingContract.receiveRewards{value: nftRewards}(nftRewards);
 
-        emit RewardClaimed(liquidStakingContract, nftRewards);
+        emit RewardClaimed(address(liquidStakingContract), nftRewards);
 
         return nftRewards;
     }
@@ -271,8 +272,8 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
      */
     function setLiquidStaking(address liquidStaking_) external onlyDao {
         require(liquidStaking_ != address(0), "LiquidStaking address provided invalid");
-        emit LiquidStakingChanged(liquidStakingContract, liquidStaking_);
-        liquidStakingContract = liquidStaking_;
+        emit LiquidStakingChanged(address(liquidStakingContract), liquidStaking_);
+        liquidStakingContract = ILiquidStaking(liquidStaking_);
     }
 
     /**

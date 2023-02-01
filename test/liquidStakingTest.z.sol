@@ -87,6 +87,7 @@ contract LiquidStakingTest is Test {
         beaconOracle.addOracleMember(_oracleMember3);
         beaconOracle.addOracleMember(_oracleMember4);
         beaconOracle.addOracleMember(_oracleMember5);
+        beaconOracle.setLiquidStaking(address(liquidStaking));
         vm.stopPrank();
 
         liquidStaking.initialize(
@@ -402,5 +403,14 @@ contract LiquidStakingTest is Test {
         assertEq(vnft.validatorExists(pubkey), false);
         vm.prank(address(_controllerAddress));
         liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+    }
+
+    function testFailPause() public {
+        vm.prank(_dao);
+        liquidStaking.pause();
+
+        vm.deal(address(20), 55 ether);
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 50 ether}(_referral, 1);
     }
 }
