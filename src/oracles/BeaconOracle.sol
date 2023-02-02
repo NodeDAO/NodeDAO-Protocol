@@ -58,7 +58,7 @@ contract BeaconOracle is
     uint256 public oracleMemberCount;
 
     // reportBeacon merkleTreeRoot storage
-    bytes32 internal merkleTreeRoot;
+    bytes32 public merkleTreeRoot;
 
     // reportBeacon storge
     bytes[] internal currentReportVariants;
@@ -277,12 +277,14 @@ contract BeaconOracle is
             }
         }
 
-        emit ReportBeacon(_epochId, msg.sender, sameCount + 1);
+        emit ReportBeacon(_epochId, msg.sender, sameCount + 1, _beaconBalance, _beaconValidators, _validatorRankingRoot);
 
         if (i < currentReportVariants.length) {
             if (sameCount + 1 >= quorum) {
                 _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
-                emit ReportSuccess(_epochId, quorum, sameCount + 1);
+                emit ReportSuccess(
+                    _epochId, quorum, sameCount + 1, _beaconBalance, _beaconValidators, _validatorRankingRoot
+                    );
             } else {
                 // increment report counter, see ReportUtils for details
                 currentReportVariants[i] = ReportUtils.compressReportData(
@@ -292,7 +294,9 @@ contract BeaconOracle is
         } else {
             if (quorum == 1) {
                 _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
-                emit ReportSuccess(_epochId, quorum, sameCount + 1);
+                emit ReportSuccess(
+                    _epochId, quorum, sameCount + 1, _beaconBalance, _beaconValidators, _validatorRankingRoot
+                    );
             } else {
                 currentReportVariants.push(
                     ReportUtils.compressReportData(

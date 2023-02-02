@@ -474,7 +474,7 @@ contract LiquidStakingTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
-        liquidStaking.claimOperaterRewards(1);
+        liquidStaking.claimOperatorRewards(1);
     }
 
     function testClaimDaoRewards() public {
