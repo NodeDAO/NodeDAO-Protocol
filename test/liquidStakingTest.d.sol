@@ -49,6 +49,8 @@ contract LiquidStakingTest is Test {
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
     bytes withdrawalCreds = hex"3031";
+    address _rewardAddress2 = address(133);
+    address _controllerAddress2 = address(144);
 
     function setUp() public {
         liquidStaking = new LiquidStaking();
@@ -73,9 +75,12 @@ contract LiquidStakingTest is Test {
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
 
         operatorRegistry.registerOperator{value: 0.1 ether}("one", address(_rewardAddress), address(_controllerAddress));
+        operatorRegistry.registerOperator{value: 0.1 ether}("two", address(_rewardAddress2), address(_controllerAddress2));
 
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(2);
 
         depositContract = new DepositContract();
 
@@ -157,14 +162,28 @@ contract LiquidStakingTest is Test {
         vm.deal(address(20), 32 ether);
         liquidStaking.stakeNFT{value: 1 ether}(_referral, 1);
         failed();
+
+        vm.expectRevert("Incorrect Ether amount provided");
+        vm.prank(address(20));
+        vm.deal(address(20), 20 ether);
+        liquidStaking.stakeNFT{value: 3 ether}(_referral, 1);
+        failed();
     }
 
     function testClaimRewardsOfOperator() public {
-        vm.prank(address(44));
-        vm.deal(address(44), 32 ether);
+        vm.prank(address(114));
+        vm.deal(address(114), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
         liquidStaking.reinvestmentRewardsOfOperator(1);
-        assertEq(1, vnft.balanceOf(address(44)));
+        assertEq(1, vnft.balanceOf(address(114)));
+
+        vm.prank(address(255));
+        vm.deal(address(255), 32 ether);
+        liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
+        liquidStaking.reinvestmentRewardsOfOperator(1);
+        assertEq(1, vnft.balanceOf(address(255)));
+        assertEq(0, neth.balanceOf(address(255)));
+
     }
 
     function testRegisterValidatorFailCases() public {
@@ -271,6 +290,19 @@ contract LiquidStakingTest is Test {
 
         assertEq(84 ether, liquidStaking.operatorPoolBalances(1));
     }
+
+    function testGetLiquidNfts() public {
+        vm.prank(address(liquidStaking));
+        vm.deal(address(liquidStaking), 66 ether);
+        liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
+        assertEq(1, vnft.balanceOf( address(liquidStaking) ));
+        assertEq(1, vnft.getNftCountsOfOperator(1));
+
+        vm.prank(address(liquidStaking));
+        liquidStaking.stakeNFT{value: 32 ether}(_referral, 2);
+        assertEq(1, vnft.getNftCountsOfOperator(2));
+        assertEq(2, vnft.balanceOf( address(liquidStaking) ));
+    } 
 
     function testRegisterValidatorCorrect() public {
         prepRegisterValidator();
