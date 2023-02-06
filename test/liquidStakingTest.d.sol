@@ -297,12 +297,20 @@ contract LiquidStakingTest is Test {
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
         assertEq(1, vnft.balanceOf( address(liquidStaking) ));
         assertEq(1, vnft.getNftCountsOfOperator(1));
-
         vm.prank(address(liquidStaking));
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 2);
         assertEq(1, vnft.getNftCountsOfOperator(2));
         assertEq(2, vnft.balanceOf( address(liquidStaking) ));
-    } 
+    }
+
+    
+    function testMiscFunction() public {
+        liquidStaking.isPaused();
+        vm.prank(_dao);
+        liquidStaking.pause();
+        vm.prank(_dao);
+        liquidStaking.unpause();
+    }
 
     function testRegisterValidatorCorrect() public {
         prepRegisterValidator();
