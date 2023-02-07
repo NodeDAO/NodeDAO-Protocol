@@ -34,8 +34,22 @@ interface IBeaconOracle {
     event ResetExpectedEpochId(uint256 expectedEpochId);
     event ExpectedEpochIdUpdated(uint256 expectedEpochId);
     event ResetEpochsPerFrame(uint256 epochsPerFrame);
-    event ReportBeacon(uint256 epochId, address oracleMember, uint32 sameReportCount);
-    event ReportSuccess(uint256 epochId, uint256 sameReportCount, uint32 quorum);
+    event ReportBeacon(
+        uint256 epochId,
+        address oracleMember,
+        uint32 sameReportCount,
+        uint256 _beaconBalance,
+        uint256 _beaconValidators,
+        bytes32 _validatorRankingRoot
+    );
+    event ReportSuccess(
+        uint256 epochId,
+        uint256 sameReportCount,
+        uint32 quorum,
+        uint256 _beaconBalance,
+        uint256 _beaconValidators,
+        bytes32 _validatorRankingRoot
+    );
     event PendingBalancesAdd(uint256 addBalance, uint256 totalBalance);
     event PendingBalancesReset(uint256 totalBalance);
     event LiquidStakingChanged(address _before, address _after);

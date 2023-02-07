@@ -14,6 +14,12 @@ import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
 import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 
+/*
+    @title LiquidStaking Contract
+    @author RenShiWei
+    @notice Holds various methods relevant to staking
+    @dev this contract inherits from Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable, ERC721A__IERC721ReceiverUpgradeable
+*/
 contract LiquidStaking is
     Initializable,
     UUPSUpgradeable,
@@ -74,6 +80,20 @@ contract LiquidStaking is
     event DaoClaimRewards(uint256 operatorId, uint256 rewards);
     event RewardsReceive(uint256 rewards);
 
+    /*
+        @title initialize LiquidStaking Contract
+        @author llifezou
+        @notice creates the liquidstaking contract
+        @dev an external method with an initializer condition
+        @param _dao Dao contract address 
+        @param _daoVaultAddress Dao Vault Address
+        @param withdrawalCreds Withdrawal Credentials
+        @param _nodeOperatorRegistryContractAddress Node Operator Registry Contract Address, where operator methods can be called such as trusted checks and vault address look up.
+        @param _nETHContractAddress NETH contract address, The liquidity token in exchange for the eth stake
+        @param _nVNFTContractAddress VNFT contract address, The NFT representing a 1:1 stake (32 eth)
+        @param _beaconOracleContractAddress Beacon Oracle Contract Address, where balances and VNFT values are tracked
+        @param _depositContractAddress Deposit Contract Address, the contract where deposits are kept
+    */
     function initialize(
         address _dao,
         address _daoVaultAddress,
@@ -106,8 +126,21 @@ contract LiquidStaking is
         unstakeFeeRate = 5;
     }
 
+    /*
+        @title _authorizeUpgrade
+        @author jefferson
+        @notice ???
+    */
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
+    /*
+        @title stakeETH
+        @author llifezou
+        @notice stakes eth to designated operator
+        @dev an external and payable method with an nonReentrant and whenNotPaused condition
+        @param _referral address of refferal, currently no use case
+        @param _operatorId Operator to stake with, has to be trusted
+    */
     function stakeETH(address _referral, uint256 _operatorId) external payable nonReentrant whenNotPaused {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
         require(_referral != address(0), "Referral address must be provided");
@@ -134,12 +167,27 @@ contract LiquidStaking is
         emit EthStake(msg.sender, msg.value, amountOut, _referral);
     }
 
+    /*
+        @title unstakeETH
+        @author llifezou
+        @notice unstakes neth to eth, incomplete
+        @dev an external method with nonReentrant condition
+        @param amount Amount of neth
+    */
     function unstakeETH(uint256 amount) external nonReentrant {
         require(false, "Not supported yet");
     }
 
     //1. depost
     //2. _operatorId must be a trusted operator
+    /*
+        @title stakeNFT
+        @author llifezou
+        @notice stakes NFT to designated operator
+        @dev an external and payable method with an nonReentrant and whenNotPaused condition. msg.value must be in multiples of DEPOSIT SIZE (currently 32 eth). This will mint both NETH and VNFT and then STAKE NFT.
+        @param _referral address of refferal, currently no use case
+        @param _operatorId Operator to stake with, has to be trusted
+    */
     function stakeNFT(address _referral, uint256 _operatorId) external payable nonReentrant whenNotPaused {
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
@@ -175,6 +223,15 @@ contract LiquidStaking is
     //6. operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] -depositAmount;
     //7. mint nft, minting nft, stored in the stake pool contract, can no longer mint neth, because minting has been completed when the user deposits
     //8. Update _liquidNfts
+    /*
+        @title registerValidator
+        @author llifezou
+        @notice registers a validator
+        @dev an external and payable method with an nonReentrant and whenNotPaused condition. msg.value must be in multiples of DEPOSIT SIZE (currently 32 eth). This will mint both NETH and VNFT and then STAKE NFT.
+        @param pubkeys array of pubkeys that wants to stake and mint VNFT
+        @param signatures array of signatures corresponding to the pubkeys
+        @param depositDataRoots array of deposit data roots corresponding to the signatures <<
+    */
     function registerValidator(
         bytes[] calldata pubkeys,
         bytes[] calldata signatures,
@@ -218,6 +275,12 @@ contract LiquidStaking is
         emit ValidatorRegistered(operatorId, tokenId);
     }
 
+    /*
+        @title unstakeNFT
+        @author llifezou
+        @notice incomplete
+        @param data array of calldata
+    */
     function unstakeNFT(bytes[] calldata data) public nonReentrant whenNotPaused returns (bool) {
         return data.length == 0;
     }
@@ -229,6 +292,15 @@ contract LiquidStaking is
     //4. Trigger the operator's claim once, and transfer the nft to the user
     //5. Record _liquidUserNfts as true
     //6. Set the vault contract setUserNft to block.number
+    /*
+        @title wrapNFT
+        @author llifezou
+        @notice transfers msg.sender's NETH to liquidstaking and transfer VNFT to msg.sender
+        @dev an external method with an nonReentrant and whenNotPaused condition.
+        @param tokenId 
+        @param proof array of proofs
+        @param value value of transaction to be verified
+    */
     function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant whenNotPaused {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
 
@@ -240,6 +312,7 @@ contract LiquidStaking is
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
         require(success, "verifyNftValue fail");
 
+        // this might need to use transfer instead
         success = nETHContract.transferFrom(msg.sender, address(this), amountOut);
         require(success, "Failed to transfer neth");
 
@@ -260,6 +333,15 @@ contract LiquidStaking is
     //3. Claim income for the user, and transfer the user's nft to the stake pool
     //4. Transfer neth to the user
     //5. Set the vault contract setUserNft to 0
+    /*
+        @title unwrapNFT
+        @author llifezou
+        @notice transfers VNFT from msg.sender to liquidstaking contract and transfers NETH to msg.sender
+        @dev an external method with an nonReentrant and whenNotPaused condition.
+        @param tokenId 
+        @param proof array of proofs
+        @param value value of transaction to be verified
+    */
     function unwrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant whenNotPaused {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
 

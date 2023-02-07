@@ -58,7 +58,7 @@ contract BeaconOracle is
     uint256 public oracleMemberCount;
 
     // reportBeacon merkleTreeRoot storage
-    bytes32 internal merkleTreeRoot;
+    bytes32 public merkleTreeRoot;
 
     // reportBeacon storge
     bytes[] internal currentReportVariants;
@@ -80,7 +80,7 @@ contract BeaconOracle is
         genesisTime = _genesisTime;
         epochsPerFrame = 225;
         // So the initial is the first epochId
-        expectedEpochId = _getFrameFirstEpochOfDay(getCurrentEpochId());
+        expectedEpochId = getFrameFirstEpochOfDay(getCurrentEpochId());
     }
 
     modifier onlyDao() {
@@ -133,6 +133,13 @@ contract BeaconOracle is
             }
         }
         return MEMBER_NOT_FOUND;
+    }
+
+    /**
+     * Return the first epoch of the frame that `_epochId` belongs to
+     */
+    function getFrameFirstEpochOfDay(uint256 _epochId) public view returns (uint256) {
+        return (_epochId / epochsPerFrame) * epochsPerFrame;
     }
 
     /**
@@ -242,7 +249,7 @@ contract BeaconOracle is
         // if expected epoch has advanced, check that this is the first epoch of the current frame
         // and clear the last unsuccessful reporting
         if (_epochId > expectedEpochId) {
-            require(_epochId == _getFrameFirstEpochOfDay(getCurrentEpochId()), "UNEXPECTED_EPOCH");
+            require(_epochId == getFrameFirstEpochOfDay(getCurrentEpochId()), "UNEXPECTED_EPOCH");
             _clearReportingAndAdvanceTo(_epochId);
         }
 
@@ -277,12 +284,14 @@ contract BeaconOracle is
             }
         }
 
-        emit ReportBeacon(_epochId, msg.sender, sameCount + 1);
+        emit ReportBeacon(_epochId, msg.sender, sameCount + 1, _beaconBalance, _beaconValidators, _validatorRankingRoot);
 
         if (i < currentReportVariants.length) {
             if (sameCount + 1 >= quorum) {
                 _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
-                emit ReportSuccess(_epochId, quorum, sameCount + 1);
+                emit ReportSuccess(
+                    _epochId, quorum, sameCount + 1, _beaconBalance, _beaconValidators, _validatorRankingRoot
+                    );
             } else {
                 // increment report counter, see ReportUtils for details
                 currentReportVariants[i] = ReportUtils.compressReportData(
@@ -292,7 +301,9 @@ contract BeaconOracle is
         } else {
             if (quorum == 1) {
                 _dealReport(nextEpochId, _beaconBalance, _beaconValidators, _validatorRankingRoot);
-                emit ReportSuccess(_epochId, quorum, sameCount + 1);
+                emit ReportSuccess(
+                    _epochId, quorum, sameCount + 1, _beaconBalance, _beaconValidators, _validatorRankingRoot
+                    );
             } else {
                 currentReportVariants.push(
                     ReportUtils.compressReportData(
@@ -369,13 +380,6 @@ contract BeaconOracle is
     function _isOracleMember(address _oracleMember) internal view returns (bool) {
         uint256 index = getMemberId(_oracleMember);
         return index != MEMBER_NOT_FOUND;
-    }
-
-    /**
-     * Return the first epoch of the frame that `_epochId` belongs to
-     */
-    function _getFrameFirstEpochOfDay(uint256 _epochId) internal view returns (uint256) {
-        return (_epochId / epochsPerFrame) * epochsPerFrame;
     }
 
     /**

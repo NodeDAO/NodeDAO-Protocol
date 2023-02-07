@@ -36,6 +36,12 @@ contract DeployBeaconOracleScript is Script {
         uint64 genesisTime = 1616508000;
         BeaconOracle(beaconOracleProxy).initialize(_dao, genesisTime);
 
+        BeaconOracle(beaconOracleProxy).addOracleMember(address(0xe583DC38863aB4b5A94da77A6628e2119eaD4B18));
+        BeaconOracle(beaconOracleProxy).addOracleMember(address(0x3357c09eCf74C281B6f9CCfAf4D894979349AC4B));
+        BeaconOracle(beaconOracleProxy).addOracleMember(address(0x143848A303d424FD75995e5827358ba6d30a1801));
+
+        BeaconOracle(beaconOracleProxy).resetEpochsPerFrame(25);
+
         vm.stopBroadcast();
     }
 }
