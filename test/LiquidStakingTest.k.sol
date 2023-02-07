@@ -400,12 +400,12 @@ contract LiquidStakingTest is Test {
     function testBatchReinvestmentRewardsOfOperator() public {
         uint256[] memory operatorIds = new uint256[](1);
         operatorIds[0] = 1;
-        liquidStaking.batchReinvestmentRewardsOfOperator(operatorIds);
+        liquidStaking.batchReinvestRewardsOfOperator(operatorIds);
     }
 
     function testReinvestmentRewardsOfOperator() public {
         uint256 operatorId = 1;
-        liquidStaking.reinvestmentRewardsOfOperator(operatorId);
+        liquidStaking.reinvestRewardsOfOperator(operatorId);
     }
 
     function testClaimRewardsOfUser() public {
@@ -439,7 +439,7 @@ contract LiquidStakingTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
-        liquidStaking.reinvestmentRewardsOfOperator(1);
+        liquidStaking.reinvestRewardsOfOperator(1);
         // liquidStaking.claimRewardsOfUser must be called by the user
     }
 
@@ -474,7 +474,7 @@ contract LiquidStakingTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
-        liquidStaking.claimOperatorRewards(1);
+        liquidStaking.claimRewardsOfOperator(1);
     }
 
     function testClaimDaoRewards() public {
@@ -508,7 +508,7 @@ contract LiquidStakingTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
-        liquidStaking.claimDaoRewards(1);
+        liquidStaking.claimRewardsOfDao(1);
     }
 
     function testGetNethOut(uint256 ethAmount) public {

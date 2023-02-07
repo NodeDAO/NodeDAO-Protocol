@@ -69,7 +69,7 @@ contract LiquidStaking is
     event UserClaimRewards(uint256 operatorId, uint256 rewards);
     event Transferred(address _to, uint256 _amount);
     event NFTMinted(uint256 tokenId);
-    event OperatorReinvestmentRewards(uint256 operatorId, uint256 rewards);
+    event OperatorReinvestRewards(uint256 operatorId, uint256 rewards);
     event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
     event DaoClaimRewards(uint256 operatorId, uint256 rewards);
     event RewardsReceive(uint256 rewards);
@@ -232,7 +232,7 @@ contract LiquidStaking is
     function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant whenNotPaused {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
 
-        reinvestmentRewardsOfOperator(operatorId);
+        reinvestRewardsOfOperator(operatorId);
 
         uint256 amountOut = getNethOut(value);
 
@@ -290,7 +290,7 @@ contract LiquidStaking is
 
     //1. claim income operatorPoolBalances
     //2. Earnings are settled setLiquidStakingGasHeight
-    function batchReinvestmentRewardsOfOperator(uint256[] memory operatorIds) public whenNotPaused {
+    function batchReinvestRewardsOfOperator(uint256[] memory operatorIds) public whenNotPaused {
         for (uint256 i = 0; i < operatorIds.length; i++) {
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorIds[i]);
             IELVault(vaultContractAddress).settle();
@@ -300,13 +300,13 @@ contract LiquidStaking is
 
             operatorPoolBalances[operatorIds[i]] += nftRewards;
             operatorPoolBalancesSum += nftRewards;
-            emit OperatorReinvestmentRewards(operatorIds[i], nftRewards);
+            emit OperatorReinvestRewards(operatorIds[i], nftRewards);
         }
     }
 
     //1. claim income operatorPoolBalances
     //2. Earnings are settled setLiquidStakingGasHeight
-    function reinvestmentRewardsOfOperator(uint256 operatorId) public whenNotPaused {
+    function reinvestRewardsOfOperator(uint256 operatorId) public whenNotPaused {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
 
@@ -315,7 +315,7 @@ contract LiquidStaking is
 
         operatorPoolBalances[operatorId] += nftRewards;
         operatorPoolBalancesSum += nftRewards;
-        emit OperatorReinvestmentRewards(operatorId, nftRewards);
+        emit OperatorReinvestRewards(operatorId, nftRewards);
     }
 
     function claimRewardsOfUser(uint256 tokenId) public whenNotPaused {
@@ -328,7 +328,7 @@ contract LiquidStaking is
         emit UserClaimRewards(operatorId, nftRewards);
     }
 
-    function claimOperatorRewards(uint256 operatorId) public whenNotPaused {
+    function claimRewardsOfOperator(uint256 operatorId) public whenNotPaused {
         address rewardAddress;
         address vaultContractAddress;
         (,, rewardAddress,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
@@ -339,7 +339,7 @@ contract LiquidStaking is
         emit OperatorClaimRewards(operatorId, operatorRewards);
     }
 
-    function claimDaoRewards(uint256 operatorId) public whenNotPaused {
+    function claimRewardsOfDao(uint256 operatorId) public whenNotPaused {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
 
         IELVault(vaultContractAddress).settle();

@@ -163,7 +163,7 @@ contract LiquidStakingTest is Test {
         vm.prank(address(44));
         vm.deal(address(44), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(_referral, 1);
-        liquidStaking.reinvestmentRewardsOfOperator(1);
+        liquidStaking.reinvestRewardsOfOperator(1);
         assertEq(1, vnft.balanceOf(address(44)));
     }
 
