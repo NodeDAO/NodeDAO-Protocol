@@ -24,20 +24,27 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     // dao address
     address public dao;
 
+    // Average cumulative reward record for settlement
     RewardMetadata[] public cumArr;
+    // unclaimed Rewards
     uint256 public unclaimedRewards;
     uint256 public lastPublicSettle;
     uint256 public publicSettleLimit;
 
-    uint256 public comissionRate; // Execution layer reward ratio
+    // Execution layer reward ratio
+    uint256 public comissionRate;
     uint256 public daoComissionRate;
     uint256 public operatorRewards;
     uint256 public daoRewards;
 
+    // liquidStaking nft gas height
     uint256 public liquidStakingGasHeight;
-    uint256 public liquidStakingReward; // liquidStaking reward
+    // liquidStaking reward
+    uint256 public liquidStakingReward;
 
-    mapping(uint256 => uint256) public userGasHeight; // key tokenId; value gasheight
+    // key tokenId; value gasheight
+    mapping(uint256 => uint256) public userGasHeight;
+
     uint256 public userNftsCount;
 
     event ComissionRateChanged(uint256 _before, uint256 _after);

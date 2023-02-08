@@ -39,15 +39,19 @@ contract NodeOperatorRegistry is
     mapping(uint256 => NodeOperator) internal operators;
 
     uint256 internal constant MAX_REWARDSETTING_LENGTH = 3;
+    // operator reward settings
     mapping(uint256 => RewardSetting[]) internal operatorRewardSetting;
 
+    // trusted operator set
     mapping(address => uint256) public trustedControllerAddress;
+    // The operator corresponding to the control address
     mapping(address => uint256) public controllerAddress;
+    // The used control address, an address can only be used once
     mapping(address => bool) public usedControllerAddress;
-
+    // blacklist operator set
     mapping(uint256 => bool) public blacklistOperators;
 
-    // @dev Total number of operators
+    // Total number of operators
     uint256 internal totalOperators;
     uint256 internal totalTrustedOperators;
     uint256 internal totalBlacklistOperators;
@@ -59,10 +63,11 @@ contract NodeOperatorRegistry is
     address public daoVaultAddress;
     // operator registration fee
     uint256 public registrationFee;
-
+    // The block height at the start of the permissionless phase
     uint256 public permissionlessBlockNumber;
 
     uint256 public constant BASIC_PLEDGE = 1 ether;
+    // operator pledge funds set
     mapping(uint256 => uint256) public operatorPledgeVaultBalances;
 
     IELVaultFactory public vaultFactoryContract;
@@ -396,6 +401,13 @@ contract NodeOperatorRegistry is
         }
 
         return totalTrustedOperators;
+    }
+
+    /**
+     * @notice Returns total number of blacklist operators
+     */
+    function getBlacklistOperatorsCount() external view returns (uint256) {
+        return totalBlacklistOperators;
     }
 
     /**

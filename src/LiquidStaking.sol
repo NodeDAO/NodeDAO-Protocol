@@ -49,18 +49,27 @@ contract LiquidStaking is
 
     bytes public liquidStakingWithdrawalCredentials;
 
-    uint256 public depositFeeRate; // deposit fee rate
+    // deposit fee rate
+    uint256 public depositFeeRate;
     uint256 public constant totalBasisPoints = 10000;
 
     uint256 public constant DEPOSIT_SIZE = 32 ether;
+
+    // After the Shanghai upgrade, the rewards will be distributed linearly,
+    // and the rewards will not exceed 16ETH, so the maximum value of a node is set to 48ETH
     uint256 public constant MAX_NODE_VALUE = 48 ether;
 
-    uint256[] internal _liquidNfts; // The validator tokenid owned by the stake pool
+    // All validator tokenids in the liquidStaking pool
+    uint256[] internal _liquidNfts;
+    // All validator tokenids of the operator
     mapping(uint256 => uint256[]) internal _operatorNfts;
-    mapping(uint256 => bool) internal _liquidUserNfts; // The nft purchased from the staking pool using neth
+    // All validator tokenids belonging to the user
+    mapping(uint256 => bool) internal _liquidUserNfts;
 
-    mapping(uint256 => uint256) public operatorPoolBalances; // operator's internal stake pool, key is operator_id
+    // operator's internal stake pool, key is operator_id
+    mapping(uint256 => uint256) public operatorPoolBalances;
 
+    // Number of Wrap/Unwrap
     uint256 public nftWrapNonce;
 
     // dao address
@@ -68,7 +77,10 @@ contract LiquidStaking is
     // dao treasury address
     address public daoVaultAddress;
 
+    // unused funds in the current liquidStaking pool
     uint256 internal operatorPoolBalancesSum;
+
+    // historical total Rewards
     uint256 public totalReinvestRewardsSum;
 
     modifier onlyDao() {
