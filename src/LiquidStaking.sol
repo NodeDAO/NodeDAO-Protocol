@@ -106,7 +106,6 @@ contract LiquidStaking is
      * @notice initialize LiquidStaking Contract
      * @param _dao Dao contract address
      * @param _daoVaultAddress Dao Vault Address
-     * @param _daoVaultAddress Dao Vault Address
      * @param withdrawalCreds Withdrawal Credentials, Withdrawal vault contract address
      * @param _nodeOperatorRegistryContractAddress Node Operator Registry Contract Address
      * @param _nETHContractAddress NETH contract address, The liquidity token for the eth stake
