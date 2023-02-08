@@ -8,16 +8,21 @@ pragma solidity 0.8.8;
  */
 interface INodeOperatorsRegistry {
     /**
-     * @notice Add node operator named `name` with reward address `rewardAddress` and staking limit = 0 validators
+     * @notice Add node operator named `name` with reward address `rewardAddress` and _owner
      * @param _name Human-readable name
-     * @param _rewardAddress Ethereum 1 address which receives ETH rewards for this operator
      * @param _controllerAddress Ethereum 1 address for the operator's management authority
+     * @param _owner operator owner address
+     * @param _rewardAddresses reward addresses
+     * @param _ratios reward ratios
      * @return id a unique key of the added operator
      */
-    function registerOperator(string memory _name, address _rewardAddress, address _controllerAddress)
-        external
-        payable
-        returns (uint256 id);
+    function registerOperator(
+        string memory _name,
+        address _controllerAddress,
+        address _owner,
+        address[] memory _rewardAddresses,
+        uint256[] memory _ratios
+    ) external payable returns (uint256 id);
 
     /**
      * @notice Set an operator as trusted
@@ -41,9 +46,11 @@ interface INodeOperatorsRegistry {
     /**
      * @notice Set the rewardAddress of the operator
      * @param _id operator id
-     * @param _rewardAddress Ethereum 1 address which receives ETH rewards for this operator
+     * @param _rewardAddresses Ethereum 1 address which receives ETH rewards for this operator
+     * @param _ratios reward ratios
      */
-    function setNodeOperatorRewardAddress(uint256 _id, address _rewardAddress) external;
+    function setNodeOperatorRewardAddress(uint256 _id, address[] memory _rewardAddresses, uint256[] memory _ratios)
+        external;
 
     /**
      * @notice Set the controllerAddress of the operator
@@ -63,7 +70,7 @@ interface INodeOperatorsRegistry {
         returns (
             bool trusted,
             string memory name,
-            address rewardAddress,
+            address owner,
             address controllerAddress,
             address vaultContractAddress
         );
@@ -73,6 +80,15 @@ interface INodeOperatorsRegistry {
      * @param _id operator id
      */
     function getNodeOperatorVaultContract(uint256 _id) external view returns (address vaultContractAddress);
+
+    /**
+     * @notice Get operator rewardSetting
+     * @param operatorId operator id
+     */
+    function getNodeOperatorRewardSetting(uint256 operatorId)
+        external
+        view
+        returns (address[] memory, uint256[] memory);
 
     /**
      * @notice Returns total number of node operators
@@ -86,20 +102,76 @@ interface INodeOperatorsRegistry {
 
     /**
      * @notice Returns whether an operator is trusted
+     * @param _id operator id
      */
     function isTrustedOperator(uint256 _id) external view returns (bool);
 
     /**
      * @notice Returns whether an operator is trusted
+     * @param _controllerAddress controller address
      */
     function isTrustedOperatorOfControllerAddress(address _controllerAddress) external view returns (uint256);
 
+    /**
+     * @notice operator pledge balance
+     * @param operatorId operator id
+     */
+    function getPledgeBalanceOfOperator(uint256 operatorId) external view returns (uint256);
+
+    /**
+     * @notice Get operator owner address
+     * @param _id operator id
+     */
+    function getNodeOperatorOwner(uint256 _id) external view returns (address);
+
+    /**
+     * @notice When a validator run by an operator goes seriously offline, it will be slashed
+     * @param operatorId operator id
+     * @param amount slash amount
+     */
+    function slash(uint256 amount, uint256 operatorId) external;
+
+    /**
+     * @notice deposit pledge fund for operator
+     * @param amount amount
+     * @param operatorId operator Id
+     */
+    function deposit(uint256 amount, uint256 operatorId) external payable;
+
+    /**
+     * @notice Withdraw the deposit available to the operator
+     * @param operatorId operator id
+     * @param amount withdrawal amount
+     * @param to to address
+     */
+    function withdraw(uint256 amount, uint256 operatorId, address to) external;
+
+    /**
+     * @notice Determine whether the operator meets the pledge requirements
+     * @param operatorId operator id
+     */
+    function isConformBasicPledge(uint256 operatorId) external view returns (bool);
+
     event NodeOperatorRegistered(
-        uint256 id, string name, address rewardAddress, address controllerAddress, address _vaultContractAddress
+        uint256 id,
+        string name,
+        address controllerAddress,
+        address _vaultContractAddress,
+        address[] _rewardAddresses,
+        uint256[] _ratios
     );
     event NodeOperatorTrustedSet(uint256 id, string name, bool trusted);
     event NodeOperatorTrustedRemove(uint256 id, string name, bool trusted);
+    event NodeOperatorBlacklistSet(uint256 id);
+    event NodeOperatorBlacklistRemove(uint256 id);
     event NodeOperatorNameSet(uint256 id, string name);
-    event NodeOperatorRewardAddressSet(uint256 id, string name, address rewardAddress);
+    event NodeOperatorRewardAddressSet(uint256 id, address[] _rewardAddresses, uint256[] _ratios);
     event NodeOperatorControllerAddressSet(uint256 id, string name, address controllerAddress);
+    event NodeOperatorOwnerAddressSet(uint256 id, string name, address ownerAddress);
+    event Transferred(address _to, uint256 _amount);
+    event Slashed(uint256 _amount, uint256 _operatorId);
+    event Deposited(uint256 _amount, uint256 _operatorId);
+    event Withdraw(uint256 _amount, uint256 _operatorId, address _to);
+    event LiquidStakingChanged(address _from, address _to);
+    event PermissionlessBlockNumberSet(uint256 blockNumber);
 }

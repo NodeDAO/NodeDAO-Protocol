@@ -7,21 +7,33 @@ import "src/tokens/NETH.sol";
 import "src/tokens/VNFT.sol";
 import "src/registries/NodeOperatorRegistry.sol";
 import "src/mocks/DepositContract.sol";
-import "src/rewards/ELVault.sol";
-import "src/rewards/ELVaultFactory.sol";
+import "src/vault/ELVault.sol";
+import "src/vault/ELVaultFactory.sol";
 import "src/oracles/BeaconOracle.sol";
-import "forge-std/console.sol";
 
 contract NodeOperatorRegistryTest is Test {
     event NodeOperatorRegistered(
-        uint256 id, string name, address rewardAddress, address controllerAddress, address _vaultContractAddress
+        uint256 id,
+        string name,
+        address controllerAddress,
+        address _vaultContractAddress,
+        address[] _rewardAddresses,
+        uint256[] _ratios
     );
     event NodeOperatorTrustedSet(uint256 id, string name, bool trusted);
     event NodeOperatorTrustedRemove(uint256 id, string name, bool trusted);
+    event NodeOperatorBlacklistSet(uint256 id);
+    event NodeOperatorBlacklistRemove(uint256 id);
     event NodeOperatorNameSet(uint256 id, string name);
-    event NodeOperatorRewardAddressSet(uint256 id, string name, address rewardAddress);
+    event NodeOperatorRewardAddressSet(uint256 id, address[] _rewardAddresses, uint256[] _ratios);
     event NodeOperatorControllerAddressSet(uint256 id, string name, address controllerAddress);
+    event NodeOperatorOwnerAddressSet(uint256 id, string name, address ownerAddress);
     event Transferred(address _to, uint256 _amount);
+    event Slashed(uint256 _amount, uint256 _operatorId);
+    event Deposited(uint256 _amount, uint256 _operatorId);
+    event Withdraw(uint256 _amount, uint256 _operatorId, address _to);
+    event LiquidStakingChanged(address _from, address _to);
+    event PermissionlessBlockNumberSet(uint256 blockNumber);
 
     LiquidStaking liquidStaking;
     NETH neth;
@@ -42,23 +54,27 @@ contract NodeOperatorRegistryTest is Test {
     address _oracleMember3 = address(13);
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
+    address[] _rewardAddresses = new address[] (1);
+    uint256[] _ratios = new uint256[] (1);
 
-    function checkOperator(bool _trusted, string memory _name, address _rewardAddr, address _controllerAddr) public {
+    function checkOperator(bool _trusted, string memory _name, address _controllerAddr, address _owner) public {
         bool trusted;
         string memory name;
-        address rewardAddress;
+        address owner;
         address controllerAddress;
         address vaultContractAddress;
-        (trusted, name, rewardAddress, controllerAddress, vaultContractAddress) =
-            operatorRegistry.getNodeOperator(1, true);
+        (trusted, name, owner, controllerAddress, vaultContractAddress) = operatorRegistry.getNodeOperator(1, true);
         assertEq(trusted, _trusted);
         assertEq(name, _name);
-        assertEq(rewardAddress, _rewardAddr);
+        assertEq(owner, _owner);
         assertEq(controllerAddress, _controllerAddr);
         console.log("vaultContractAddress: ", vaultContractAddress);
     }
 
     function setUp() public {
+        _rewardAddresses[0] = address(5);
+        _ratios[0] = 100;
+
         liquidStaking = new LiquidStaking();
 
         neth = new NETH();
@@ -69,15 +85,14 @@ contract NodeOperatorRegistryTest is Test {
         vnft.setLiquidStaking(address(liquidStaking));
 
         vaultContract = new ELVault();
-        vaultContract.initialize(address(vnft), _dao, 1, address(liquidStaking));
-        vm.prank(_dao);
-        vaultContract.setLiquidStaking(address(liquidStaking));
 
         vaultFactoryContract = new ELVaultFactory();
         vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
 
         operatorRegistry = new NodeOperatorRegistry();
         operatorRegistry.initialize(_dao, _daoVaultAddress, address(vaultFactoryContract));
+        vm.prank(_dao);
+        operatorRegistry.setLiquidStaking(address(liquidStaking));
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
 
         depositContract = new DepositContract();
@@ -99,7 +114,7 @@ contract NodeOperatorRegistryTest is Test {
         liquidStaking.initialize(
             _dao,
             _daoVaultAddress,
-            bytes("01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106"),
+            hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106",
             address(operatorRegistry),
             address(neth),
             address(vnft),
@@ -116,24 +131,19 @@ contract NodeOperatorRegistryTest is Test {
     // -------------
 
     function testFailRegisterOperator() public {
-        operatorRegistry.registerOperator{value: 0.09 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 0.09 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
     }
 
     function testRegisterOperator() public {
-        emit NodeOperatorRegistered(1, "one", address(3), address(4), address(5));
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
-    }
-
-    function testRegisterOperatorMoreValue() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
     }
 
     // -------------
 
     function testSetTrustedOperatorAuthFailed() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
 
-        vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("PERMISSION_DENIED");
         operatorRegistry.setTrustedOperator(0);
     }
 
@@ -144,7 +154,7 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testSetTrustedOperator() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
 
@@ -154,9 +164,9 @@ contract NodeOperatorRegistryTest is Test {
     // -------------
 
     function testRemoveTrustedOperatorAuthFailed() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
 
-        vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("PERMISSION_DENIED");
         operatorRegistry.removeTrustedOperator(0);
     }
 
@@ -167,7 +177,7 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testRemoveTrustedOperator() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
         vm.prank(_dao);
@@ -179,9 +189,9 @@ contract NodeOperatorRegistryTest is Test {
     // -------------
 
     function testSetNodeOperatorNameAuthFailed() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
 
-        vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("PERMISSION_DENIED");
         operatorRegistry.setNodeOperatorName(1, "two");
     }
 
@@ -191,7 +201,7 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testSetNodeOperatorName() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
         vm.prank(address(4));
         operatorRegistry.setNodeOperatorName(1, "two");
 
@@ -201,15 +211,15 @@ contract NodeOperatorRegistryTest is Test {
     // -------------
 
     function testSetNodeOperatorRewardAddressAuthFailed() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
 
-        vm.expectRevert("AUTH_FAILED");
-        operatorRegistry.setNodeOperatorRewardAddress(1, address(5));
+        vm.expectRevert("PERMISSION_DENIED");
+        operatorRegistry.setNodeOperatorRewardAddress(1, _rewardAddresses, _ratios);
     }
 
     function testSetNodeOperatorRewardAddressNotExist() public {
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
-        operatorRegistry.setNodeOperatorRewardAddress(1, address(5));
+        operatorRegistry.setNodeOperatorRewardAddress(1, _rewardAddresses, _ratios);
     }
 
     function testSetNodeOperatorRewardAddressName() public {
@@ -218,19 +228,19 @@ contract NodeOperatorRegistryTest is Test {
         // emit Transferred(address(1), 0.1 ether);
         // emit NodeOperatorNameSet(0, "two");
 
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
         vm.prank(address(4));
-        operatorRegistry.setNodeOperatorRewardAddress(1, address(5));
+        operatorRegistry.setNodeOperatorRewardAddress(1, _rewardAddresses, _ratios);
 
-        checkOperator(false, "one", address(5), address(4));
+        checkOperator(false, "one", address(3), address(4));
     }
 
     // -------------
 
     function testSetNodeOperatorControllerAddressAuthFailed() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
 
-        vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("PERMISSION_DENIED");
         operatorRegistry.setNodeOperatorControllerAddress(1, address(5));
     }
 
@@ -240,29 +250,30 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testSetNodeOperatorControllerAddressName() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
+        checkOperator(false, "one", address(3), address(4));
         vm.prank(address(4));
         operatorRegistry.setNodeOperatorControllerAddress(1, address(5));
 
-        checkOperator(false, "one", address(3), address(5));
+        checkOperator(false, "one", address(5), address(4));
     }
 
     function testGetNodeOperatorsCount() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(4), address(3), _rewardAddresses, _ratios);
         uint256 count = operatorRegistry.getNodeOperatorsCount();
         assertEq(count, 1);
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         console.log("vaultContractAddress: ", vaultContractAddress);
 
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(5));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(5), address(3), _rewardAddresses, _ratios);
         address vaultContractAddress2 = operatorRegistry.getNodeOperatorVaultContract(2);
         console.log("vaultContractAddress2: ", vaultContractAddress2);
 
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(6));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(6), address(3), _rewardAddresses, _ratios);
         address vaultContractAddress3 = operatorRegistry.getNodeOperatorVaultContract(3);
         console.log("vaultContractAddress3: ", vaultContractAddress3);
 
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(7));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(7), address(3), _rewardAddresses, _ratios);
         address vaultContractAddress4 = operatorRegistry.getNodeOperatorVaultContract(4);
         console.log("vaultContractAddress4: ", vaultContractAddress4);
 
@@ -278,7 +289,7 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testTrustedOperator() public {
-        operatorRegistry.registerOperator{value: 0.1 ether}("one", address(3), address(4));
+        liquidStaking.registerOperator{value: 1.1 ether}("one", address(3), address(4), _rewardAddresses, _ratios);
 
         bool trused = operatorRegistry.isTrustedOperator(1);
         assertEq(trused, false);
@@ -291,17 +302,17 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testSetDaoAuthFailed() public {
-        vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("PERMISSION_DENIED");
         operatorRegistry.setDaoAddress(address(10));
     }
 
     function testSetDaoVaultAuthFailed() public {
-        vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("PERMISSION_DENIED");
         operatorRegistry.setDaoVaultAddress(address(10));
     }
 
     function testSetRegistrationFeeAuthFailed() public {
-        vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("PERMISSION_DENIED");
         operatorRegistry.setRegistrationFee(0.2 ether);
     }
 

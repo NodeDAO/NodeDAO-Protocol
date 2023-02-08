@@ -57,7 +57,7 @@ contract BeaconOracleTest is Test {
 
     function testFailAuthOracleMember() public {
         beaconOracle.addOracleMember(address(0x1234567812345678123456781234567812345678));
-        vm.expectRevert("AUTH_FAILED");
+        vm.expectRevert("PERMISSION_DENIED");
     }
 
     function testIsOracleMember() public {

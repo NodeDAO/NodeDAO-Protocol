@@ -4,16 +4,21 @@ pragma solidity 0.8.8;
 
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
+import "openzeppelin-contracts/utils/math/Math.sol";
 import "src/interfaces/IELVault.sol";
 import "src/interfaces/IVNFT.sol";
 import "src/interfaces/ILiquidStaking.sol";
+import "src/interfaces/INodeOperatorsRegistry.sol";
 
 /**
  * @title ELVault for managing rewards
  */
 contract ELVault is IELVault, ReentrancyGuard, Initializable {
+    using Math for uint256;
+
     IVNFT public vNFTContract;
     ILiquidStaking public liquidStakingContract;
+    INodeOperatorsRegistry public nodeOperatorRegistryContract;
 
     uint256 public operatorId;
     // dao address
@@ -48,17 +53,28 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     }
 
     modifier onlyDao() {
-        require(msg.sender == dao, "AUTH_FAILED");
+        require(msg.sender == dao, "PERMISSION_DENIED");
         _;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
-    function initialize(address _nVNFTContractAddress, address dao_, uint256 operatorId_, address liquidStakingAddress_)
-        external
-        initializer
-    {
+    /**
+     * @notice initialize Vault Contract
+     * @param _nVNFTContractAddress vNFT contract address
+     * @param dao_ Dao Address
+     * @param operatorId_ operator Id
+     * @param liquidStakingAddress_ liquidStaking contract address
+     * @param nodeOperatorRegistryAddress_ nodeOperatorRegistry Address
+     */
+    function initialize(
+        address _nVNFTContractAddress,
+        address dao_,
+        uint256 operatorId_,
+        address liquidStakingAddress_,
+        address nodeOperatorRegistryAddress_
+    ) external initializer {
         vNFTContract = IVNFT(_nVNFTContractAddress);
         dao = dao_;
 
@@ -72,6 +88,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         daoComissionRate = 3000;
         operatorId = operatorId_;
         liquidStakingContract = ILiquidStaking(liquidStakingAddress_);
+        nodeOperatorRegistryContract = INodeOperatorsRegistry(nodeOperatorRegistryAddress_);
     }
 
     /**
@@ -200,6 +217,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         emit Transferred(to, amount);
     }
 
+    /**
+     * @notice Reinvesting rewards belonging to the liquidStaking pool
+     */
     function reinvestmentOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 nftRewards = liquidStakingReward;
         unclaimedRewards -= nftRewards;
@@ -231,7 +251,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice Operater Claims the rewards
+     * @notice Set the gas height of user nft
      */
     function setUserNft(uint256 tokenId, uint256 number) external onlyLiquidStaking {
         if (number == 0) {
@@ -243,6 +263,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         userGasHeight[tokenId] = number;
     }
 
+    /**
+     * @notice Set the gas height of liquidStaking nft
+     */
     function setLiquidStakingGasHeight(uint256 _gasHeight) external onlyLiquidStaking {
         liquidStakingGasHeight = _gasHeight;
     }
@@ -250,15 +273,48 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     /**
      * @notice Operater Claims the rewards
      */
-    function claimOperatorRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
+    function claimOperatorRewards() external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 rewards = operatorRewards;
         operatorRewards = 0;
-        transfer(rewards, to);
+
+        uint256 requireVault = 0;
+        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        if (operatorNftCounts <= 100) {
+            requireVault = (operatorNftCounts * 10 / 100) * 1 ether;
+        } else {
+            requireVault = operatorNftCounts.sqrt() * 1 ether;
+        }
+
+        uint256 nowPledge = nodeOperatorRegistryContract.getPledgeBalanceOfOperator(operatorId);
+        require(nowPledge >= requireVault, "Insufficient pledge balance");
+
+        address[] memory rewardAddresses;
+        uint256[] memory ratios;
+        (rewardAddresses, ratios) = nodeOperatorRegistryContract.getNodeOperatorRewardSetting(operatorId);
+        require(rewardAddresses.length != 0, "Invalid rewardAddresses");
+
+        uint256 totalAmount = 0;
+        uint256 totalRatios = 0;
+        for (uint256 i = 0; i < rewardAddresses.length; i++) {
+            uint256 ratio = ratios[i];
+            totalRatios += ratio;
+
+            if (i == rewardAddresses.length - 1) {
+                transfer(rewards - totalAmount, rewardAddresses[i]);
+            } else {
+                uint256 reward = rewards * ratio / 100;
+                transfer(reward, rewardAddresses[i]);
+                totalAmount += reward;
+            }
+        }
+
+        require(totalRatios == 100, "Invalid ratio");
+
         return rewards;
     }
 
     /**
-     * @notice Operater Claims the rewards
+     * @notice Dao Claims the rewards
      */
     function claimDaoRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 rewards = daoRewards;
@@ -294,7 +350,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice Sets the comission.
+     * @notice Sets the Dao comission.
      */
     function setDaoComissionRate(uint256 comissionRate_) external onlyDao {
         require(comissionRate_ < 10000, "Comission cannot be 100%");
@@ -303,14 +359,10 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice set dao vault address
+     * @notice set dao address
      */
     function setDaoAddress(address _dao) external onlyDao {
         dao = _dao;
-    }
-
-    function liquidStaking() external view returns (address) {
-        return address(liquidStakingContract);
     }
 
     receive() external payable {}
