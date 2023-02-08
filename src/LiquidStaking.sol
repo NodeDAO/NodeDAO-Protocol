@@ -15,11 +15,18 @@ import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
 import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 
-/*
-    @title LiquidStaking Contract
-    @author RenShiWei
-    @notice Holds various methods relevant to staking
-    @dev this contract inherits from Initializable, UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable, PausableUpgradeable, ERC721A__IERC721ReceiverUpgradeable*/
+/**
+ * @title NodeDao LiquidStaking Contract
+ *
+ * NodeDao is a DAO that provides decentralized solutions for Ethereum liquidity,
+ * jointly initiated by ChainUp Cloud, XHash, AntAlpha, ImToken, and Bitrise.
+ *
+ * The NodeDAO protocol is a smart contract for next-generation liquid staking derivatives,
+ * which includes all the concepts of traditional liquid staking, re-staking, distributed validators, and validator NFTs in a single protocol.
+ *
+ * Our vision is to use our innovative liquidity solution to provide more options for the Ethereum liquidity market,
+ * thereby making Ethereum staking more decentralized.
+ */
 contract LiquidStaking is
     Initializable,
     UUPSUpgradeable,
@@ -43,7 +50,6 @@ contract LiquidStaking is
     bytes public liquidStakingWithdrawalCredentials;
 
     uint256 public depositFeeRate; // deposit fee rate
-    uint256 public unstakeFeeRate; // unstake fee rate
     uint256 public constant totalBasisPoints = 10000;
 
     uint256 public constant DEPOSIT_SIZE = 32 ether;
@@ -88,21 +94,26 @@ contract LiquidStaking is
     event DaoClaimRewards(uint256 operatorId, uint256 rewards);
     event RewardsReceive(uint256 rewards);
     event SlashReceive(uint256 amount);
+    event LiquidStakingWithdrawalCredentialsSet(
+        bytes oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
+    );
+    event BeaconOracleContractSet(address oldBeaconOracleContract, address _beaconOracleContractAddress);
+    event NodeOperatorRegistryContractSet(
+        address oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
+    );
 
-    /*
-        @title initialize LiquidStaking Contract
-        @author llifezou
-        @notice creates the liquidstaking contract
-        @dev an external method with an initializer condition
-        @param _dao Dao contract address 
-        @param _daoVaultAddress Dao Vault Address
-        @param withdrawalCreds Withdrawal Credentials
-        @param _nodeOperatorRegistryContractAddress Node Operator Registry Contract Address, where operator methods can be called such as trusted checks and vault address look up.
-        @param _nETHContractAddress NETH contract address, The liquidity token in exchange for the eth stake
-        @param _nVNFTContractAddress VNFT contract address, The NFT representing a 1:1 stake (32 eth)
-        @param _beaconOracleContractAddress Beacon Oracle Contract Address, where balances and VNFT values are tracked
-        @param _depositContractAddress Deposit Contract Address, the contract where deposits are kept
-    */
+    /**
+     * @notice initialize LiquidStaking Contract
+     * @param _dao Dao contract address
+     * @param _daoVaultAddress Dao Vault Address
+     * @param _daoVaultAddress Dao Vault Address
+     * @param withdrawalCreds Withdrawal Credentials, Withdrawal vault contract address
+     * @param _nodeOperatorRegistryContractAddress Node Operator Registry Contract Address
+     * @param _nETHContractAddress NETH contract address, The liquidity token for the eth stake
+     * @param _nVNFTContractAddress VNFT contract address, The NFT representing the validator
+     * @param _beaconOracleContractAddress Beacon Oracle Contract Address, where balances and VNFT values are tracked
+     * @param _depositContractAddress eth2 Deposit Contract Address
+     */
     function initialize(
         address _dao,
         address _daoVaultAddress,
@@ -131,32 +142,38 @@ contract LiquidStaking is
         vNFTContract = IVNFT(_nVNFTContractAddress);
 
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
-
-        unstakeFeeRate = 5;
     }
 
-    /*
-        @title _authorizeUpgrade
-        @author jefferson
-        @notice ???
-    */
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
+    /**
+     * @notice Register an operator to accept the user's stake
+     * @param _name operator name
+     * @param _controllerAddress operator contraller address
+     * @param _owner This address is the operator owner and has the authority to change the control address and rewards address
+     * @param _rewardAddresses Up to three addresses that accept operator rewards can be set
+     * @param _ratios The allocation ratio corresponding to the rewards address by the operator
+     */
     function registerOperator(
         string memory _name,
         address _controllerAddress,
         address _owner,
         address[] memory _rewardAddresses,
         uint256[] memory _ratios
-    ) external payable returns (uint256) {
-        require(bytes(_name).length <= 32, "Invalid length"); // todo
+    ) external payable whenNotPaused returns (uint256) {
+        require(bytes(_name).length <= 32, "Invalid length");
         uint256 operatorId = nodeOperatorRegistryContract.registerOperator{value: msg.value}(
             _name, _controllerAddress, _owner, _rewardAddresses, _ratios
         );
         emit OperatorRegister(_name, _controllerAddress, _owner, operatorId);
     }
 
-    function withdrawOperator(uint256 operatorId, uint256 withdrawAmount, address to) external {
+    /**
+     * @notice Withdraw the deposit available to the operator, it must be sent by the operator owner
+     * @param operatorId operator id
+     * @param withdrawAmount withdrawal amount
+     */
+    function withdrawOperator(uint256 operatorId, uint256 withdrawAmount, address to) external whenNotPaused {
         address owner = nodeOperatorRegistryContract.getNodeOperatorOwner(operatorId);
         require(owner == msg.sender, "Permission denied");
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
@@ -174,12 +191,20 @@ contract LiquidStaking is
         emit OperatorWithdraw(operatorId, withdrawAmount, to);
     }
 
-    function quitOperator(uint256 operatorId, uint256 substituteOperatorId, address to) external {
+    /**
+     * @notice Exit the operator. When there are no validators running, the owner of the operator has the right to opt out.
+     * Unused funds must be transferred to another active operator
+     * @param operatorId operator id
+     * @param substituteOperatorId An active operator that receives remaining available funds from exiting the operator
+     * @param to The receiving address of the pledged funds of the withdrawn operator
+     */
+    function quitOperator(uint256 operatorId, uint256 substituteOperatorId, address to) external whenNotPaused {
         address owner = nodeOperatorRegistryContract.getNodeOperatorOwner(operatorId);
         require(owner == msg.sender, "Permission denied");
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
         require(operatorNftCounts == 0, "unable to exit");
 
+        // substituteOperatorId must be a trusted operator
         require(
             nodeOperatorRegistryContract.isTrustedOperator(substituteOperatorId),
             "The substituteOperatorId is not trusted"
@@ -194,11 +219,20 @@ contract LiquidStaking is
         emit OperatorQuit(operatorId, substituteOperatorId, nowPledge, to);
     }
 
+    /**
+     * @notice For operators added to the blacklist by dao, for example, because the operator has been inactive for a long time, and has been punished on a large scale, etc.
+     * The Dao has the right to distribute the available balance on this operator to other active operators,
+     * and the allocation share will be determined through proposals
+     * @param blacklistOperatorId blacklist operator id
+     * @param operatorIds The operator id of the allocation share
+     * @param amounts The size of the allocated share
+     */
     function assignBlacklistOperator(
         uint256 blacklistOperatorId,
         uint256[] memory operatorIds,
         uint256[] memory amounts
-    ) public onlyDao {
+    ) public onlyDao whenNotPaused {
+        // blacklistOperatorId must be a blacklist operator
         require(
             !nodeOperatorRegistryContract.isTrustedOperator(blacklistOperatorId),
             "This operator is not in the blacklist"
@@ -217,15 +251,14 @@ contract LiquidStaking is
         emit BlacklistOperatorAssigned(blacklistOperatorId, totalAmount);
     }
 
-    /*
-        @title stakeETH
-        @author llifezou
-        @notice stakes eth to designated operator
-        @dev an external and payable method with an nonReentrant and whenNotPaused condition
-        @param _operatorId Operator to stake with, has to be trusted
-    */
+    /**
+     * @notice stake eth to designated operator, stake ETH to get nETH
+     * @param _operatorId operator id
+     */
     function stakeETH(uint256 _operatorId) external payable nonReentrant whenNotPaused {
         require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
+
+        // operatorId must be a trusted operator
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(nodeOperatorRegistryContract.isConformBasicPledge(_operatorId), "Insufficient pledge balance");
 
@@ -250,29 +283,37 @@ contract LiquidStaking is
         emit EthStake(msg.sender, msg.value, amountOut);
     }
 
-    /*
-        @title unstakeETH
-        @author llifezou
-        @notice unstakes neth to eth, incomplete
-        @dev an external method with nonReentrant condition
-        @param amount Amount of neth
-    */
+    function transfer(uint256 amount, address to) internal {
+        require(to != address(0), "Recipient address provided invalid");
+        payable(to).transfer(amount);
+        emit Transferred(to, amount);
+    }
+
+    /**
+     * @notice unstakeETH Support after Shanghai upgrade
+     * @param amount unstake nETH amount
+     */
     function unstakeETH(uint256 amount) external nonReentrant {
         require(false, "Not supported yet");
     }
 
-    //1. depost
-    //2. _operatorId must be a trusted operator
-    /*
-        @title stakeNFT
-        @author llifezou
-        @notice stakes NFT to designated operator
-        @dev an external and payable method with an nonReentrant and whenNotPaused condition. msg.value must be in multiples of DEPOSIT SIZE (currently 32 eth). This will mint both NETH and VNFT and then STAKE NFT.
-        @param _operatorId Operator to stake with, has to be trusted
-    */
+    /**
+     * @notice unstakeNFT Support after Shanghai upgrade
+     * @param data unstakeNFT data
+     */
+    function unstakeNFT(bytes[] calldata data) public nonReentrant whenNotPaused returns (bool) {
+        return data.length == 0;
+    }
+
+    /**
+     * @notice Stake 32 multiples of eth to get the corresponding number of vNFTs
+     * @param _operatorId operator id
+     */
     function stakeNFT(uint256 _operatorId) external payable nonReentrant whenNotPaused {
+        // operatorId must be a trusted operator
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
+
         require(nodeOperatorRegistryContract.isConformBasicPledge(_operatorId), "Insufficient pledge balance");
 
         uint256 amountOut = getNethOut(msg.value);
@@ -298,23 +339,12 @@ contract LiquidStaking is
         emit NftStake(msg.sender, mintNftsCount);
     }
 
-    //1. Check whether msg.sender is the controllerAddress of the operator
-    //2. Check if operator_id is trusted
-    //3. precheck, need to add check withdrawalCredentials must be set by the stake pool
-    //4. signercheck
-    //5. depost
-    //6. operatorPoolBalances[_operatorId] = operatorPoolBalances[_operatorId] -depositAmount;
-    //7. mint nft, minting nft, stored in the stake pool contract, can no longer mint neth, because minting has been completed when the user deposits
-    //8. Update _liquidNfts
-    /*
-        @title registerValidator
-        @author llifezou
-        @notice registers a validator
-        @dev an external and payable method with an nonReentrant and whenNotPaused condition. msg.value must be in multiples of DEPOSIT SIZE (currently 32 eth). This will mint both NETH and VNFT and then STAKE NFT.
-        @param pubkeys array of pubkeys that wants to stake and mint VNFT
-        @param signatures array of signatures corresponding to the pubkeys
-        @param depositDataRoots array of deposit data roots corresponding to the signatures <<
-    */
+    /**
+     * @notice registers validators
+     * @param pubkeys validator pubkeys
+     * @param signatures validator signatures
+     * @param depositDataRoots validator depositDataRoots
+     */
     function registerValidator(
         bytes[] calldata pubkeys,
         bytes[] calldata signatures,
@@ -325,9 +355,10 @@ contract LiquidStaking is
             "All parameter array's must have the same length."
         );
 
+        // must be a trusted operator
         uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
         require(operatorId != 0, "msg.sender must be the controllerAddress of the trusted operator");
-        require(getOperatorPoolEtherMultiple(operatorId) >= pubkeys.length, "Insufficient balance");
+        require(operatorPoolBalances[operatorId] / DEPOSIT_SIZE >= pubkeys.length, "Insufficient balance");
 
         _settle(operatorId);
 
@@ -339,6 +370,11 @@ contract LiquidStaking is
         operatorPoolBalances[operatorId] -= stakeAmount;
         operatorPoolBalancesSum -= stakeAmount;
         beaconOracleContract.addPendingBalances(stakeAmount);
+    }
+
+    function _settle(uint256 operatorId) internal {
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
+        IELVault(vaultContractAddress).settle();
     }
 
     function _stakeAndMint(uint256 operatorId, bytes calldata pubkey, bytes calldata signature, bytes32 depositDataRoot)
@@ -358,32 +394,12 @@ contract LiquidStaking is
         emit ValidatorRegistered(operatorId, tokenId);
     }
 
-    /*
-        @title unstakeNFT
-        @author llifezou
-        @notice incomplete
-        @param data array of calldata
-    */
-    function unstakeNFT(bytes[] calldata data) public nonReentrant whenNotPaused returns (bool) {
-        return data.length == 0;
-    }
-
-    //wrap neth to nft
-    //1. Check if the value matches the oracle
-    //2. Check if the neth balance is satisfied -not required
-    //3. Transfer user neth to the stake pool
-    //4. Trigger the operator's claim once, and transfer the nft to the user
-    //5. Record _liquidUserNfts as true
-    //6. Set the vault contract setUserNft to block.number
-    /*
-        @title wrapNFT
-        @author llifezou
-        @notice transfers msg.sender's NETH to liquidstaking and transfer VNFT to msg.sender
-        @dev an external method with an nonReentrant and whenNotPaused condition.
-        @param tokenId 
-        @param proof array of proofs
-        @param value value of transaction to be verified
-    */
+    /**
+     * @notice nETH swap vNFT
+     * @param tokenId vNFT tokenId
+     * @param proof Merkle tree proof from the oracle for this validator
+     * @param value value from the oracle for this validator
+     */
     function wrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant whenNotPaused {
         require(value >= DEPOSIT_SIZE, "Value check failed");
 
@@ -412,21 +428,12 @@ contract LiquidStaking is
         emit NftWrap(tokenId, operatorId, value, amountOut);
     }
 
-    //unwrap nft to neth
-    //1. Check if the originator holds a token_id -not required
-    //2. Check if the value matches the oracle
-    //3. Claim income for the user, and transfer the user's nft to the stake pool
-    //4. Transfer neth to the user
-    //5. Set the vault contract setUserNft to 0
-    /*
-        @title unwrapNFT
-        @author llifezou
-        @notice transfers VNFT from msg.sender to liquidstaking contract and transfers NETH to msg.sender
-        @dev an external method with an nonReentrant and whenNotPaused condition.
-        @param tokenId 
-        @param proof array of proofs
-        @param value value of transaction to be verified
-    */
+    /**
+     * @notice vNFT swap nETH
+     * @param tokenId vNFT tokenId
+     * @param proof Merkle tree proof from the oracle for this validator
+     * @param value value from the oracle for this validator
+     */
     function unwrapNFT(uint256 tokenId, bytes32[] memory proof, uint256 value) external nonReentrant whenNotPaused {
         require(value <= MAX_NODE_VALUE, "Value check failed");
 
@@ -457,6 +464,12 @@ contract LiquidStaking is
         emit NftUnwrap(tokenId, operatorId, value, amountOut);
     }
 
+    /**
+     * @notice How much nETH can be obtained by trading vNFT
+     * @param tokenId vNFT tokenId
+     * @param proof Merkle tree proof from the oracle for this validator
+     * @param value value from the oracle for this validator
+     */
     function getNFTOut(uint256 tokenId, bytes32[] memory proof, uint256 value) external view returns (uint256) {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
 
@@ -472,8 +485,10 @@ contract LiquidStaking is
         return getNethOut(value);
     }
 
-    //1. claim income operatorPoolBalances
-    //2. Earnings are settled setLiquidStakingGasHeight
+    /**
+     * @notice Batch Reinvestment Rewards
+     * @param operatorIds The operatorIds of the re-investment
+     */
     function batchReinvestRewardsOfOperator(uint256[] memory operatorIds) public whenNotPaused {
         for (uint256 i = 0; i < operatorIds.length; i++) {
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorIds[i]);
@@ -488,8 +503,10 @@ contract LiquidStaking is
         }
     }
 
-    //1. claim income operatorPoolBalances
-    //2. Earnings are settled setLiquidStakingGasHeight
+    /**
+     * @notice Reinvestment Rewards
+     * @param operatorId The operatorId of the re-investment
+     */
     function reinvestRewardsOfOperator(uint256 operatorId) public whenNotPaused {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
@@ -502,6 +519,10 @@ contract LiquidStaking is
         emit OperatorReinvestRewards(operatorId, nftRewards);
     }
 
+    /**
+     * @notice Users claim vNFT rewards
+     * @param tokenId vNFT tokenId
+     */
     function claimRewardsOfUser(uint256 tokenId) public whenNotPaused {
         uint256 operatorId = vNFTContract.operatorOf(tokenId);
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
@@ -512,6 +533,10 @@ contract LiquidStaking is
         emit UserClaimRewards(operatorId, nftRewards);
     }
 
+    /**
+     * @notice The operator claims the operation reward
+     * @param operatorId operator Id
+     */
     function claimRewardsOfOperator(uint256 operatorId) public whenNotPaused {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
@@ -520,6 +545,10 @@ contract LiquidStaking is
         emit OperatorClaimRewards(operatorId, operatorRewards);
     }
 
+    /**
+     * @notice The dao claims to belong to the dao reward
+     * @param operatorId operator Id
+     */
     function claimRewardsOfDao(uint256 operatorId) public whenNotPaused {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
 
@@ -529,16 +558,18 @@ contract LiquidStaking is
         emit DaoClaimRewards(operatorId, daoRewards);
     }
 
-    function _settle(uint256 operatorId) internal {
-        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
-        IELVault(vaultContractAddress).settle();
-    }
-
+    /**
+     * @notice Get the total amount of ETH in the protocol
+     */
     function getTotalEthValue() public view returns (uint256) {
         return operatorPoolBalancesSum + beaconOracleContract.getBeaconBalances()
             + beaconOracleContract.getPendingBalances();
     }
 
+    /**
+     * @notice nETH to ETH exchange rate
+     * @param _nethAmountIn nETH amount
+     */
     function getEthOut(uint256 _nethAmountIn) public view returns (uint256) {
         uint256 totalEth = getTotalEthValue();
         uint256 nethSupply = nETHContract.totalSupply();
@@ -549,6 +580,10 @@ contract LiquidStaking is
         return _nethAmountIn * (totalEth) / (nethSupply);
     }
 
+    /**
+     * @notice ETH to nETH exchange rate
+     * @param _ethAmountIn ETH amount
+     */
     function getNethOut(uint256 _ethAmountIn) public view returns (uint256) {
         uint256 totalEth = getTotalEthValue();
         uint256 nethSupply = nETHContract.totalSupply();
@@ -559,16 +594,23 @@ contract LiquidStaking is
         return _ethAmountIn * (nethSupply) / (totalEth);
     }
 
+    /**
+     * @notice nETH to ETH exchange rate
+     */
     function getExchangeRate() external view returns (uint256) {
         return getEthOut(1 ether);
     }
 
-    // The total number of validators currently owned by the stake pool
+    /**
+     * @notice The total number of validators currently owned by the stake pool
+     */
     function getLiquidValidatorsCount() public view returns (uint256) {
         return getLiquidNfts().length;
     }
 
-    // Validators currently owned by the stake pool
+    /**
+     * @notice Validators currently owned by the stake pool
+     */
     function getLiquidNfts() public view returns (uint256[] memory) {
         uint256 nftCount = 0;
         uint256[] memory liquidNfts;
@@ -593,6 +635,9 @@ contract LiquidStaking is
         return liquidNfts;
     }
 
+    /**
+     * @notice Validators currently owned by the user
+     */
     function getUserNfts() public view returns (uint256[] memory) {
         uint256 nftCount = 0;
         uint256[] memory userNfts;
@@ -617,6 +662,10 @@ contract LiquidStaking is
         return userNfts;
     }
 
+    /**
+     * @notice Validators that belongs to the operator
+     * @param operatorId operator Id
+     */
     function getOperatorNfts(uint256 operatorId) public view returns (uint256[] memory) {
         uint256 nftCount = 0;
         uint256[] memory operatorNfts;
@@ -644,44 +693,57 @@ contract LiquidStaking is
     }
 
     /**
-     * @notice set dao vault address
+     * @notice set dao address
+     * @param _dao new dao address
      */
     function setDaoAddress(address _dao) external onlyDao {
         dao = _dao;
     }
 
+    /**
+     * @notice Set staking fee rate
+     * @param _feeRate new stake fee rate
+     */
     function setDepositFeeRate(uint256 _feeRate) external onlyDao {
         require(_feeRate <= 1000, "Rate too high");
         depositFeeRate = _feeRate;
     }
 
-    function setUnstakeFeeRate(uint256 _feeRate) external onlyDao {
-        require(_feeRate <= 1000, "Rate too high");
-        unstakeFeeRate = _feeRate;
-    }
-
+    /**
+     * @notice Set LiquidStaking contract withdrawalCredentials
+     * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
+     */
     function setLiquidStakingWithdrawalCredentials(bytes memory _liquidStakingWithdrawalCredentials) external onlyDao {
+        bytes memory oldLiquidStakingWithdrawalCredentials = liquidStakingWithdrawalCredentials;
         liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
+        emit LiquidStakingWithdrawalCredentialsSet(
+            oldLiquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
+            );
     }
 
-    function transfer(uint256 amount, address to) internal {
-        require(to != address(0), "Recipient address provided invalid");
-        payable(to).transfer(amount);
-        emit Transferred(to, amount);
-    }
-
-    function getOperatorPoolEtherMultiple(uint256 operator) internal view returns (uint256) {
-        return operatorPoolBalances[operator] / DEPOSIT_SIZE;
-    }
-
+    /**
+     * @notice Set new beaconOracleContract address
+     * @param _beaconOracleContractAddress new withdrawalCredentials
+     */
     function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
+        address oldBeaconOracleContract = address(beaconOracleContract);
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
+        emit BeaconOracleContractSet(oldBeaconOracleContract, _beaconOracleContractAddress);
     }
 
+    /**
+     * @notice Set new nodeOperatorRegistryContract address
+     * @param _nodeOperatorRegistryContract new withdrawalCredentials
+     */
     function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
+        address oldNodeOperatorRegistryContract = address(nodeOperatorRegistryContract);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+        emit NodeOperatorRegistryContractSet(oldNodeOperatorRegistryContract, _nodeOperatorRegistryContract);
     }
 
+    /**
+     * @notice vNFT receiving function
+     */
     function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
         external
         override
@@ -690,23 +752,40 @@ contract LiquidStaking is
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
 
+    /**
+     * @notice Receive Rewards
+     * @param rewards rewards amount
+     */
     function receiveRewards(uint256 rewards) external payable {
         totalReinvestRewardsSum += rewards;
         emit RewardsReceive(rewards);
     }
 
+    /**
+     * @notice Receive slash fund
+     * @param amount amount
+     */
     function slashReceive(uint256 amount) external payable {
         emit SlashReceive(amount);
     }
 
+    /**
+     * @notice The protocol has been Paused
+     */
     function isPaused() public view returns (bool) {
         paused();
     }
 
+    /**
+     * @notice In the event of an emergency, stop protocol
+     */
     function pause() external onlyDao {
         _pause();
     }
 
+    /**
+     * @notice restart protocol
+     */
     function unpause() external onlyDao {
         _unpause();
     }
