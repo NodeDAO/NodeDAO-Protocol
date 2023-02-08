@@ -13,13 +13,13 @@ contract NETHTest is Test {
 
     function testSetLiquidStaking() public {
         neth.setLiquidStaking(address(1));
-        assertEq(address(1), neth.liquidStakingContract());
+        assertEq(address(1), neth.liquidStakingContractAddress());
     }
 
     function testFailSetLiquidStaking() public {
         vm.prank(address(0));
         neth.setLiquidStaking(address(1));
-        assertEq(address(1), neth.liquidStakingContract());
+        assertEq(address(1), neth.liquidStakingContractAddress());
     }
 
     function testName() public {

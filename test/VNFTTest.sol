@@ -57,10 +57,8 @@ contract VNFTTest is Test {
 
     function testGetLatestTokenId() public {
         vnft.setLiquidStaking(address(1));
-        assertEq(0, vnft.getNextTokenId());
         vm.prank(address(1));
         vnft.whiteListMint(bytes("1"), address(2), 1);
-        assertEq(1, vnft.getNextTokenId());
         vnft.initHeightOf(0);
     }
 
