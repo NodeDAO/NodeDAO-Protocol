@@ -22,8 +22,6 @@ interface IELVault {
 
     function dao() external view returns (address);
 
-    function liquidStaking() external view returns (address);
-
     function settle() external;
 
     function publicSettle() external;

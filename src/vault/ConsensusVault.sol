@@ -32,8 +32,10 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
 
     /**
      * @notice Initializes the NodeCapitalVault contract by setting the required external contracts ,
-     *         ReentrancyGuardUpgradeable, OwnableUpgradeable, UUPSUpgradeable and `_aggregatorProxyAddress`
+     * ReentrancyGuardUpgradeable, OwnableUpgradeable, UUPSUpgradeable and `_aggregatorProxyAddress`
      * @dev initializer - A modifier that defines a protected initializer function that can be invoked at most once
+     * @param _dao dao address
+     * @param liquidStakingProxyAddress_ liquidStaking Address
      */
     function initialize(address _dao, address liquidStakingProxyAddress_) external initializer {
         __Ownable_init();
@@ -45,6 +47,11 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
+    /**
+     * @notice transfer ETH
+     * @param amount transfer amount
+     * @param to transfer to address
+     */
     function transfer(uint256 amount, address to) external nonReentrant onlyLiquidStaking {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);

@@ -75,8 +75,7 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
      * @param _nodeOperatorRegistryAddress nodeOperatorRegistry contract Address
      */
     function setNodeOperatorRegistry(address _nodeOperatorRegistryAddress) public onlyOwner {
-        address oldNodeOperatorRegistryAddress = nodeOperatorRegistryAddress;
+        emit NodeOperatorRegistrySet(nodeOperatorRegistryAddress, _nodeOperatorRegistryAddress);
         nodeOperatorRegistryAddress = _nodeOperatorRegistryAddress;
-        emit NodeOperatorRegistrySet(oldNodeOperatorRegistryAddress, _nodeOperatorRegistryAddress);
     }
 }

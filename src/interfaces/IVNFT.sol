@@ -33,6 +33,4 @@ interface IVNFT is IERC721AUpgradeable {
         returns (bool, uint256);
 
     function whiteListBurn(uint256 tokenId) external;
-
-    function getNextTokenId() external view returns (uint256);
 }

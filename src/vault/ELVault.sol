@@ -13,7 +13,6 @@ import "src/interfaces/INodeOperatorsRegistry.sol";
 /**
  * @title ELVault for managing rewards
  */
-
 contract ELVault is IELVault, ReentrancyGuard, Initializable {
     using Math for uint256;
 
@@ -61,6 +60,14 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
+    /**
+     * @notice initialize Vault Contract
+     * @param _nVNFTContractAddress vNFT contract address
+     * @param dao_ Dao Address
+     * @param operatorId_ operator Id
+     * @param liquidStakingAddress_ liquidStaking contract address
+     * @param nodeOperatorRegistryAddress_ nodeOperatorRegistry Address
+     */
     function initialize(
         address _nVNFTContractAddress,
         address dao_,
@@ -210,6 +217,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         emit Transferred(to, amount);
     }
 
+    /**
+     * @notice Reinvesting rewards belonging to the liquidStaking pool
+     */
     function reinvestmentOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 nftRewards = liquidStakingReward;
         unclaimedRewards -= nftRewards;
@@ -241,7 +251,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice Operater Claims the rewards
+     * @notice Set the gas height of user nft
      */
     function setUserNft(uint256 tokenId, uint256 number) external onlyLiquidStaking {
         if (number == 0) {
@@ -253,6 +263,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         userGasHeight[tokenId] = number;
     }
 
+    /**
+     * @notice Set the gas height of liquidStaking nft
+     */
     function setLiquidStakingGasHeight(uint256 _gasHeight) external onlyLiquidStaking {
         liquidStakingGasHeight = _gasHeight;
     }
@@ -301,7 +314,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice Operater Claims the rewards
+     * @notice Dao Claims the rewards
      */
     function claimDaoRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 rewards = daoRewards;
@@ -337,7 +350,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice Sets the comission.
+     * @notice Sets the Dao comission.
      */
     function setDaoComissionRate(uint256 comissionRate_) external onlyDao {
         require(comissionRate_ < 10000, "Comission cannot be 100%");
@@ -346,14 +359,10 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     }
 
     /**
-     * @notice set dao vault address
+     * @notice set dao address
      */
     function setDaoAddress(address _dao) external onlyDao {
         dao = _dao;
-    }
-
-    function liquidStaking() external view returns (address) {
-        return address(liquidStakingContract);
     }
 
     receive() external payable {}

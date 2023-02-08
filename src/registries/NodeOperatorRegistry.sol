@@ -93,6 +93,12 @@ contract NodeOperatorRegistry is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
+    /**
+     * @notice initialize LiquidStaking Contract
+     * @param _dao Dao contract address
+     * @param _daoVaultAddress Dao Vault Address
+     * @param _vaultFactoryContractAddress vault factory contract address
+     */
     function initialize(address _dao, address _daoVaultAddress, address _vaultFactoryContractAddress)
         public
         initializer
@@ -109,9 +115,12 @@ contract NodeOperatorRegistry is
     }
 
     /**
-     * @notice Add node operator named `name` with reward address `rewardAddress` and staking limit = 0 validators
+     * @notice Add node operator named `name` with reward address `rewardAddress` and _owner
      * @param _name Human-readable name
      * @param _controllerAddress Ethereum 1 address for the operator's management authority
+     * @param _owner operator owner address
+     * @param _rewardAddresses reward addresses
+     * @param _ratios reward ratios
      * @return id a unique key of the added operator
      */
     function registerOperator(
@@ -188,6 +197,10 @@ contract NodeOperatorRegistry is
         emit NodeOperatorTrustedRemove(_id, operator.name, false);
     }
 
+    /**
+     * @notice Set an operator as blacklist
+     * @param _id operator id
+     */
     function setBlacklistOperator(uint256 _id) external onlyDao operatorExists(_id) {
         require(!blacklistOperators[_id], "This operator has been blacklisted");
         blacklistOperators[_id] = true;
@@ -229,6 +242,7 @@ contract NodeOperatorRegistry is
      * @notice Set the rewardAddress of the operator
      * @param _id operator id
      * @param _rewardAddresses Ethereum 1 address which receives ETH rewards for this operator
+     * @param _ratios reward ratios
      */
     function setNodeOperatorRewardAddress(uint256 _id, address[] memory _rewardAddresses, uint256[] memory _ratios)
         external
@@ -283,6 +297,11 @@ contract NodeOperatorRegistry is
         emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
     }
 
+    /**
+     * @notice Change the owner of the operator
+     * @param _id operator id
+     * @param _owner Ethereum 1 address for the operator's owner authority
+     */
     function setNodeOperatorOwnerAddress(uint256 _id, address _owner) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.owner || msg.sender == dao, "PERMISSION_DENIED");
@@ -332,11 +351,19 @@ contract NodeOperatorRegistry is
         vaultContractAddress = operator.vaultContractAddress;
     }
 
+    /**
+     * @notice Get operator owner address
+     * @param _id operator id
+     */
     function getNodeOperatorOwner(uint256 _id) external view operatorExists(_id) returns (address owner) {
         NodeOperator memory operator = operators[_id];
         owner = operator.owner;
     }
 
+    /**
+     * @notice Get operator rewardSetting
+     * @param operatorId operator id
+     */
     function getNodeOperatorRewardSetting(uint256 operatorId)
         external
         view
@@ -373,6 +400,7 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice Returns whether an operator is trusted
+     * @param _id operator id
      */
     function isTrustedOperator(uint256 _id) external view operatorExists(_id) returns (bool) {
         if (blacklistOperators[_id]) {
@@ -389,6 +417,7 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice Returns whether an operator is trusted
+     * @param _controllerAddress controller address
      */
     function isTrustedOperatorOfControllerAddress(address _controllerAddress) external view returns (uint256) {
         uint256 _id = controllerAddress[_controllerAddress];
@@ -403,11 +432,22 @@ contract NodeOperatorRegistry is
         return trustedControllerAddress[_controllerAddress];
     }
 
+    /**
+     * @notice deposit pledge fund for operator
+     * @param amount amount
+     * @param operatorId operator Id
+     */
     function deposit(uint256 amount, uint256 operatorId) external payable nonReentrant {
         operatorPledgeVaultBalances[operatorId] += amount;
         emit Deposited(amount, operatorId);
     }
 
+    /**
+     * @notice Withdraw the deposit available to the operator
+     * @param operatorId operator id
+     * @param amount withdrawal amount
+     * @param to to address
+     */
     function withdraw(uint256 amount, uint256 operatorId, address to) external nonReentrant onlyLiquidStaking {
         require(to != address(0), "Recipient address provided invalid");
         require(amount > registrationFee, "");
@@ -418,6 +458,11 @@ contract NodeOperatorRegistry is
         emit Withdraw(amount, operatorId, to);
     }
 
+    /**
+     * @notice When a validator run by an operator goes seriously offline, it will be slashed
+     * @param operatorId operator id
+     * @param amount slash amount
+     */
     function slash(uint256 amount, uint256 operatorId) external nonReentrant onlyLiquidStaking {
         require(operatorPledgeVaultBalances[operatorId] >= amount, "Insufficient funds");
         operatorPledgeVaultBalances[operatorId] -= amount;
@@ -425,10 +470,18 @@ contract NodeOperatorRegistry is
         emit Slashed(amount, operatorId);
     }
 
+    /**
+     * @notice operator pledge balance
+     * @param operatorId operator id
+     */
     function getPledgeBalanceOfOperator(uint256 operatorId) external view returns (uint256) {
         return operatorPledgeVaultBalances[operatorId];
     }
 
+    /**
+     * @notice Determine whether the operator meets the pledge requirements
+     * @param operatorId operator id
+     */
     function isConformBasicPledge(uint256 operatorId) external view returns (bool) {
         return operatorPledgeVaultBalances[operatorId] >= BASIC_PLEDGE;
     }
@@ -446,6 +499,7 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice set dao vault address
+     * @param  _dao new dao address
      */
     function setDaoAddress(address _dao) external onlyDao {
         dao = _dao;
@@ -453,6 +507,7 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice set dao vault address
+     * @param _daoVaultAddress new dao vault address
      */
     function setDaoVaultAddress(address _daoVaultAddress) external onlyDao {
         daoVaultAddress = _daoVaultAddress;
@@ -460,21 +515,26 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice set operator registration fee
+     * @param _fee new operator registration fee
      */
     function setRegistrationFee(uint256 _fee) external onlyDao {
         registrationFee = _fee;
     }
 
+    /**
+     * @notice Start the permissionless phase, Cannot be changed once started
+     * @param blockNumber The block height at the start of the permissionless phase must be greater than the current block
+     */
     function setpermissionlessBlockNumber(uint256 blockNumber) external onlyDao {
         require(permissionlessBlockNumber == 0, "The permissionless phase has begun");
         require(blockNumber > block.number, "Invalid block height");
         permissionlessBlockNumber = blockNumber;
         emit PermissionlessBlockNumberSet(blockNumber);
     }
+
     /**
      * @notice transfer amount to an address
      */
-
     function transfer(uint256 amount, address to) internal {
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(amount);

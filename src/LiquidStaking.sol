@@ -713,11 +713,10 @@ contract LiquidStaking is
      * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
      */
     function setLiquidStakingWithdrawalCredentials(bytes memory _liquidStakingWithdrawalCredentials) external onlyDao {
-        bytes memory oldLiquidStakingWithdrawalCredentials = liquidStakingWithdrawalCredentials;
-        liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
         emit LiquidStakingWithdrawalCredentialsSet(
-            oldLiquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
+            liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
             );
+        liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
     }
 
     /**
@@ -725,9 +724,8 @@ contract LiquidStaking is
      * @param _beaconOracleContractAddress new withdrawalCredentials
      */
     function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
-        address oldBeaconOracleContract = address(beaconOracleContract);
+        emit BeaconOracleContractSet(address(beaconOracleContract), _beaconOracleContractAddress);
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
-        emit BeaconOracleContractSet(oldBeaconOracleContract, _beaconOracleContractAddress);
     }
 
     /**
@@ -735,9 +733,8 @@ contract LiquidStaking is
      * @param _nodeOperatorRegistryContract new withdrawalCredentials
      */
     function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
-        address oldNodeOperatorRegistryContract = address(nodeOperatorRegistryContract);
+        emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
-        emit NodeOperatorRegistryContractSet(oldNodeOperatorRegistryContract, _nodeOperatorRegistryContract);
     }
 
     /**

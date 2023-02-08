@@ -8,6 +8,9 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
 import "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 import "ERC721A-Upgradeable/extensions/ERC721AQueryableUpgradeable.sol";
 
+/**
+ * @title NodeDao vNFT Contract
+ */
 contract VNFT is
     Initializable,
     OwnableUpgradeable,
@@ -203,10 +206,6 @@ contract VNFT is
         return lastOwners[tokenId];
     }
 
-    function getNextTokenId() external view returns (uint256) {
-        return _nextTokenId();
-    }
-
     /**
      * @notice Mints a Validator nft (vNFT)
      * @param _pubkey -  A 48 bytes representing the validator's public key
@@ -268,6 +267,10 @@ contract VNFT is
         return _baseTokenURI;
     }
 
+    /**
+     * @notice set nft baseURI
+     * @param baseURI baseURI
+     */
     function setBaseURI(string calldata baseURI) external onlyOwner {
         emit BaseURIChanged(_baseTokenURI, baseURI);
         _baseTokenURI = baseURI;
@@ -275,7 +278,7 @@ contract VNFT is
 
     /**
      * @notice set LiquidStaking contract address
-     * @param _liqStakingAddress - contract address
+     * @param _liqStakingAddress contract address
      */
     function setLiquidStaking(address _liqStakingAddress) external onlyOwner {
         require(_liqStakingAddress != address(0), "LiquidStaking address provided invalid");
@@ -283,6 +286,10 @@ contract VNFT is
         liquidStakingContract = _liqStakingAddress;
     }
 
+   /**
+     * @notice Returns the number of tokens minted by `owner`.
+     * @param owner nft owner address
+     */
     function numberMinted(address owner) external view returns (uint256) {
         return _numberMinted(owner);
     }
