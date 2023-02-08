@@ -84,7 +84,7 @@ contract BeaconOracle is
     }
 
     modifier onlyDao() {
-        require(msg.sender == dao, "AUTH_FAILED");
+        require(msg.sender == dao, "PERMISSION_DENIED");
         _;
     }
 

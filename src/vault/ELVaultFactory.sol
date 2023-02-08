@@ -7,7 +7,7 @@ import "openzeppelin-contracts/proxy/beacon/BeaconProxy.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
-import "src/rewards/ELVault.sol";
+import "src/vault/ELVault.sol";
 
 contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public dao;
@@ -47,7 +47,7 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     function create(uint256 operatorId) external onlyNodeOperatorRegistry returns (address) {
         address proxyAddress = address(
-            new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, vNFTContract, dao, operatorId, liquidStakingAddress))
+            new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, vNFTContract, dao, operatorId, liquidStakingAddress, nodeOperatorRegistryAddress))
         );
         emit ELVaultProxyDeployed(proxyAddress);
         return proxyAddress;

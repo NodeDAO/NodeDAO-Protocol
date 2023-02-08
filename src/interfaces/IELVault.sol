@@ -36,7 +36,7 @@ interface IELVault {
 
     function setLiquidStakingGasHeight(uint256 _gasHeight) external;
 
-    function claimOperatorRewards(address to) external returns (uint256);
+    function claimOperatorRewards() external returns (uint256);
 
     function claimDaoRewards(address to) external returns (uint256);
 }

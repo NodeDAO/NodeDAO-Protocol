@@ -11,19 +11,19 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
  * @title ConsensusVault responsible for managing initial capital and reward
  */
 contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
-    address internal _liquidStakingProxyAddress;
+    address public liquidStakingContractAddress;
     address public dao;
 
     event LiquidStakingChanged(address _from, address _to);
     event Transferred(address _to, uint256 _amount);
 
     modifier onlyLiquidStaking() {
-        require(_liquidStakingProxyAddress == msg.sender, "Not allowed to touch funds");
+        require(liquidStakingContractAddress == msg.sender, "Not allowed to touch funds");
         _;
     }
 
     modifier onlyDao() {
-        require(msg.sender == dao, "AUTH_FAILED");
+        require(msg.sender == dao, "PERMISSION_DENIED");
         _;
     }
 
@@ -40,14 +40,10 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         dao = _dao;
-        _liquidStakingProxyAddress = liquidStakingProxyAddress_;
+        liquidStakingContractAddress = liquidStakingProxyAddress_;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
-
-    function liquidStaking() external view returns (address) {
-        return _liquidStakingProxyAddress;
-    }
 
     function transfer(uint256 amount, address to) external nonReentrant onlyLiquidStaking {
         require(to != address(0), "Recipient address provided invalid");
@@ -62,8 +58,8 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
      */
     function setLiquidStaking(address liquidStakingProxyAddress_) external onlyDao {
         require(liquidStakingProxyAddress_ != address(0), "Aggregator address provided invalid");
-        emit LiquidStakingChanged(_liquidStakingProxyAddress, liquidStakingProxyAddress_);
-        _liquidStakingProxyAddress = liquidStakingProxyAddress_;
+        emit LiquidStakingChanged(liquidStakingContractAddress, liquidStakingProxyAddress_);
+        liquidStakingContractAddress = liquidStakingProxyAddress_;
     }
 
     receive() external payable {}
