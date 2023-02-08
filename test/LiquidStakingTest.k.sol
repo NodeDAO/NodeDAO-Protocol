@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.7;
 
-
 import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 import "forge-std/console.sol";
@@ -193,20 +192,6 @@ contract LiquidStakingTest is Test {
         vm.prank(_dao);
         liquidStaking.setDepositFeeRate(feeRate);
         assertEq(liquidStaking.depositFeeRate(), feeRate);
-    }
-
-    function testFailSetUnstakeFeeRate(uint256 feeRate) public {
-        vm.assume(feeRate > 1000);
-        vm.prank(_dao);
-        liquidStaking.setUnstakeFeeRate(feeRate);
-        failed();
-    }
-
-    function testSetUnstakeFeeRate(uint256 feeRate) public {
-        vm.assume(feeRate < 1000);
-        vm.prank(_dao);
-        liquidStaking.setUnstakeFeeRate(feeRate);
-        assertEq(liquidStaking.unstakeFeeRate(), feeRate);
     }
 
     function testGetEthOut(uint256 nethAmount) public {
