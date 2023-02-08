@@ -29,7 +29,7 @@ contract NETH is INETH, ERC20, Ownable {
         liquidStakingContractAddress = _liquidStaking;
     }
 
-   /**
+    /**
      * @notice mint nETHH
      * @param amount mint amount
      * @param account mint account
@@ -38,7 +38,7 @@ contract NETH is INETH, ERC20, Ownable {
         _mint(account, amount);
     }
 
-   /**
+    /**
      * @notice burn nETHH
      * @param amount burn amount
      * @param account burn account

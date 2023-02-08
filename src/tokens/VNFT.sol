@@ -7,10 +7,10 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 import "ERC721A-Upgradeable/extensions/ERC721AQueryableUpgradeable.sol";
-
 /**
  * @title NodeDao vNFT Contract
  */
+
 contract VNFT is
     Initializable,
     OwnableUpgradeable,
@@ -286,7 +286,7 @@ contract VNFT is
         liquidStakingContract = _liqStakingAddress;
     }
 
-   /**
+    /**
      * @notice Returns the number of tokens minted by `owner`.
      * @param owner nft owner address
      */

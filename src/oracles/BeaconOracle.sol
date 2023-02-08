@@ -93,6 +93,9 @@ contract BeaconOracle is
         _;
     }
 
+    /**
+     * @notice add pending validator value
+     */
     function addPendingBalances(uint256 _pendingBalance) external onlyLiquidStaking {
         pendingBalances += _pendingBalance;
         emit PendingBalancesAdd(_pendingBalance, pendingBalances);
