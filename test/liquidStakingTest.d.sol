@@ -56,12 +56,26 @@ contract LiquidStakingTest is Test {
     address _oracleMember5 = address(15);
     bytes withdrawalCreds = hex"3031";
     address _rewardAddress2 = address(133);
+    address _rewardAddress3 = address(245);
+    address _rewardAddress4 = address(255);
+
     address _controllerAddress2 = address(144);
+    address _controllerAddress3 = address(155);
+    address _controllerAddress4 = address(322);
+
     address[] _rewardAddresses = new address[] (1);
+    address[] _rewardAddresses2 = new address[] (1);
+    address[] _rewardAddresses3 = new address[] (1);
+    address[] _rewardAddresses4 = new address[] (1);
+
     uint256[] _ratios = new uint256[] (1);
 
     function setUp() public {
         _rewardAddresses[0] = _rewardAddress;
+        _rewardAddresses2[0] = _rewardAddress2;
+        _rewardAddresses3[0] = _rewardAddress3;
+        _rewardAddresses4[0] = _rewardAddress4;
+
         _ratios[0] = 100;
         liquidStaking = new LiquidStaking();
 
@@ -114,9 +128,11 @@ contract LiquidStakingTest is Test {
             "one", address(_controllerAddress), address(4), _rewardAddresses, _ratios
         );
         liquidStaking.registerOperator{value: 1.1 ether}(
-            "two", address(_controllerAddress2), address(4), _rewardAddresses, _ratios
+            "two", address(_controllerAddress2), address(5), _rewardAddresses2, _ratios
         );
-
+        liquidStaking.registerOperator{value: 1.1 ether}(
+            "three", address(_controllerAddress3), address(6), _rewardAddresses3, _ratios
+        );
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
         vm.prank(_dao);
@@ -129,7 +145,15 @@ contract LiquidStakingTest is Test {
         vm.deal(address(2), 12 ether);
         liquidStaking.stakeETH{value: 100 wei}(1);
 
+        vm.expectRevert("Stake amount must be minimum  1000 wei");
+        vm.prank(address(2));
+        liquidStaking.stakeETH{value: 200 wei}(2);
+
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
+        vm.prank(address(2));
+        liquidStaking.stakeETH{value: 1 ether}(4);
+
+        vm.expectRevert("The operator is not trusted");
         vm.prank(address(2));
         liquidStaking.stakeETH{value: 1 ether}(3);
     }
@@ -141,6 +165,27 @@ contract LiquidStakingTest is Test {
         vm.deal(address(23), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(1);
         assertEq(1, vnft.balanceOf(address(23)));
+    }
+
+    function testRegisterOperator() public {
+        vm.expectRevert("Invalid length");
+        string memory _name2 = "123142141212131223123122112231231312323123142341";
+        liquidStaking.registerOperator{value: 1.1 ether}(
+        _name2, address(_controllerAddress4), address(7), _rewardAddresses4, _ratios
+        );
+    }
+
+    function testWithdrawOperatorFailRequireCases() public {
+        vm.expectRevert("Permission denied");
+        vm.prank(address(liquidStaking));
+        liquidStaking.withdrawOperator( 1, 1 ether, address(7) );
+        
+        vm.prank(address(34));
+        vm.deal(address(34), 15 ether);
+        operatorRegistry.deposit(1 ether, 1) ;
+
+        vm.prank(address(34));
+        liquidStaking.withdrawOperator( 1, 1 ether, address(12) );
     }
 
     function testStakeETH() public {

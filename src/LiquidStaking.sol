@@ -14,6 +14,8 @@ import "src/interfaces/IDepositContract.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
 import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
+import "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 /**
  * @title NodeDao LiquidStaking Contract
