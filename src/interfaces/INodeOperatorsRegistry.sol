@@ -170,7 +170,7 @@ interface INodeOperatorsRegistry {
     event NodeOperatorOwnerAddressSet(uint256 id, string name, address ownerAddress);
     event Transferred(address _to, uint256 _amount);
     event Slashed(uint256 _amount, uint256 _operatorId);
-    event Deposited(uint256 _amount, uint256 _operatorId);
+    event PledgeDeposited(uint256 _amount, uint256 _operatorId);
     event Withdraw(uint256 _amount, uint256 _operatorId, address _to);
     event LiquidStakingChanged(address _from, address _to);
     event PermissionlessBlockNumberSet(uint256 blockNumber);

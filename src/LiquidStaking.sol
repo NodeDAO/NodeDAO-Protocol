@@ -186,14 +186,16 @@ contract LiquidStaking is
      */
     function withdrawOperator(uint256 operatorId, uint256 withdrawAmount, address to) external whenNotPaused {
         address owner = nodeOperatorRegistryContract.getNodeOperatorOwner(operatorId);
-        require(owner == msg.sender, "Permission denied");
+        require(owner == msg.sender, "PERMISSION_DENIED");
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        // Pledge the required funds based on the number of validators
         uint256 requireVault = 0;
         if (operatorNftCounts <= 100) {
             requireVault = (operatorNftCounts * 10 / 100) * 1 ether;
         } else {
             requireVault = operatorNftCounts.sqrt() * 1 ether;
         }
+        // After the withdrawal is completed, the pledge funds requirements must also be met
         uint256 nowPledge = nodeOperatorRegistryContract.getPledgeBalanceOfOperator(operatorId);
         require(nowPledge >= requireVault + withdrawAmount, "Insufficient pledge balance");
 
@@ -211,8 +213,9 @@ contract LiquidStaking is
      */
     function quitOperator(uint256 operatorId, uint256 substituteOperatorId, address to) external whenNotPaused {
         address owner = nodeOperatorRegistryContract.getNodeOperatorOwner(operatorId);
-        require(owner == msg.sender, "Permission denied");
+        require(owner == msg.sender, "PERMISSION_DENIED");
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        // There are active validators and cannot exit
         require(operatorNftCounts == 0, "unable to exit");
 
         // substituteOperatorId must be a trusted operator
@@ -221,6 +224,7 @@ contract LiquidStaking is
             "The substituteOperatorId is not trusted"
         );
 
+        // Update operator available funds
         uint256 balance = operatorPoolBalances[operatorId];
         operatorPoolBalances[operatorId] = 0;
         operatorPoolBalances[substituteOperatorId] += balance;
@@ -231,7 +235,10 @@ contract LiquidStaking is
     }
 
     /**
-     * @notice For operators added to the blacklist by dao, for example, because the operator has been inactive for a long time, and has been punished on a large scale, etc.
+     * @notice For operators added to the blacklist by dao, for example, 
+     * because the operator has been inactive for a long time, 
+     * and has been punished on a large scale, etc.
+     *
      * The Dao has the right to distribute the available balance on this operator to other active operators,
      * and the allocation share will be determined through proposals
      * @param blacklistOperatorId blacklist operator id
@@ -249,6 +256,8 @@ contract LiquidStaking is
             "This operator is not in the blacklist"
         );
         require(operatorIds.length == amounts.length, "Invalid length");
+
+        // Update operator available funds
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < operatorIds.length; i++) {
             uint256 operatorId = operatorIds[i];
@@ -271,8 +280,11 @@ contract LiquidStaking is
 
         // operatorId must be a trusted operator
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
+
+        // Must meet the basic mortgage funds before being allowed to be entrusted
         require(nodeOperatorRegistryContract.isConformBasicPledge(_operatorId), "Insufficient pledge balance");
 
+        // When the deposit rate is not 0, charge the fee
         uint256 depositFeeAmount;
         uint256 depositPoolAmount;
         if (depositFeeRate == 0) {
@@ -325,6 +337,7 @@ contract LiquidStaking is
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
 
+        // Must meet the basic mortgage funds before being allowed to be entrusted
         require(nodeOperatorRegistryContract.isConformBasicPledge(_operatorId), "Insufficient pledge balance");
 
         uint256 amountOut = getNethOut(msg.value);
@@ -371,7 +384,7 @@ contract LiquidStaking is
         require(operatorId != 0, "msg.sender must be the controllerAddress of the trusted operator");
         require(operatorPoolBalances[operatorId] / DEPOSIT_SIZE >= pubkeys.length, "Insufficient balance");
 
-        _settle(operatorId);
+        reinvestRewardsOfOperator(operatorId);
 
         for (uint256 i = 0; i < pubkeys.length; i++) {
             _stakeAndMint(operatorId, pubkeys[i], signatures[i], depositDataRoots[i]);
@@ -393,10 +406,11 @@ contract LiquidStaking is
     {
         depositContract.deposit{value: 32 ether}(pubkey, liquidStakingWithdrawalCredentials, signature, depositDataRoot);
 
-        // mint nft
+        // Mint or fill vNFT
         bool isMint;
         uint256 tokenId;
         (isMint, tokenId) = vNFTContract.whiteListMint(pubkey, address(this), operatorId);
+        // Newly minted vNFT, not filled
         if (isMint) {
             _liquidNfts.push(tokenId);
             _operatorNfts[operatorId].push(tokenId);
@@ -422,7 +436,7 @@ contract LiquidStaking is
 
         bytes memory pubkey = vNFTContract.validatorOf(tokenId);
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
-        require(success, "verifyNftValue fail");
+        require(success, "vNFT value verification failed");
 
         // this might need to use transfer instead
         success = nETHContract.transferFrom(msg.sender, address(this), amountOut);
@@ -452,23 +466,28 @@ contract LiquidStaking is
 
         bool trusted;
         address vaultContractAddress;
+        // The nft under the trusted operator can be wrapped
         (trusted,,,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
-        require(trusted, "permission denied");
+        require(trusted, "PERMISSION_DENIED");
 
+        // Check the value of the validator
         bytes memory pubkey = vNFTContract.validatorOf(tokenId);
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
-        require(success, "verifyNftValue fail");
+        require(success, "vNFT value verification failed");
 
         uint256 amountOut = getNethOut(value);
 
+        // Remove from user list
         _liquidUserNfts[tokenId] = false;
 
+        // Settle this nft reward to the user
         claimRewardsOfUser(tokenId);
+        // Complete the exchange of nETH and vNFT
         vNFTContract.safeTransferFrom(msg.sender, address(this), tokenId);
-        // success = nETHContract.transferFrom(address(this), msg.sender, amountOut);
         success = nETHContract.transfer(msg.sender, amountOut);
         require(success, "Failed to transfer neth");
 
+        // Change the gas height of this nft
         IELVault(vaultContractAddress).setUserNft(tokenId, 0);
         nftWrapNonce = nftWrapNonce + 1;
 
@@ -487,11 +506,11 @@ contract LiquidStaking is
         bool trusted;
         address vaultContractAddress;
         (trusted,,,, vaultContractAddress) = nodeOperatorRegistryContract.getNodeOperator(operatorId, false);
-        require(trusted, "permission denied");
+        require(trusted, "PERMISSION_DENIED");
 
         bytes memory pubkey = vNFTContract.validatorOf(tokenId);
         bool success = beaconOracleContract.verifyNftValue(proof, pubkey, value, tokenId);
-        require(success, "verifyNftValue fail");
+        require(success, "vNFT value verification failed");
 
         return getNethOut(value);
     }
@@ -505,9 +524,11 @@ contract LiquidStaking is
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorIds[i]);
             IELVault(vaultContractAddress).settle();
 
+            // Change the gas height of liquidStaking nft
             uint256 nftRewards = IELVault(vaultContractAddress).reinvestmentOfLiquidStaking();
             IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
+            // update available funds
             operatorPoolBalances[operatorIds[i]] += nftRewards;
             operatorPoolBalancesSum += nftRewards;
             emit OperatorReinvestRewards(operatorIds[i], nftRewards);
@@ -522,9 +543,11 @@ contract LiquidStaking is
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
 
+        // Change the gas height of liquidStaking nft
         uint256 nftRewards = IELVault(vaultContractAddress).reinvestmentOfLiquidStaking();
         IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
+        // update available funds
         operatorPoolBalances[operatorId] += nftRewards;
         operatorPoolBalancesSum += nftRewards;
         emit OperatorReinvestRewards(operatorId, nftRewards);
@@ -532,6 +555,8 @@ contract LiquidStaking is
 
     /**
      * @notice Users claim vNFT rewards
+     * @dev There is no need to judge whether this nft belongs to the liquidStaking, 
+     *      because the liquidStaking cannot directly reward
      * @param tokenId vNFT tokenId
      */
     function claimRewardsOfUser(uint256 tokenId) public whenNotPaused {
@@ -551,6 +576,7 @@ contract LiquidStaking is
     function claimRewardsOfOperator(uint256 operatorId) public whenNotPaused {
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).settle();
+
         uint256 operatorRewards = IELVault(vaultContractAddress).claimOperatorRewards();
 
         emit OperatorClaimRewards(operatorId, operatorRewards);

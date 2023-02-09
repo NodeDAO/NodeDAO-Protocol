@@ -149,6 +149,7 @@ contract NodeOperatorRegistry is
 
         totalOperators = id;
 
+        // Generate a vault contract for the operator
         address vaultContractAddress = vaultFactoryContract.create(id);
 
         operators[id] = NodeOperator({
@@ -165,7 +166,7 @@ contract NodeOperatorRegistry is
         controllerAddress[_controllerAddress] = id;
 
         operatorPledgeVaultBalances[id] += BASIC_PLEDGE;
-        emit Deposited(BASIC_PLEDGE, id);
+        emit PledgeDeposited(BASIC_PLEDGE, id);
 
         transfer(registrationFee, daoVaultAddress);
 
@@ -267,6 +268,7 @@ contract NodeOperatorRegistry is
         require(_rewardAddresses.length <= MAX_REWARDSETTING_LENGTH, "Invalid length");
         require(_rewardAddresses.length == _ratios.length, "Invalid length");
 
+        // clear old settings
         delete operatorRewardSetting[_id];
 
         uint256 totalRatio = 0;
@@ -276,6 +278,8 @@ contract NodeOperatorRegistry is
 
             totalRatio += _ratios[i];
         }
+
+        // Ratio sum should be 100%
         require(totalRatio == 100, "Invalid Ratio");
     }
 
@@ -285,15 +289,18 @@ contract NodeOperatorRegistry is
      * @param _controllerAddress Ethereum 1 address for the operator's management authority
      */
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
+        // The same address can only be used once
         require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
 
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.owner, "PERMISSION_DENIED");
+
         if (trustedControllerAddress[operator.controllerAddress] == _id) {
             trustedControllerAddress[operator.controllerAddress] = 0;
             trustedControllerAddress[_controllerAddress] = _id;
         }
 
+        // Update the control address set to ensure that the operatorid can be obtained according to the control address
         controllerAddress[operator.controllerAddress] = 0;
         controllerAddress[_controllerAddress] = _id;
         operators[_id].controllerAddress = _controllerAddress;
@@ -451,7 +458,7 @@ contract NodeOperatorRegistry is
      */
     function deposit(uint256 amount, uint256 operatorId) external payable nonReentrant {
         operatorPledgeVaultBalances[operatorId] += amount;
-        emit Deposited(amount, operatorId);
+        emit PledgeDeposited(amount, operatorId);
     }
 
     /**

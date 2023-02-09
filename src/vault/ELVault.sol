@@ -135,6 +135,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
             return;
         }
 
+        // Compute the rewards belonging to the operator and dao
         uint256 comission = (outstandingRewards * comissionRate) / 10000;
         uint256 daoReward = (comission * daoComissionRate) / 10000;
         daoRewards += daoReward;
@@ -143,11 +144,14 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         outstandingRewards -= comission;
         unclaimedRewards += outstandingRewards;
 
+        // Calculated average reward per nft
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
         uint256 averageRewards = outstandingRewards / operatorNftCounts;
 
+        // Calculate the rewards belonging to the liquidStaking pool
         liquidStakingReward += averageRewards * (operatorNftCounts - userNftsCount);
 
+        // Calculation of Cumulative Average Rewards
         uint256 currentValue = cumArr[cumArr.length - 1].value + averageRewards;
         RewardMetadata memory r = RewardMetadata({value: currentValue, height: block.number});
         cumArr.push(r);
@@ -283,7 +287,8 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     function claimOperatorRewards() external nonReentrant onlyLiquidStaking returns (uint256) {
         uint256 rewards = operatorRewards;
         operatorRewards = 0;
-
+        
+        // Pledge the required funds based on the number of validators
         uint256 requireVault = 0;
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
         if (operatorNftCounts <= 100) {
@@ -292,6 +297,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
             requireVault = operatorNftCounts.sqrt() * 1 ether;
         }
 
+        // After the withdrawal is completed, the pledge funds requirements must also be met
         uint256 nowPledge = nodeOperatorRegistryContract.getPledgeBalanceOfOperator(operatorId);
         require(nowPledge >= requireVault, "Insufficient pledge balance");
 
@@ -306,6 +312,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
             uint256 ratio = ratios[i];
             totalRatios += ratio;
 
+            // If it is the last reward address, calculate by subtraction
             if (i == rewardAddresses.length - 1) {
                 transfer(rewards - totalAmount, rewardAddresses[i]);
             } else {
