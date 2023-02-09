@@ -139,18 +139,16 @@ interface INodeOperatorsRegistry {
     function deposit(uint256 amount, uint256 operatorId) external payable;
 
     /**
-     * @notice Withdraw the deposit available to the operator
-     * @param operatorId operator id
-     * @param amount withdrawal amount
-     * @param to to address
-     */
-    function withdraw(uint256 amount, uint256 operatorId, address to) external;
-
-    /**
      * @notice Determine whether the operator meets the pledge requirements
      * @param operatorId operator id
      */
     function isConformBasicPledge(uint256 operatorId) external view returns (bool);
+
+    /**
+     * @notice Returns whether an operator is quit
+     * @param _id operator id
+     */
+    function isQuitOperator(uint256 _id) external view returns (bool);
 
     event NodeOperatorRegistered(
         uint256 id,
@@ -160,6 +158,8 @@ interface INodeOperatorsRegistry {
         address[] _rewardAddresses,
         uint256[] _ratios
     );
+    event OperatorWithdraw(uint256 operatorId, uint256 withdrawAmount, address to);
+    event OperatorQuit(uint256 operatorId, uint256 nowVault, address to);
     event NodeOperatorTrustedSet(uint256 id, string name, bool trusted);
     event NodeOperatorTrustedRemove(uint256 id, string name, bool trusted);
     event NodeOperatorBlacklistSet(uint256 id);
@@ -174,4 +174,6 @@ interface INodeOperatorsRegistry {
     event Withdraw(uint256 _amount, uint256 _operatorId, address _to);
     event LiquidStakingChanged(address _from, address _to);
     event PermissionlessBlockNumberSet(uint256 blockNumber);
+    event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
+    event DaoClaimRewards(uint256 operatorId, uint256 rewards);
 }

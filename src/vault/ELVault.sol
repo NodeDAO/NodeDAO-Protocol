@@ -59,6 +59,11 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         _;
     }
 
+    modifier onlyNodeOperatorRegistryContract() {
+        require(address(nodeOperatorRegistryContract) == msg.sender, "Not allowed to touch funds");
+        _;
+    }
+
     modifier onlyDao() {
         require(msg.sender == dao, "PERMISSION_DENIED");
         _;
@@ -284,10 +289,10 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     /**
      * @notice Operater Claims the rewards
      */
-    function claimOperatorRewards() external nonReentrant onlyLiquidStaking returns (uint256) {
+    function claimOperatorRewards() external nonReentrant onlyNodeOperatorRegistryContract returns (uint256) {
         uint256 rewards = operatorRewards;
         operatorRewards = 0;
-        
+
         // Pledge the required funds based on the number of validators
         uint256 requireVault = 0;
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
@@ -330,7 +335,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     /**
      * @notice Dao Claims the rewards
      */
-    function claimDaoRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
+    function claimDaoRewards(address to) external nonReentrant onlyNodeOperatorRegistryContract returns (uint256) {
         uint256 rewards = daoRewards;
         daoRewards = 0;
         transfer(rewards, to);

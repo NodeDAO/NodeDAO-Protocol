@@ -5,9 +5,12 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "openzeppelin-contracts/utils/math/Math.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
 import "src/interfaces/IELVaultFactory.sol";
 import "src/interfaces/ILiquidStaking.sol";
+import "src/interfaces/IVNFT.sol";
+import "src/interfaces/IELVault.sol";
 
 /**
  * @title Node Operator registry
@@ -21,6 +24,8 @@ contract NodeOperatorRegistry is
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable
 {
+    using Math for uint256;
+
     struct RewardSetting {
         address rewardAddress;
         uint256 ratio;
@@ -29,6 +34,7 @@ contract NodeOperatorRegistry is
     /// @dev Node Operator parameters
     struct NodeOperator {
         bool trusted; // Trusted operator approved by dao
+        bool isQuit;
         address owner;
         address controllerAddress; // Ethereum 1 address for the operator's management authority
         address vaultContractAddress; // Ethereum 1 contract address for the operator's vault
@@ -72,6 +78,7 @@ contract NodeOperatorRegistry is
 
     IELVaultFactory public vaultFactoryContract;
     ILiquidStaking public liquidStakingContract;
+    IVNFT public vNFTContract;
 
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "PERMISSION_DENIED");
@@ -104,10 +111,12 @@ contract NodeOperatorRegistry is
      * @param _daoVaultAddress Dao Vault Address
      * @param _vaultFactoryContractAddress vault factory contract address
      */
-    function initialize(address _dao, address _daoVaultAddress, address _vaultFactoryContractAddress)
-        public
-        initializer
-    {
+    function initialize(
+        address _dao,
+        address _daoVaultAddress,
+        address _vaultFactoryContractAddress,
+        address _nVNFTContractAddress
+    ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
@@ -115,6 +124,7 @@ contract NodeOperatorRegistry is
         dao = _dao;
         daoVaultAddress = _daoVaultAddress;
         vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
+        vNFTContract = IVNFT(_nVNFTContractAddress);
         registrationFee = 0.1 ether;
         permissionlessBlockNumber = 0;
     }
@@ -134,15 +144,8 @@ contract NodeOperatorRegistry is
         address _owner,
         address[] memory _rewardAddresses,
         uint256[] memory _ratios
-    )
-        external
-        payable
-        nonReentrant
-        validAddress(_controllerAddress)
-        validAddress(_owner)
-        onlyLiquidStaking
-        returns (uint256 id)
-    {
+    ) external payable nonReentrant validAddress(_controllerAddress) validAddress(_owner) returns (uint256 id) {
+        require(bytes(_name).length <= 32, "Invalid length");
         require(msg.value == BASIC_PLEDGE + registrationFee, "Invalid registration operator fee");
         require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
         id = totalOperators + 1;
@@ -154,6 +157,7 @@ contract NodeOperatorRegistry is
 
         operators[id] = NodeOperator({
             trusted: false,
+            isQuit: false,
             owner: _owner,
             controllerAddress: _controllerAddress,
             vaultContractAddress: vaultContractAddress,
@@ -171,6 +175,57 @@ contract NodeOperatorRegistry is
         transfer(registrationFee, daoVaultAddress);
 
         emit NodeOperatorRegistered(id, _name, _controllerAddress, vaultContractAddress, _rewardAddresses, _ratios);
+    }
+
+    /**
+     * @notice Withdraw the deposit available to the operator, it must be sent by the operator owner
+     * @param operatorId operator id
+     * @param withdrawAmount withdrawal amount
+     */
+    function withdrawOperator(uint256 operatorId, uint256 withdrawAmount, address to) external nonReentrant {
+        require(to != address(0), "Recipient address provided invalid");
+
+        NodeOperator memory operator = operators[operatorId];
+        require(operator.owner == msg.sender, "PERMISSION_DENIED");
+
+        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        // Pledge the required funds based on the number of validators
+        uint256 requireVault = 0;
+        if (operatorNftCounts <= 100) {
+            requireVault = (operatorNftCounts * 10 / 100) * 1 ether;
+        } else {
+            requireVault = operatorNftCounts.sqrt() * 1 ether;
+        }
+        // After the withdrawal is completed, the pledge funds requirements must also be met
+        require(operatorPledgeVaultBalances[operatorId] >= requireVault + withdrawAmount, "Insufficient pledge balance");
+        operatorPledgeVaultBalances[operatorId] -= withdrawAmount;
+        payable(to).transfer(withdrawAmount);
+
+        emit OperatorWithdraw(operatorId, withdrawAmount, to);
+    }
+
+    /**
+     * @notice Exit the operator. When there are no validators running, the owner of the operator has the right to opt out.
+     * Unused funds must be transferred to another active operator
+     * @param operatorId operator id
+     * @param to The receiving address of the pledged funds of the withdrawn operator
+     */
+    function quitOperator(uint256 operatorId, address to) external {
+        NodeOperator memory operator = operators[operatorId];
+        require(operator.owner == msg.sender, "PERMISSION_DENIED");
+
+        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        // There are active validators and cannot exit
+        require(operatorNftCounts == 0, "unable to exit");
+
+        uint256 nowPledge = operatorPledgeVaultBalances[operatorId];
+        operatorPledgeVaultBalances[operatorId] = 0;
+
+        require(to != address(0), "Recipient address provided invalid");
+        payable(to).transfer(nowPledge);
+        operators[operatorId].isQuit = true;
+
+        emit OperatorQuit(operatorId, nowPledge, to);
     }
 
     /**
@@ -430,8 +485,15 @@ contract NodeOperatorRegistry is
             return true;
         }
 
-        NodeOperator memory operator = operators[_id];
-        return operator.trusted;
+        return operators[_id].trusted;
+    }
+
+    /**
+     * @notice Returns whether an operator is quit
+     * @param _id operator id
+     */
+    function isQuitOperator(uint256 _id) external view operatorExists(_id) returns (bool) {
+        return operators[_id].isQuit;
     }
 
     /**
@@ -458,23 +520,11 @@ contract NodeOperatorRegistry is
      */
     function deposit(uint256 amount, uint256 operatorId) external payable nonReentrant {
         operatorPledgeVaultBalances[operatorId] += amount;
+        if (amount > BASIC_PLEDGE && !operators[operatorId].isQuit) {
+            operators[operatorId].isQuit = true;
+        }
+
         emit PledgeDeposited(amount, operatorId);
-    }
-
-    /**
-     * @notice Withdraw the deposit available to the operator
-     * @param operatorId operator id
-     * @param amount withdrawal amount
-     * @param to to address
-     */
-    function withdraw(uint256 amount, uint256 operatorId, address to) external nonReentrant onlyLiquidStaking {
-        require(to != address(0), "Recipient address provided invalid");
-        require(amount > registrationFee, "");
-        require(operatorPledgeVaultBalances[operatorId] >= amount, "Insufficient funds");
-        operatorPledgeVaultBalances[operatorId] -= amount;
-        payable(to).transfer(amount);
-
-        emit Withdraw(amount, operatorId, to);
     }
 
     /**
@@ -549,6 +599,32 @@ contract NodeOperatorRegistry is
         require(blockNumber > block.number, "Invalid block height");
         permissionlessBlockNumber = blockNumber;
         emit PermissionlessBlockNumberSet(blockNumber);
+    }
+
+    /**
+     * @notice The operator claims the operation reward
+     * @param operatorId operator Id
+     */
+    function claimRewardsOfOperator(uint256 operatorId) public {
+        NodeOperator memory operator = operators[operatorId];
+        address vaultContractAddress = operator.vaultContractAddress;
+
+        uint256 operatorRewards = IELVault(vaultContractAddress).claimOperatorRewards();
+
+        emit OperatorClaimRewards(operatorId, operatorRewards);
+    }
+
+    /**
+     * @notice The dao claims to belong to the dao reward
+     * @param operatorId operator Id
+     */
+    function claimRewardsOfDao(uint256 operatorId) public {
+        NodeOperator memory operator = operators[operatorId];
+        address vaultContractAddress = operator.vaultContractAddress;
+
+        uint256 daoRewards = IELVault(vaultContractAddress).claimDaoRewards(daoVaultAddress);
+
+        emit DaoClaimRewards(operatorId, daoRewards);
     }
 
     /**
