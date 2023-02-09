@@ -70,7 +70,7 @@ contract LiquidStakingTest is Test {
         vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
 
         operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract));
+        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
         operatorRegistry.setLiquidStaking(address(liquidStaking));
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
@@ -103,7 +103,7 @@ contract LiquidStakingTest is Test {
             address(depositContract)
         );
 
-        liquidStaking.registerOperator{value: 1.1 ether}(
+        operatorRegistry.registerOperator{value: 1.1 ether}(
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
         );
 

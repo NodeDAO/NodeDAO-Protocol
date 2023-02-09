@@ -267,12 +267,12 @@ contract LiquidStaking is
     ) external nonReentrant whenNotPaused {
         require(
             pubkeys.length == signatures.length && pubkeys.length == depositDataRoots.length,
-            "Must have the same length."
+            "parameter must have the same length"
         );
 
         // must be a trusted operator
         uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
-        require(operatorId != 0, "must be trusted operator");
+        require(operatorId != 0, "The sender must be controlAddress of the trusted operator");
         require(operatorPoolBalances[operatorId] / DEPOSIT_SIZE >= pubkeys.length, "Insufficient balance");
 
         reinvestRewardsOfOperator(operatorId);

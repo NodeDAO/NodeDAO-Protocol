@@ -79,7 +79,7 @@ contract LiquidStakingTest is Test {
         vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
 
         operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract));
+        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
         operatorRegistry.setLiquidStaking(address(liquidStaking));
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
@@ -111,7 +111,7 @@ contract LiquidStakingTest is Test {
             address(depositContract)
         );
 
-        liquidStaking.registerOperator{value: 1.1 ether}(
+        operatorRegistry.registerOperator{value: 1.1 ether}(
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
         );
 
@@ -135,7 +135,7 @@ contract LiquidStakingTest is Test {
         vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
 
         operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract));
+        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
         operatorRegistry.setLiquidStaking(address(liquidStaking));
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
@@ -166,7 +166,7 @@ contract LiquidStakingTest is Test {
             address(depositContract)
         );
 
-        liquidStaking.registerOperator{value: 1.1 ether}(
+        operatorRegistry.registerOperator{value: 1.1 ether}(
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
         );
 
@@ -340,57 +340,12 @@ contract LiquidStakingTest is Test {
         liquidStaking.unwrapNFT(tokenIds[0], proof, 32 ether);
     }
 
-    function testGetLiquidValidatorsCount() public {
-        // bytes[] memory localpk = new bytes[](1);
-        // bytes[] memory localSig = new bytes[](1);
-        // bytes32[] memory localDataRoot = new bytes32[](1);
-        // // address localAddress = 0xa1f4c80ae6751b7d4453e3f7260ebe2691fd863a826323f9770151cfc69375ab252b78367ca440663809661f1b1c6864; //  bytesToAddress(pubKey);
-        // // address(uint160(uint256(b)))
-        // localpk[0] = pubKey;
-        // localSig[0] = tempSignature;
-        // localDataRoot[0] = tempDepositDataRoot;
-        // vm.prank(_dao);
-        // liquidStaking.setDepositFeeRate(0);
-        // vm.prank(_rewardAddress);
-        // vm.deal(_rewardAddress, 1000000 ether);
-        // liquidStaking.stakeETH{value: 1000000 ether}(1);
-        // vm.prank(_controllerAddress);
-        // liquidStaking.registerValidator(
-        //     localpk,
-        //     localSig,
-        //     localDataRoot
-        // );
-
-        // vm.prank(address(2));
-        // vm.deal(address(2), 32 ether);
-        // liquidStaking.stakeNFT{value: 32 ether}(1);
-
-        // require more for WRAPNFT to proceed
-        uint256 validatorsCount = liquidStaking.getLiquidValidatorsCount();
-        assertEq(validatorsCount, 0);
-    }
-
-    function testGetLiquidNfts() public {
-        uint256[] memory liquidNfts = liquidStaking.getLiquidNfts();
-        assertEq(liquidNfts.length, 0);
-    }
-
-    function testGetOperatorNfts() public {
-        uint256[] memory operatorNfts = liquidStaking.getOperatorNfts(1);
-        assertEq(operatorNfts.length, 0);
-    }
-
     function testBatchReinvestmentRewardsOfOperator() public {
         uint256[] memory operatorIds = new uint256[](1);
         operatorIds[0] = 1;
         liquidStaking.batchReinvestRewardsOfOperator(operatorIds);
     }
-
-    function testReinvestmentRewardsOfOperator() public {
-        uint256 operatorId = 1;
-        liquidStaking.reinvestRewardsOfOperator(operatorId);
-    }
-
+    
     function testClaimRewardsOfUser() public {
         bytes32[] memory proof = new bytes32[](1);
         proof[0] = 0x2d17183ec955000e448f9ba74cb9cfec4690d35ed96aef6901f68892b38ae58e;
@@ -422,7 +377,6 @@ contract LiquidStakingTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
-        liquidStaking.reinvestRewardsOfOperator(1);
         // liquidStaking.claimRewardsOfUser must be called by the user
     }
 
@@ -457,7 +411,7 @@ contract LiquidStakingTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
-        liquidStaking.claimRewardsOfOperator(1);
+        operatorRegistry.claimRewardsOfOperator(1);
     }
 
     function testClaimDaoRewards() public {
@@ -491,7 +445,7 @@ contract LiquidStakingTest is Test {
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
-        liquidStaking.claimRewardsOfDao(1);
+        operatorRegistry.claimRewardsOfDao(1);
     }
 
     function testGetNethOut(uint256 ethAmount) public {
@@ -510,11 +464,6 @@ contract LiquidStakingTest is Test {
         assertEq(nethValue, selfCalculated);
     }
 
-    function testUnstakeETH(uint256 randomInt) public {
-        vm.expectRevert("Not supported yet");
-        liquidStaking.unstakeETH(randomInt);
-    }
-
     // function test_authorizeUpgrade(address randomAdd) public {
     //     vm.prank(address(liquidStaking));
     //     vm.expectRevert("Not supported yet");
@@ -522,8 +471,7 @@ contract LiquidStakingTest is Test {
     // }
 
     function testUnstakeNFT(uint256 randomInt) public {
-        bytes[] memory data = new bytes[](0);
-        bool isTrue = liquidStaking.unstakeNFT(data);
+        bool isTrue = liquidStaking.unstakeNFT(1);
         assertEq(true, isTrue);
     }
 
