@@ -6,11 +6,11 @@ import "src/LiquidStaking.sol";
 import "src/tokens/NETH.sol";
 import "src/tokens/VNFT.sol";
 import "src/registries/NodeOperatorRegistry.sol";
-import "src/rewards/ELVault.sol";
+import "src/vault/ELVault.sol";
 import "forge-std/Script.sol";
 import "./utils/DeployProxy.sol";
-import "src/rewards/ConsensusVault.sol";
-import "src/rewards/ELVaultFactory.sol";
+import "src/vault/ConsensusVault.sol";
+import "src/vault/ELVaultFactory.sol";
 
 contract DeployAllScript is Script {
     address _dao = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;

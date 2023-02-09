@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.8;
 
-import "src/rewards/ConsensusVault.sol";
+import "src/vault/ConsensusVault.sol";
 import "forge-std/Script.sol";
 
 contract UpgradeConsensusVaultScript is Script {
