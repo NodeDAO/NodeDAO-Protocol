@@ -348,6 +348,30 @@ contract LiquidStakingTest is Test {
         liquidStaking.registerValidator(pubkeys3, signatures3, depositDataRoots3);
     }
 
+    function testAssignBlacklistOperatorFailCases() public {
+        vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
+        vm.prank(_dao);
+        uint256[] memory operatorIds = new uint256[](1);
+        operatorIds[0] = 1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 1;
+        liquidStaking.assignBlacklistOperator(100, operatorIds, amounts);
+        failed();
+
+        vm.expectRevert("This operator is not in the blacklist");
+        vm.prank(_dao);
+        liquidStaking.assignBlacklistOperator(1, operatorIds, amounts);
+
+        uint256[] memory amounts2 = new uint256[](2);
+        amounts2[0] = 1;
+        amounts2[1] = 2;
+
+        // vm.expectRevert("Invalid length");
+        // vm.prank(_dao);
+        // liquidStaking.assignBlacklistOperator(2, operatorIds, amounts2);
+    }
+
+
     function prepRegisterValidator() private {
         vm.roll(2000);
 
