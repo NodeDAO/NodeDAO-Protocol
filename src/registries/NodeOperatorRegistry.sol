@@ -414,17 +414,15 @@ contract NodeOperatorRegistry is
         operatorExists(_id)
         returns (address vaultContractAddress)
     {
-        NodeOperator memory operator = operators[_id];
-        vaultContractAddress = operator.vaultContractAddress;
+        return operators[_id].vaultContractAddress;
     }
 
     /**
      * @notice Get operator owner address
      * @param _id operator id
      */
-    function getNodeOperatorOwner(uint256 _id) external view operatorExists(_id) returns (address owner) {
-        NodeOperator memory operator = operators[_id];
-        owner = operator.owner;
+    function getNodeOperatorOwner(uint256 _id) external view operatorExists(_id) returns (address) {
+        return operators[_id].owner;
     }
 
     /**
