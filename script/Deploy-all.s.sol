@@ -101,6 +101,7 @@ contract DeployAllScript is Script {
         neth.setLiquidStaking(address(liquidStakingProxy));
         VNFT(vnftProxy).setLiquidStaking(address(liquidStakingProxy));
         NodeOperatorRegistry(operatorRegistryProxy).setLiquidStaking(address(liquidStakingProxy));
+        BeaconOracle(beaconOracleProxy).setLiquidStaking(address(liquidStakingProxy));
         // todo set dao
 
         vm.stopBroadcast();
