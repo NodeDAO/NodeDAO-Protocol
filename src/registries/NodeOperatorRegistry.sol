@@ -519,8 +519,8 @@ contract NodeOperatorRegistry is
      */
     function deposit(uint256 operatorId) external payable nonReentrant {
         operatorPledgeVaultBalances[operatorId] += msg.value;
-        if (msg.value >= BASIC_PLEDGE && !operators[operatorId].isQuit) {
-            operators[operatorId].isQuit = true;
+        if (msg.value >= BASIC_PLEDGE && operators[operatorId].isQuit) {
+            operators[operatorId].isQuit = false;
         }
 
         emit PledgeDeposited(msg.value, operatorId);
