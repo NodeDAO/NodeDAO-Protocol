@@ -11,6 +11,7 @@ import "src/vault/ELVault.sol";
 import "src/oracles/BeaconOracle.sol";
 import "forge-std/console.sol";
 import "src/vault/ELVaultFactory.sol";
+import "src/vault/ConsensusVault.sol";
 
 contract LiquidStakingTest is Test {
     event OperatorRegister(string _name, address _controllerAddress, address _owner, uint256 operatorId);
@@ -40,6 +41,8 @@ contract LiquidStakingTest is Test {
     DepositContract depositContract;
     ELVault vaultContract;
     ELVaultFactory vaultFactoryContract;
+    ConsensusVault consensusVaultContract;
+    address payable consensusVaultContractAddr;
 
     address _dao = address(1);
     address _daoValutAddress = address(2);
@@ -57,6 +60,10 @@ contract LiquidStakingTest is Test {
         _rewardAddresses[0] = address(5);
         _ratios[0] = 100;
         liquidStaking = new LiquidStaking();
+
+        consensusVaultContract = new ConsensusVault();
+        consensusVaultContract.initialize(_dao, address(liquidStaking));
+        consensusVaultContractAddr = payable(consensusVaultContract);
 
         neth = new NETH();
         neth.setLiquidStaking(address(liquidStaking));
@@ -423,4 +430,222 @@ contract LiquidStakingTest is Test {
         vm.prank(address(20));
         liquidStaking.stakeETH{value: 50 ether}(1);
     }
+
+    function testPause() public {
+        vm.prank(_dao);
+        liquidStaking.pause();
+        vm.prank(_dao);
+        liquidStaking.unpause();
+        vm.deal(address(20), 55 ether);
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 50 ether}(1);
+    }
+
+    function testFailRegisterOperator() public {
+        address _controllerAddress = address(40);
+        address _owner = address(41);
+        operatorRegistry.registerOperator{value: 1.1 ether}(
+            "33woqwertyuuoionkonkonkonkonkonkd", _controllerAddress, _owner, _rewardAddresses, _ratios
+        );
+    }
+
+    function checkOperator(
+        uint256 operatorId,
+        bool _trusted,
+        string memory _name,
+        address _controllerAddr,
+        address _owner
+    ) public {
+        bool trusted;
+        string memory name;
+        address owner;
+        address controllerAddress;
+        address vaultContractAddress;
+        (trusted, name, owner, controllerAddress, vaultContractAddress) =
+            operatorRegistry.getNodeOperator(operatorId, true);
+        assertEq(trusted, _trusted);
+        assertEq(name, _name);
+        assertEq(owner, _owner);
+        assertEq(controllerAddress, _controllerAddr);
+        console.log("vaultContractAddress: ", vaultContractAddress);
+    }
+
+    function testNodeOperatorRegistry() public {
+        address _controllerAddress = address(40);
+        address _owner = address(41);
+        address _to = address(45);
+        address[] memory _rewardAddresses2 = new address[] (3);
+        uint256[] memory _ratios2 = new uint256[] (3);
+        _rewardAddresses2[0] = address(42);
+        _rewardAddresses2[1] = address(43);
+        _rewardAddresses2[2] = address(44);
+        _ratios2[0] = 70;
+        _ratios2[1] = 20;
+        _ratios2[2] = 10;
+        uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test", _controllerAddress, _owner, _rewardAddresses2, _ratios2
+        );
+
+        assertEq(false, operatorRegistry.isQuitOperator(operatorId));
+
+        checkOperator(operatorId, false, "test", _controllerAddress, _owner);
+        (address[] memory rewardAddresses, uint256[] memory ratios) =
+            operatorRegistry.getNodeOperatorRewardSetting(operatorId);
+        assertEq(rewardAddresses[0], _rewardAddresses2[0]);
+        assertEq(rewardAddresses[1], _rewardAddresses2[1]);
+        assertEq(rewardAddresses[2], _rewardAddresses2[2]);
+        assertEq(ratios[0], _ratios2[0]);
+        assertEq(ratios[1], _ratios2[1]);
+        assertEq(ratios[2], _ratios2[2]);
+
+        operatorRegistry.deposit{value: 5 ether}(operatorId);
+        assertEq(6 ether, operatorRegistry.getPledgeBalanceOfOperator(operatorId));
+        assertEq(false, operatorRegistry.isQuitOperator(operatorId));
+        vm.prank(_owner);
+        operatorRegistry.withdrawOperator(operatorId, 1 ether, _to);
+        assertEq(5 ether, operatorRegistry.getPledgeBalanceOfOperator(operatorId));
+        assertEq(_to.balance, 1 ether);
+
+        assertEq(false, operatorRegistry.isQuitOperator(operatorId));
+        vm.prank(_owner);
+        operatorRegistry.quitOperator(operatorId, _to);
+        assertEq(0 ether, operatorRegistry.getPledgeBalanceOfOperator(operatorId));
+        assertEq(_to.balance, 6 ether);
+        assertEq(true, operatorRegistry.isQuitOperator(operatorId));
+
+        operatorRegistry.deposit{value: 5 ether}(operatorId);
+        assertEq(5 ether, operatorRegistry.getPledgeBalanceOfOperator(operatorId));
+        assertEq(false, operatorRegistry.isQuitOperator(operatorId));
+
+        assertEq(false, operatorRegistry.isTrustedOperator(operatorId));
+        assertEq(0, operatorRegistry.isTrustedOperatorOfControllerAddress(_controllerAddress));
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId);
+        assertEq(true, operatorRegistry.isTrustedOperator(operatorId));
+        assertEq(2, operatorRegistry.isTrustedOperatorOfControllerAddress(_controllerAddress));
+
+        assertEq(2, operatorRegistry.getNodeOperatorsCount());
+        assertEq(0, operatorRegistry.getBlacklistOperatorsCount());
+
+        vm.prank(_dao);
+        operatorRegistry.setBlacklistOperator(operatorId);
+        assertEq(false, operatorRegistry.isTrustedOperator(operatorId));
+        assertEq(0, operatorRegistry.isTrustedOperatorOfControllerAddress(_controllerAddress));
+        assertEq(2, operatorRegistry.getNodeOperatorsCount());
+        assertEq(1, operatorRegistry.getBlacklistOperatorsCount());
+
+        assertEq(5 ether, operatorRegistry.getPledgeBalanceOfOperator(operatorId));
+        vm.prank(_owner);
+        operatorRegistry.withdrawOperator(operatorId, 1 ether, _to);
+        assertEq(_to.balance, 7 ether);
+
+        vm.prank(_dao);
+        operatorRegistry.removeBlacklistOperator(operatorId);
+        assertEq(true, operatorRegistry.isTrustedOperator(operatorId));
+        assertEq(2, operatorRegistry.isTrustedOperatorOfControllerAddress(_controllerAddress));
+        assertEq(4 ether, operatorRegistry.getPledgeBalanceOfOperator(operatorId));
+
+        vm.prank(_owner);
+        operatorRegistry.setNodeOperatorName(operatorId, "test2");
+        checkOperator(operatorId, true, "test2", address(40), _owner);
+
+        _rewardAddresses2[0] = address(45);
+        _rewardAddresses2[1] = address(46);
+        _rewardAddresses2[2] = address(47);
+        _ratios2[0] = 50;
+        _ratios2[1] = 30;
+        _ratios2[2] = 20;
+
+        vm.prank(_owner);
+        operatorRegistry.setNodeOperatorRewardAddress(operatorId, _rewardAddresses2, _ratios2);
+        (address[] memory rewardAddresses3, uint256[] memory ratios3) =
+            operatorRegistry.getNodeOperatorRewardSetting(operatorId);
+        assertEq(rewardAddresses3[0], _rewardAddresses2[0]);
+        assertEq(rewardAddresses3[1], _rewardAddresses2[1]);
+        assertEq(rewardAddresses3[2], _rewardAddresses2[2]);
+        assertEq(ratios3[0], _ratios2[0]);
+        assertEq(ratios3[1], _ratios2[1]);
+        assertEq(ratios3[2], _ratios2[2]);
+
+        _controllerAddress = address(48);
+        vm.prank(_owner);
+        operatorRegistry.setNodeOperatorControllerAddress(operatorId, _controllerAddress);
+        checkOperator(operatorId, true, "test2", address(48), _owner);
+        assertEq(0, operatorRegistry.isTrustedOperatorOfControllerAddress(address(40)));
+        assertEq(2, operatorRegistry.isTrustedOperatorOfControllerAddress(address(48)));
+
+        vm.prank(_owner);
+        operatorRegistry.setNodeOperatorOwnerAddress(operatorId, address(49));
+        _owner = address(49);
+        checkOperator(operatorId, true, "test2", address(48), _owner);
+
+        console.log("getNodeOperatorVaultContract", operatorRegistry.getNodeOperatorVaultContract(operatorId));
+        assertEq(address(49), operatorRegistry.getNodeOperatorOwner(operatorId));
+
+        assertEq(true, operatorRegistry.isConformBasicPledge(operatorId));
+        vm.prank(_owner);
+        operatorRegistry.withdrawOperator(operatorId, 3.9 ether, _to);
+        assertEq(0.1 ether, operatorRegistry.getPledgeBalanceOfOperator(operatorId));
+        assertEq(false, operatorRegistry.isConformBasicPledge(operatorId));
+        assertEq(_to.balance, 10.9 ether);
+
+        vm.prank(_dao);
+        operatorRegistry.setDaoAddress(address(50));
+        assertEq(operatorRegistry.dao(), address(50));
+        _dao = address(50);
+
+        vm.prank(_dao);
+        operatorRegistry.setDaoVaultAddress(address(51));
+        assertEq(operatorRegistry.daoVaultAddress(), address(51));
+
+        assertEq(operatorRegistry.registrationFee(), 0.1 ether);
+        vm.prank(_dao);
+        operatorRegistry.setRegistrationFee(1 ether);
+        assertEq(operatorRegistry.registrationFee(), 1 ether);
+
+        vm.prank(_dao);
+        operatorRegistry.setpermissionlessBlockNumber(1000000);
+        assertEq(1000000, operatorRegistry.permissionlessBlockNumber());
+
+        operatorRegistry.claimRewardsOfOperator(operatorId);
+        operatorRegistry.claimRewardsOfDao(operatorId);
+    }
+
+    function testSetpermissionlessBlockNumber() public {
+        vm.prank(_dao);
+        operatorRegistry.setpermissionlessBlockNumber(1000000);
+        assertEq(1000000, operatorRegistry.permissionlessBlockNumber());
+        vm.expectRevert("The permissionless phase has begun");
+        vm.prank(_dao);
+        operatorRegistry.setpermissionlessBlockNumber(2000000);
+    }
+
+    function testConsensusVault() public {
+        consensusVaultContractAddr.transfer(100 ether);
+        assertEq(100 ether, address(consensusVaultContract).balance);
+
+        vm.prank(address(liquidStaking));
+        consensusVaultContract.transfer(50 ether, address(60));
+        assertEq(50 ether, address(consensusVaultContract).balance);
+        assertEq(50 ether, address(60).balance);
+
+        vm.prank(_dao);
+        consensusVaultContract.setLiquidStaking(address(61));
+        assertEq(consensusVaultContract.liquidStakingContractAddress(), address(61));
+    }
+
+    function testELVaultFactory() public {
+        vaultFactoryContract.setNodeOperatorRegistry(address(70));
+        assertEq(vaultFactoryContract.nodeOperatorRegistryAddress(), address(70));
+    
+        vm.expectRevert("Not allowed to create vault");
+        vaultFactoryContract.create(2);
+
+        vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
+        vm.prank(address(operatorRegistry));
+        address vaultAddress = vaultFactoryContract.create(2);
+    }
+
+    
+
 }
