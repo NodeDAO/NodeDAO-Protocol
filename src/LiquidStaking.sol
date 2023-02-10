@@ -14,6 +14,8 @@ import "src/interfaces/IDepositContract.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/interfaces/IELVault.sol";
 import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
+import "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 /**
  * @title NodeDao LiquidStaking Contract
@@ -186,6 +188,7 @@ contract LiquidStaking is
      */
     function withdrawOperator(uint256 operatorId, uint256 withdrawAmount, address to) external whenNotPaused {
         address owner = nodeOperatorRegistryContract.getNodeOperatorOwner(operatorId);
+        console.log("address owner: ", owner);
         require(owner == msg.sender, "Permission denied");
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
         uint256 requireVault = 0;
@@ -195,6 +198,7 @@ contract LiquidStaking is
             requireVault = operatorNftCounts.sqrt() * 1 ether;
         }
         uint256 nowPledge = nodeOperatorRegistryContract.getPledgeBalanceOfOperator(operatorId);
+        console.log("nowPledge: ", nowPledge);
         require(nowPledge >= requireVault + withdrawAmount, "Insufficient pledge balance");
 
         nodeOperatorRegistryContract.withdraw(withdrawAmount, operatorId, to);
@@ -211,6 +215,8 @@ contract LiquidStaking is
      */
     function quitOperator(uint256 operatorId, uint256 substituteOperatorId, address to) external whenNotPaused {
         address owner = nodeOperatorRegistryContract.getNodeOperatorOwner(operatorId);
+        console.log("quitOperator owner: ", owner);
+        console.log("quitOperator msg.sender: ", msg.sender);
         require(owner == msg.sender, "Permission denied");
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
         require(operatorNftCounts == 0, "unable to exit");

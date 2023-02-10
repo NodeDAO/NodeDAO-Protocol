@@ -54,27 +54,37 @@ contract LiquidStakingTest is Test {
     address _oracleMember3 = address(13);
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
-    bytes withdrawalCreds = hex"3031";
+    // bytes withdrawalCreds = hex"3031";
     address _rewardAddress2 = address(133);
     address _rewardAddress3 = address(245);
     address _rewardAddress4 = address(255);
+    address _rewardAddress5 = address(325);
 
     address _controllerAddress2 = address(144);
     address _controllerAddress3 = address(155);
     address _controllerAddress4 = address(322);
+    address _controllerAddress5 = address(422);
 
     address[] _rewardAddresses = new address[] (1);
     address[] _rewardAddresses2 = new address[] (1);
     address[] _rewardAddresses3 = new address[] (1);
     address[] _rewardAddresses4 = new address[] (1);
+    address[] _rewardAddresses5 = new address[] (1);
 
     uint256[] _ratios = new uint256[] (1);
+    bytes withdrawalCreds = hex"00baaf6f093e5f5ea02487e58fbc2733b6716b106ceb2bc9fa95e454fb25b4d0";
+    bytes tempSignature =
+        hex"b6f352fbd336da8a0d7ba52e0a42d31d207cafac2694f200da9d867e74ca9b5c5ccff6277bb091c57b954cbefc76764802d3bf47602070dca2abce2085af039f14983c082c27038d9c8a012aa6ff48d85886dd638520f7b1bd9ecfa041d56310";
+    bytes32 tempDepositDataRoot = hex"b19b9c1e5c576ac4af90e281617de1e0e949968c0a343d821a5383a6997f4964";
+    bytes pubKey = hex"90e8c1460fdb55b944ad4b9ec73275c2ef701311715d6f8766a02d0b0b8f37a21c871fdc9784276ec74515e7a219cbcf";
+    bytes32 root = 0x1216e61cfc6d57aa15f0baa037bbedf76144b630f81c998a674e070c2774ab54;
 
     function setUp() public {
         _rewardAddresses[0] = _rewardAddress;
         _rewardAddresses2[0] = _rewardAddress2;
         _rewardAddresses3[0] = _rewardAddress3;
         _rewardAddresses4[0] = _rewardAddress4;
+        _rewardAddresses5[0] = _rewardAddress5;
 
         _ratios[0] = 100;
         liquidStaking = new LiquidStaking();
@@ -167,9 +177,21 @@ contract LiquidStakingTest is Test {
         assertEq(1, vnft.balanceOf(address(23)));
     }
 
-    function testRegisterOperator() public {
+    function testRegisterOperatorFailRequireCases() public {
+        vm.prank(address(45));
+        vm.deal(address(45), 22 ether);
+        vm.expectRevert("Invalid registration operator fee");
+        liquidStaking.registerOperator{value: 0.1 ether}(
+            "five", address(_controllerAddress3), address(8), _rewardAddresses5, _ratios
+        );
+        vm.prank(address(45));
+        vm.expectRevert("controllerAddress is used");
+        liquidStaking.registerOperator{value: 1.1 ether}(
+            "five", address(_controllerAddress3), address(8), _rewardAddresses5, _ratios
+        );
         vm.expectRevert("Invalid length");
         string memory _name2 = "123142141212131223123122112231231312323123142341";
+        vm.prank(address(45));
         liquidStaking.registerOperator{value: 1.1 ether}(
         _name2, address(_controllerAddress4), address(7), _rewardAddresses4, _ratios
         );
@@ -179,13 +201,32 @@ contract LiquidStakingTest is Test {
         vm.expectRevert("Permission denied");
         vm.prank(address(liquidStaking));
         liquidStaking.withdrawOperator( 1, 1 ether, address(7) );
-        
-        vm.prank(address(34));
-        vm.deal(address(34), 15 ether);
-        operatorRegistry.deposit(1 ether, 1) ;
+        console.log("liquidStaking: ", address(liquidStaking));
+    
 
-        vm.prank(address(34));
+        vm.expectRevert("Permission denied");
+        vm.prank(address(4));
+        liquidStaking.withdrawOperator( 2, 1 ether, address(12) );
+    }
+
+    function testWithdrawOperator() public {
+        vm.prank(address(4));
+        vm.deal(address(4), 15 ether);
+        liquidStaking.registerOperator{value: 1.1 ether}(
+            "five", address(_controllerAddress5), address(6), _rewardAddresses, _ratios
+        );
+        vm.expectEmit(true, true, false, true);
+        emit OperatorWithdraw(1, 1 ether, address(12) );
+
+        vm.prank(address(4));
+        vm.deal(address(4), 15 ether);
+        operatorRegistry.deposit(1 ether, 2) ;
+        vm.prank(address(4));
         liquidStaking.withdrawOperator( 1, 1 ether, address(12) );
+    }
+
+
+    function testGetNFTOut()public {
     }
 
     function testStakeETH() public {
@@ -205,8 +246,8 @@ contract LiquidStakingTest is Test {
 
     function testStakeNFTFailRequireCases() public {
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
-        vm.prank(address(4));
-        vm.deal(address(4), 32 ether);
+        vm.prank(address(15));
+        vm.deal(address(15), 100 ether);
         liquidStaking.stakeNFT{value: 32 ether}(4);
         failed();
 
@@ -220,6 +261,16 @@ contract LiquidStakingTest is Test {
         vm.prank(address(20));
         vm.deal(address(20), 20 ether);
         liquidStaking.stakeNFT{value: 3 ether}(1);
+        failed();
+    }
+
+    function testQuitOperatorFailCases() public {
+        vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
+        liquidStaking.quitOperator(5, 2 ,address(3) );
+
+        vm.expectRevert("Permission denied");
+        vm.prank(address(20));
+        liquidStaking.quitOperator(1, 2 ,address(3) );
         failed();
     }
 
