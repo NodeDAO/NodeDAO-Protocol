@@ -89,7 +89,7 @@ contract DeployAllScript is Script {
         LiquidStaking(liquidStakingProxy).initialize(
             _dao,
             _daoValutAddress,
-            bytes("01"),
+            bytes("01"), // todo 等合约部署好了，需手动设置
             address(operatorRegistryProxy),
             address(neth),
             address(vnftProxy),
