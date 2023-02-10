@@ -12,7 +12,7 @@ import "src/vault/ELVaultFactory.sol";
 import "src/oracles/BeaconOracle.sol";
 
 contract NodeOperatorRegistryTest is Test {
-        event NodeOperatorRegistered(
+    event NodeOperatorRegistered(
         uint256 id,
         string name,
         address controllerAddress,

@@ -345,7 +345,7 @@ contract LiquidStakingTest is Test {
         operatorIds[0] = 1;
         liquidStaking.batchReinvestRewardsOfOperator(operatorIds);
     }
-    
+
     function testClaimRewardsOfUser() public {
         bytes32[] memory proof = new bytes32[](1);
         proof[0] = 0x2d17183ec955000e448f9ba74cb9cfec4690d35ed96aef6901f68892b38ae58e;
