@@ -172,6 +172,9 @@ interface INodeOperatorsRegistry {
     event PledgeDeposited(uint256 _amount, uint256 _operatorId);
     event Withdraw(uint256 _amount, uint256 _operatorId, address _to);
     event LiquidStakingChanged(address _from, address _to);
+    event DaoAddressChanged(address dao, address _dao);
+    event DaoVaultAddressChanged(address daoVaultAddress, address _daoVaultAddress);
+    event RegistrationFeeChanged(uint256 registrationFee, uint256 _fee);
     event PermissionlessBlockNumberSet(uint256 blockNumber);
     event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
     event DaoClaimRewards(uint256 operatorId, uint256 rewards);

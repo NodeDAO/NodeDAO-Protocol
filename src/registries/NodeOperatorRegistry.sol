@@ -560,7 +560,7 @@ contract NodeOperatorRegistry is
      * @dev will only allow call of function by the address registered as the owner
      */
     function setLiquidStaking(address liquidStakingProxyAddress_) external onlyDao {
-        require(liquidStakingProxyAddress_ != address(0), "Aggregator address provided invalid");
+        require(liquidStakingProxyAddress_ != address(0), "liquidStaking address provided invalid");
         emit LiquidStakingChanged(address(liquidStakingContract), liquidStakingProxyAddress_);
         liquidStakingContract = ILiquidStaking(liquidStakingProxyAddress_);
     }
@@ -570,6 +570,8 @@ contract NodeOperatorRegistry is
      * @param  _dao new dao address
      */
     function setDaoAddress(address _dao) external onlyDao {
+        require(_dao != address(0), "Dao address provided invalid");
+        emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
 
@@ -578,6 +580,8 @@ contract NodeOperatorRegistry is
      * @param _daoVaultAddress new dao vault address
      */
     function setDaoVaultAddress(address _daoVaultAddress) external onlyDao {
+        require(_daoVaultAddress != address(0), "dao vault address provided invalid");
+        emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
         daoVaultAddress = _daoVaultAddress;
     }
 
@@ -586,6 +590,7 @@ contract NodeOperatorRegistry is
      * @param _fee new operator registration fee
      */
     function setRegistrationFee(uint256 _fee) external onlyDao {
+        emit RegistrationFeeChanged(registrationFee, _fee);
         registrationFee = _fee;
     }
 
