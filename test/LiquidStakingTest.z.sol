@@ -637,7 +637,7 @@ contract LiquidStakingTest is Test {
     function testELVaultFactory() public {
         vaultFactoryContract.setNodeOperatorRegistry(address(70));
         assertEq(vaultFactoryContract.nodeOperatorRegistryAddress(), address(70));
-    
+
         vm.expectRevert("Not allowed to create vault");
         vaultFactoryContract.create(2);
 
@@ -645,7 +645,4 @@ contract LiquidStakingTest is Test {
         vm.prank(address(operatorRegistry));
         address vaultAddress = vaultFactoryContract.create(2);
     }
-
-    
-
 }
