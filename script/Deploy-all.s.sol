@@ -79,7 +79,7 @@ contract DeployAllScript is Script {
         // initialize
         VNFT(vnftProxy).initialize();
         NodeOperatorRegistry(operatorRegistryProxy).initialize(
-            _dao, _daoValutAddress, address(vaultFactoryContractProxy)
+            _dao, _daoValutAddress, address(vaultFactoryContractProxy), address(vnftProxy)
         );
 
         // goerli: 1616508000
@@ -100,7 +100,7 @@ contract DeployAllScript is Script {
         // setLiquidStaking
         neth.setLiquidStaking(address(liquidStakingProxy));
         VNFT(vnftProxy).setLiquidStaking(address(liquidStakingProxy));
-
+        NodeOperatorRegistry(operatorRegistryProxy).setLiquidStaking(address(liquidStakingProxy));
         // todo set dao
 
         vm.stopBroadcast();
