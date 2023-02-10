@@ -129,7 +129,7 @@ contract VNFT is
      * @notice Finds all the validator's public key of a particular address
      * @param owner - The particular address
      */
-    function validatorsOfOwner(address owner) public view returns (bytes[] memory) {
+    function validatorsOfOwner(address owner) external view returns (bytes[] memory) {
         unchecked {
             //slither-disable-next-line uninitialized-local
             uint256 tokenIdsIdx;
