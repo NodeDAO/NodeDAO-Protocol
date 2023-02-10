@@ -133,10 +133,9 @@ interface INodeOperatorsRegistry {
 
     /**
      * @notice deposit pledge fund for operator
-     * @param amount amount
      * @param operatorId operator Id
      */
-    function deposit(uint256 amount, uint256 operatorId) external payable;
+    function deposit(uint256 operatorId) external payable;
 
     /**
      * @notice Determine whether the operator meets the pledge requirements

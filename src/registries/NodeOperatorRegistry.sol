@@ -12,6 +12,11 @@ import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IELVault.sol";
 
+
+import "forge-std/console.sol";
+
+
+
 /**
  * @title Node Operator registry
  *
@@ -220,6 +225,9 @@ contract NodeOperatorRegistry is
 
         uint256 nowPledge = operatorPledgeVaultBalances[operatorId];
         operatorPledgeVaultBalances[operatorId] = 0;
+
+        console.log("nowPledge", nowPledge);
+        console.log("this balance", address(this).balance);
 
         require(to != address(0), "Recipient address provided invalid");
         payable(to).transfer(nowPledge);
@@ -515,16 +523,15 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice deposit pledge fund for operator
-     * @param amount amount
      * @param operatorId operator Id
      */
-    function deposit(uint256 amount, uint256 operatorId) external payable nonReentrant {
-        operatorPledgeVaultBalances[operatorId] += amount;
-        if (amount > BASIC_PLEDGE && !operators[operatorId].isQuit) {
+    function deposit(uint256 operatorId) external payable nonReentrant {
+        operatorPledgeVaultBalances[operatorId] += msg.value;
+        if (msg.value >= BASIC_PLEDGE && !operators[operatorId].isQuit) {
             operators[operatorId].isQuit = true;
         }
 
-        emit PledgeDeposited(amount, operatorId);
+        emit PledgeDeposited(msg.value, operatorId);
     }
 
     /**
@@ -544,6 +551,7 @@ contract NodeOperatorRegistry is
      * @param operatorId operator id
      */
     function getPledgeBalanceOfOperator(uint256 operatorId) external view returns (uint256) {
+        console.log("this balance 222", address(this).balance);
         return operatorPledgeVaultBalances[operatorId];
     }
 
