@@ -77,7 +77,7 @@ contract LiquidStakingTest is Test {
         vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
 
         operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract));
+        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
         operatorRegistry.setLiquidStaking(address(liquidStaking));
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
@@ -110,10 +110,10 @@ contract LiquidStakingTest is Test {
             address(depositContract)
         );
 
-        liquidStaking.registerOperator{value: 1.1 ether}(
+        operatorRegistry.registerOperator{value: 1.1 ether}(
             "one", address(_controllerAddress), address(4), _rewardAddresses, _ratios
         );
-        liquidStaking.registerOperator{value: 1.1 ether}(
+        operatorRegistry.registerOperator{value: 1.1 ether}(
             "two", address(_controllerAddress2), address(4), _rewardAddresses, _ratios
         );
 
@@ -182,13 +182,15 @@ contract LiquidStakingTest is Test {
         vm.prank(address(114));
         vm.deal(address(114), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(1);
-        liquidStaking.reinvestRewardsOfOperator(1);
+        uint256[] memory operatorIds = new uint256[](1);
+        operatorIds[0] = 1;
+        liquidStaking.batchReinvestRewardsOfOperator(operatorIds);
         assertEq(1, vnft.balanceOf(address(114)));
 
         vm.prank(address(255));
         vm.deal(address(255), 32 ether);
         liquidStaking.stakeNFT{value: 32 ether}(1);
-        liquidStaking.reinvestRewardsOfOperator(1);
+        liquidStaking.batchReinvestRewardsOfOperator(operatorIds);
         assertEq(1, vnft.balanceOf(address(255)));
         assertEq(0, neth.balanceOf(address(255)));
     }
@@ -226,9 +228,9 @@ contract LiquidStakingTest is Test {
         pubkeys3[0] = pubkey;
         pubkeys3[1] = pubkey;
 
-        vm.expectRevert("All parameter array's must have the same length.");
+        vm.expectRevert("parameter must have the same length");
         liquidStaking.registerValidator(pubkeys2, signatures, depositDataRoots);
-        vm.expectRevert("msg.sender must be the controllerAddress of the trusted operator");
+        vm.expectRevert("The sender must be controlAddress of the trusted operator");
         liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
 
         bytes[] memory signatures2 = new bytes[](5);

@@ -28,14 +28,20 @@ contract VNFT is
         bytes pubkey;
     }
 
-    mapping(bytes => uint256) public validatorRecords; // key is pubkey, value is operator_id
-    mapping(uint256 => uint256) public operatorRecords; // key is operator_id, value is  token counts
+    // key is pubkey, value is operator_id
+    mapping(bytes => uint256) public validatorRecords;
+    // key is operator_id, value is token counts
+    mapping(uint256 => uint256) public operatorRecords;
+    // Empty nft belonging to operator, not yet filled with pubkey
     mapping(uint256 => uint256[]) public operatorEmptyNfts;
     mapping(uint256 => uint256) public operatorEmptyNftIndex;
 
     Validator[] public validators;
+    // Record the last owner when nft burned
     mapping(uint256 => address) public lastOwners;
 
+    event NFTMinted(uint256 tokenId);
+    event NFTBurned(uint256 tokenId);
     event BaseURIChanged(string _before, string _after);
     event LiquidStakingChanged(address _before, address _after);
 
@@ -123,7 +129,7 @@ contract VNFT is
      * @notice Finds all the validator's public key of a particular address
      * @param owner - The particular address
      */
-    function validatorsOfOwner(address owner) public view returns (bytes[] memory) {
+    function validatorsOfOwner(address owner) external view returns (bytes[] memory) {
         unchecked {
             //slither-disable-next-line uninitialized-local
             uint256 tokenIdsIdx;
@@ -215,7 +221,7 @@ contract VNFT is
     function whiteListMint(bytes calldata _pubkey, address _to, uint256 _operatorId)
         external
         onlyLiquidStaking
-        returns (bool, uint256)
+        returns (uint256)
     {
         require(totalSupply() + 1 <= MAX_SUPPLY, "Exceed MAX_SUPPLY");
 
@@ -230,7 +236,7 @@ contract VNFT is
                 uint256 tokenId = operatorEmptyNfts[_operatorId][operatorEmptyNftIndex[_operatorId]];
                 operatorEmptyNftIndex[_operatorId] += 1;
                 validators[tokenId].pubkey = _pubkey;
-                return (false, tokenId);
+                return tokenId;
             }
         }
 
@@ -238,7 +244,9 @@ contract VNFT is
         operatorRecords[_operatorId] += 1;
 
         _safeMint(_to, 1);
-        return (true, nextTokenId);
+        emit NFTMinted(nextTokenId);
+
+        return nextTokenId;
     }
 
     /**
@@ -248,7 +256,7 @@ contract VNFT is
     function whiteListBurn(uint256 tokenId) external onlyLiquidStaking {
         lastOwners[tokenId] = ownerOf(tokenId);
         _burn(tokenId);
-
+        emit NFTBurned(tokenId);
         operatorRecords[validators[tokenId].operatorId] -= 1;
     }
 

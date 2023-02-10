@@ -24,20 +24,27 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     // dao address
     address public dao;
 
+    // Average cumulative reward record for settlement
     RewardMetadata[] public cumArr;
+    // unclaimed Rewards
     uint256 public unclaimedRewards;
     uint256 public lastPublicSettle;
     uint256 public publicSettleLimit;
 
-    uint256 public comissionRate; // Execution layer reward ratio
+    // Execution layer reward ratio
+    uint256 public comissionRate;
     uint256 public daoComissionRate;
     uint256 public operatorRewards;
     uint256 public daoRewards;
 
+    // liquidStaking nft gas height
     uint256 public liquidStakingGasHeight;
-    uint256 public liquidStakingReward; // liquidStaking reward
+    // liquidStaking reward
+    uint256 public liquidStakingReward;
 
-    mapping(uint256 => uint256) public userGasHeight; // key tokenId; value gasheight
+    // key tokenId; value gasheight
+    mapping(uint256 => uint256) public userGasHeight;
+
     uint256 public userNftsCount;
 
     event ComissionRateChanged(uint256 _before, uint256 _after);
@@ -49,6 +56,11 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
 
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "Not allowed to touch funds");
+        _;
+    }
+
+    modifier onlyNodeOperatorRegistryContract() {
+        require(address(nodeOperatorRegistryContract) == msg.sender, "Not allowed to touch funds");
         _;
     }
 
@@ -128,6 +140,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
             return;
         }
 
+        // Compute the rewards belonging to the operator and dao
         uint256 comission = (outstandingRewards * comissionRate) / 10000;
         uint256 daoReward = (comission * daoComissionRate) / 10000;
         daoRewards += daoReward;
@@ -136,11 +149,14 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         outstandingRewards -= comission;
         unclaimedRewards += outstandingRewards;
 
+        // Calculated average reward per nft
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
         uint256 averageRewards = outstandingRewards / operatorNftCounts;
 
+        // Calculate the rewards belonging to the liquidStaking pool
         liquidStakingReward += averageRewards * (operatorNftCounts - userNftsCount);
 
+        // Calculation of Cumulative Average Rewards
         uint256 currentValue = cumArr[cumArr.length - 1].value + averageRewards;
         RewardMetadata memory r = RewardMetadata({value: currentValue, height: block.number});
         cumArr.push(r);
@@ -273,10 +289,11 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     /**
      * @notice Operater Claims the rewards
      */
-    function claimOperatorRewards() external nonReentrant onlyLiquidStaking returns (uint256) {
+    function claimOperatorRewards() external nonReentrant onlyNodeOperatorRegistryContract returns (uint256) {
         uint256 rewards = operatorRewards;
         operatorRewards = 0;
 
+        // Pledge the required funds based on the number of validators
         uint256 requireVault = 0;
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
         if (operatorNftCounts <= 100) {
@@ -285,6 +302,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
             requireVault = operatorNftCounts.sqrt() * 1 ether;
         }
 
+        // After the withdrawal is completed, the pledge funds requirements must also be met
         uint256 nowPledge = nodeOperatorRegistryContract.getPledgeBalanceOfOperator(operatorId);
         require(nowPledge >= requireVault, "Insufficient pledge balance");
 
@@ -299,6 +317,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
             uint256 ratio = ratios[i];
             totalRatios += ratio;
 
+            // If it is the last reward address, calculate by subtraction
             if (i == rewardAddresses.length - 1) {
                 transfer(rewards - totalAmount, rewardAddresses[i]);
             } else {
@@ -316,7 +335,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     /**
      * @notice Dao Claims the rewards
      */
-    function claimDaoRewards(address to) external nonReentrant onlyLiquidStaking returns (uint256) {
+    function claimDaoRewards(address to) external nonReentrant onlyNodeOperatorRegistryContract returns (uint256) {
         uint256 rewards = daoRewards;
         daoRewards = 0;
         transfer(rewards, to);
