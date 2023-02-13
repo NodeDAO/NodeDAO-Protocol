@@ -60,11 +60,11 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     /**
      * @notice create vault contract
-     * @param operatorId operator id
+     * @param _operatorId operator id
      */
-    function create(uint256 operatorId) external onlyNodeOperatorRegistry returns (address) {
+    function create(uint256 _operatorId) external onlyNodeOperatorRegistry returns (address) {
         address proxyAddress = address(
-            new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, vNFTContract, dao, operatorId, liquidStakingAddress, nodeOperatorRegistryAddress))
+            new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, vNFTContract, dao, _operatorId, liquidStakingAddress, nodeOperatorRegistryAddress))
         );
         emit ELVaultProxyDeployed(proxyAddress);
         return proxyAddress;

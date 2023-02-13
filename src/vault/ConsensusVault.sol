@@ -35,38 +35,38 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
      * ReentrancyGuardUpgradeable, OwnableUpgradeable, UUPSUpgradeable and `_aggregatorProxyAddress`
      * @dev initializer - A modifier that defines a protected initializer function that can be invoked at most once
      * @param _dao dao address
-     * @param liquidStakingProxyAddress_ liquidStaking Address
+     * @param _liquidStakingProxyAddress liquidStaking Address
      */
-    function initialize(address _dao, address liquidStakingProxyAddress_) external initializer {
+    function initialize(address _dao, address _liquidStakingProxyAddress) external initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
         dao = _dao;
-        liquidStakingContractAddress = liquidStakingProxyAddress_;
+        liquidStakingContractAddress = _liquidStakingProxyAddress;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /**
      * @notice transfer ETH
-     * @param amount transfer amount
-     * @param to transfer to address
+     * @param _amount transfer amount
+     * @param _to transfer to address
      */
-    function transfer(uint256 amount, address to) external nonReentrant onlyLiquidStaking {
-        require(to != address(0), "Recipient address invalid");
-        payable(to).transfer(amount);
-        emit Transferred(to, amount);
+    function transfer(uint256 _amount, address _to) external nonReentrant onlyLiquidStaking {
+        require(_to != address(0), "Recipient address invalid");
+        payable(_to).transfer(_amount);
+        emit Transferred(_to, _amount);
     }
 
     /**
      * @notice Set proxy address of LiquidStaking
-     * @param liquidStakingProxyAddress_ proxy address of LiquidStaking
+     * @param _liquidStakingContractAddress proxy address of LiquidStaking
      * @dev will only allow call of function by the address registered as the owner
      */
-    function setLiquidStaking(address liquidStakingProxyAddress_) external onlyDao {
-        require(liquidStakingProxyAddress_ != address(0), "LiquidStaking address invalid");
-        emit LiquidStakingChanged(liquidStakingContractAddress, liquidStakingProxyAddress_);
-        liquidStakingContractAddress = liquidStakingProxyAddress_;
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
+        liquidStakingContractAddress = _liquidStakingContractAddress;
     }
 
     receive() external payable {}
