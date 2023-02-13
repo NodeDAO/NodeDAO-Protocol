@@ -289,7 +289,7 @@ contract VNFT is
      * @param _liqStakingAddress contract address
      */
     function setLiquidStaking(address _liqStakingAddress) external onlyOwner {
-        require(_liqStakingAddress != address(0), "LiquidStaking address provided invalid");
+        require(_liqStakingAddress != address(0), "LiquidStaking address invalid");
         emit LiquidStakingChanged(liquidStakingContract, _liqStakingAddress);
         liquidStakingContract = _liqStakingAddress;
     }

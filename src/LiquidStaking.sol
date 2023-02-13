@@ -91,6 +91,13 @@ contract LiquidStaking is
     event NodeOperatorRegistryContractSet(
         address oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
     );
+    event DaoAddressChanged(address dao, address _dao);
+    event DepositFeeRateSet(uint256 depositFeeRate, uint256 _feeRate);
+
+    modifier onlyDao() {
+        require(msg.sender == dao, "PERMISSION_DENIED");
+        _;
+    }
 
     /**
      * @notice initialize LiquidStaking Contract
@@ -135,10 +142,6 @@ contract LiquidStaking is
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function onlyDao() internal {
-        require(msg.sender == dao, "PERMISSION_DENIED");
-    }
-
     /**
      * @notice For operators added to the blacklist by dao, for example,
      * because the operator has been inactive for a long time,
@@ -154,8 +157,7 @@ contract LiquidStaking is
         uint256 assignOperatorId,
         uint256[] memory operatorIds,
         uint256[] memory amounts
-    ) public whenNotPaused {
-        onlyDao();
+    ) public whenNotPaused onlyDao {
         // assignOperatorId must be a blacklist operator
         require(
             !nodeOperatorRegistryContract.isTrustedOperator(assignOperatorId)
@@ -230,7 +232,7 @@ contract LiquidStaking is
     function stakeNFT(uint256 _operatorId) external payable nonReentrant whenNotPaused {
         // operatorId must be a trusted operator
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
-        require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount provided");
+        require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount");
 
         // Must meet the basic mortgage funds before being allowed to be entrusted
         require(nodeOperatorRegistryContract.isConformBasicPledge(_operatorId), "Insufficient pledge balance");
@@ -475,8 +477,9 @@ contract LiquidStaking is
      * @notice set dao address
      * @param _dao new dao address
      */
-    function setDaoAddress(address _dao) external {
-        onlyDao();
+    function setDaoAddress(address _dao) external onlyOwner {
+        require(_dao != address(0), "Dao address invalid");
+        emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
 
@@ -484,9 +487,9 @@ contract LiquidStaking is
      * @notice Set staking fee rate
      * @param _feeRate new stake fee rate
      */
-    function setDepositFeeRate(uint256 _feeRate) external {
-        onlyDao();
+    function setDepositFeeRate(uint256 _feeRate) external onlyDao {
         require(_feeRate <= 1000, "Rate too high");
+        emit DepositFeeRateSet(depositFeeRate, _feeRate);
         depositFeeRate = _feeRate;
     }
 
@@ -494,8 +497,7 @@ contract LiquidStaking is
      * @notice Set LiquidStaking contract withdrawalCredentials
      * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
      */
-    function setLiquidStakingWithdrawalCredentials(bytes memory _liquidStakingWithdrawalCredentials) external {
-        onlyDao();
+    function setLiquidStakingWithdrawalCredentials(bytes memory _liquidStakingWithdrawalCredentials) external onlyDao {
         emit LiquidStakingWithdrawalCredentialsSet(
             liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
             );
@@ -506,8 +508,7 @@ contract LiquidStaking is
      * @notice Set new beaconOracleContract address
      * @param _beaconOracleContractAddress new withdrawalCredentials
      */
-    function setBeaconOracleContract(address _beaconOracleContractAddress) external {
-        onlyDao();
+    function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
         emit BeaconOracleContractSet(address(beaconOracleContract), _beaconOracleContractAddress);
         beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
     }
@@ -516,8 +517,7 @@ contract LiquidStaking is
      * @notice Set new nodeOperatorRegistryContract address
      * @param _nodeOperatorRegistryContract new withdrawalCredentials
      */
-    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external {
-        onlyDao();
+    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
         emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
     }
@@ -560,16 +560,14 @@ contract LiquidStaking is
     /**
      * @notice In the event of an emergency, stop protocol
      */
-    function pause() external {
-        onlyDao();
+    function pause() external onlyDao {
         _pause();
     }
 
     /**
      * @notice restart protocol
      */
-    function unpause() external {
-        onlyDao();
+    function unpause() external onlyDao {
         _unpause();
     }
 }

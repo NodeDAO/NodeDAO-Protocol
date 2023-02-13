@@ -53,7 +53,7 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
      * @param to transfer to address
      */
     function transfer(uint256 amount, address to) external nonReentrant onlyLiquidStaking {
-        require(to != address(0), "Recipient address provided invalid");
+        require(to != address(0), "Recipient address invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);
     }
@@ -64,7 +64,7 @@ contract ConsensusVault is UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardU
      * @dev will only allow call of function by the address registered as the owner
      */
     function setLiquidStaking(address liquidStakingProxyAddress_) external onlyDao {
-        require(liquidStakingProxyAddress_ != address(0), "Aggregator address provided invalid");
+        require(liquidStakingProxyAddress_ != address(0), "LiquidStaking address invalid");
         emit LiquidStakingChanged(liquidStakingContractAddress, liquidStakingProxyAddress_);
         liquidStakingContractAddress = liquidStakingProxyAddress_;
     }
