@@ -139,11 +139,11 @@ contract NodeOperatorRegistry is
      * @return id a unique key of the added operator
      */
     function registerOperator(
-        string memory _name,
+        string calldata _name,
         address _controllerAddress,
         address _owner,
-        address[] memory _rewardAddresses,
-        uint256[] memory _ratios
+        address[] calldata _rewardAddresses,
+        uint256[] calldata _ratios
     ) external payable nonReentrant validAddress(_controllerAddress) validAddress(_owner) returns (uint256 id) {
         require(bytes(_name).length <= 32, "Invalid length");
         require(msg.value >= BASIC_PLEDGE + registrationFee, "Insufficient amount");
@@ -295,7 +295,7 @@ contract NodeOperatorRegistry is
      * @param _id operator id
      * @param _name operator new name
      */
-    function setNodeOperatorName(uint256 _id, string memory _name) external operatorExists(_id) {
+    function setNodeOperatorName(uint256 _id, string calldata _name) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.owner, "PERMISSION_DENIED");
 
@@ -309,7 +309,7 @@ contract NodeOperatorRegistry is
      * @param _rewardAddresses Ethereum 1 address which receives ETH rewards for this operator
      * @param _ratios reward ratios
      */
-    function setNodeOperatorRewardAddress(uint256 _id, address[] memory _rewardAddresses, uint256[] memory _ratios)
+    function setNodeOperatorRewardAddress(uint256 _id, address[] calldata _rewardAddresses, uint256[] calldata _ratios)
         external
         operatorExists(_id)
     {
@@ -320,7 +320,7 @@ contract NodeOperatorRegistry is
         emit NodeOperatorRewardAddressSet(_id, _rewardAddresses, _ratios);
     }
 
-    function _setNodeOperatorRewardAddress(uint256 _id, address[] memory _rewardAddresses, uint256[] memory _ratios)
+    function _setNodeOperatorRewardAddress(uint256 _id, address[] calldata _rewardAddresses, uint256[] calldata _ratios)
         internal
     {
         require(_rewardAddresses.length != 0, "Invalid length");

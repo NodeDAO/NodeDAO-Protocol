@@ -155,8 +155,8 @@ contract LiquidStaking is
      */
     function assignBlacklistOrQuitOperator(
         uint256 _assignOperatorId,
-        uint256[] memory _operatorIds,
-        uint256[] memory _amounts
+        uint256[] calldata _operatorIds,
+        uint256[] calldata _amounts
     ) public whenNotPaused onlyDao {
         // assignOperatorId must be a blacklist operator
         require(
@@ -310,7 +310,7 @@ contract LiquidStaking is
      * @param _proof Merkle tree proof from the oracle for this validator
      * @param _value value from the oracle for this validator
      */
-    function wrapNFT(uint256 _tokenId, bytes32[] memory _proof, uint256 _value) external nonReentrant whenNotPaused {
+    function wrapNFT(uint256 _tokenId, bytes32[] calldata _proof, uint256 _value) external nonReentrant whenNotPaused {
         require(_value >= DEPOSIT_SIZE, "Value check failed");
 
         uint256 operatorId = vNFTContract.operatorOf(_tokenId);
@@ -342,7 +342,7 @@ contract LiquidStaking is
      * @param _proof Merkle tree proof from the oracle for this validator
      * @param _value value from the oracle for this validator
      */
-    function unwrapNFT(uint256 _tokenId, bytes32[] memory _proof, uint256 _value) external nonReentrant whenNotPaused {
+    function unwrapNFT(uint256 _tokenId, bytes32[] calldata _proof, uint256 _value) external nonReentrant whenNotPaused {
         require(_value <= MAX_NODE_VALUE, "Value check failed");
 
         uint256 operatorId = vNFTContract.operatorOf(_tokenId);
@@ -380,7 +380,7 @@ contract LiquidStaking is
      * @param _proof Merkle tree proof from the oracle for this validator
      * @param _value value from the oracle for this validator
      */
-    function getNFTOut(uint256 _tokenId, bytes32[] memory _proof, uint256 _value) external view returns (uint256) {
+    function getNFTOut(uint256 _tokenId, bytes32[] calldata _proof, uint256 _value) external view returns (uint256) {
         uint256 operatorId = vNFTContract.operatorOf(_tokenId);
 
         bool trusted;
@@ -399,7 +399,7 @@ contract LiquidStaking is
      * @notice Batch Reinvestment Rewards
      * @param _operatorIds The operatorIds of the re-investment
      */
-    function batchReinvestRewardsOfOperator(uint256[] memory _operatorIds) public whenNotPaused {
+    function batchReinvestRewardsOfOperator(uint256[] calldata _operatorIds) public whenNotPaused {
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             reinvestRewardsOfOperator(_operatorIds[i]);
         }
@@ -502,7 +502,7 @@ contract LiquidStaking is
      * @notice Set LiquidStaking contract withdrawalCredentials
      * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
      */
-    function setLiquidStakingWithdrawalCredentials(bytes memory _liquidStakingWithdrawalCredentials) external onlyDao {
+    function setLiquidStakingWithdrawalCredentials(bytes calldata _liquidStakingWithdrawalCredentials) external onlyDao {
         emit LiquidStakingWithdrawalCredentialsSet(
             liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
             );

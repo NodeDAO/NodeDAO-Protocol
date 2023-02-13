@@ -17,11 +17,11 @@ interface INodeOperatorsRegistry {
      * @return id a unique key of the added operator
      */
     function registerOperator(
-        string memory _name,
+        string calldata _name,
         address _controllerAddress,
         address _owner,
-        address[] memory _rewardAddresses,
-        uint256[] memory _ratios
+        address[] calldata _rewardAddresses,
+        uint256[] calldata _ratios
     ) external payable returns (uint256 id);
 
     /**
