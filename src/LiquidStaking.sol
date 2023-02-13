@@ -185,7 +185,7 @@ contract LiquidStaking is
      * @param _operatorId operator id
      */
     function stakeETH(uint256 _operatorId) external payable nonReentrant whenNotPaused {
-        require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
+        require(msg.value >= 1000 gwei, "Stake amount must be minimum 1000 gwei");
 
         // operatorId must be a trusted operator
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");

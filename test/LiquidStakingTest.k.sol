@@ -194,7 +194,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testGetEthOut(uint256 nethAmount) public {
-        vm.assume(nethAmount > 1000 wei);
+        vm.assume(nethAmount > 1000 gwei);
         vm.assume(nethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -209,7 +209,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testGetNethValue(uint256 ethAmount) public {
-        vm.assume(ethAmount > 1000 wei);
+        vm.assume(ethAmount > 1000 gwei);
         vm.assume(ethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -225,7 +225,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testGetExchangeRate(uint256 nethAmount) public {
-        vm.assume(nethAmount > 1000 wei);
+        vm.assume(nethAmount > 1000 gwei);
         vm.assume(nethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -240,7 +240,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeEthWithDiscount(uint256 nethAmount) public {
-        vm.assume(nethAmount > 1000 wei);
+        vm.assume(nethAmount > 1000 gwei);
         vm.assume(nethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -444,7 +444,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testGetNethOut(uint256 ethAmount) public {
-        vm.assume(ethAmount > 1000 wei);
+        vm.assume(ethAmount > 1000 gwei);
         vm.assume(ethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -487,7 +487,7 @@ contract LiquidStakingTest is Test {
     }
 
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {
-    //     vm.assume(nethAmount > 1000 wei);
+    //     vm.assume(nethAmount > 1000 gwei);
     //     vm.assume(nethAmount < 1000000 ether);
     //     liquidStaking.setDaoAddress(_dao);
     //     liquidStaking.setDepositFeeRate(1000);

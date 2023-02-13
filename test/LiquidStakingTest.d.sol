@@ -150,12 +150,12 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeEthFailRequireCases() public {
-        vm.expectRevert("Stake amount must be minimum  1000 wei");
+        vm.expectRevert("Stake amount must be minimum 1000 gwei");
         vm.prank(address(2));
         vm.deal(address(2), 12 ether);
         liquidStaking.stakeETH{value: 100 wei}(1);
 
-        vm.expectRevert("Stake amount must be minimum  1000 wei");
+        vm.expectRevert("Stake amount must be minimum 1000 gwei");
         vm.prank(address(2));
         liquidStaking.stakeETH{value: 200 wei}(2);
 
