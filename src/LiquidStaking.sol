@@ -559,7 +559,7 @@ contract LiquidStaking is
      * @notice The protocol has been Paused
      */
     function isPaused() public view returns (bool) {
-        paused();
+        return paused();
     }
 
     /**

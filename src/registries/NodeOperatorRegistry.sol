@@ -284,7 +284,7 @@ contract NodeOperatorRegistry is
         emit NodeOperatorBlacklistRemove(_id);
     }
 
-    function _checkPermission() internal {
+    function _checkPermission() internal view {
         if (permissionlessBlockNumber != 0) {
             require(block.number < permissionlessBlockNumber, "No permission phase");
         }
