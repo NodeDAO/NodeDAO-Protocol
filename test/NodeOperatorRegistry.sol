@@ -305,8 +305,7 @@ contract NodeOperatorRegistryTest is Test {
         assertEq(trused, true);
     }
 
-    function testSetDaoAuthFailed() public {
-        vm.expectRevert("PERMISSION_DENIED");
+    function testSetDaoAddress() public {
         operatorRegistry.setDaoAddress(address(10));
     }
 
@@ -327,7 +326,6 @@ contract NodeOperatorRegistryTest is Test {
     }
 
     function testSetDao() public {
-        vm.prank(_dao);
         operatorRegistry.setDaoAddress(address(10));
         assertEq(operatorRegistry.dao(), address(10));
     }

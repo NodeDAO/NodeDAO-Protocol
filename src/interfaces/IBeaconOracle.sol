@@ -80,4 +80,5 @@ interface IBeaconOracle {
     event PendingBalancesAdd(uint256 addBalance, uint256 totalBalance);
     event PendingBalancesReset(uint256 totalBalance);
     event LiquidStakingChanged(address _before, address _after);
+    event DaoAddressChanged(address dao, address _dao);
 }

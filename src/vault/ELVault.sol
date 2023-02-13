@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.8;
 
+import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts/utils/math/Math.sol";
@@ -13,7 +14,7 @@ import "src/interfaces/INodeOperatorsRegistry.sol";
 /**
  * @title ELVault for managing rewards
  */
-contract ELVault is IELVault, ReentrancyGuard, Initializable {
+contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable {
     using Math for uint256;
 
     IVNFT public vNFTContract;
@@ -53,6 +54,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     event RewardClaimed(address _owner, uint256 _amount);
     event Transferred(address _to, uint256 _amount);
     event Settle(uint256 _blockNumber, uint256 _settleRewards);
+    event DaoAddressChanged(address dao, address _dao);
 
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "Not allowed to touch funds");
@@ -87,6 +89,8 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         address liquidStakingAddress_,
         address nodeOperatorRegistryAddress_
     ) external initializer {
+        __Ownable_init();
+
         vNFTContract = IVNFT(_nVNFTContractAddress);
         dao = dao_;
 
@@ -228,7 +232,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
 
     //slither-disable-next-line arbitrary-send
     function transfer(uint256 amount, address to) internal {
-        require(to != address(0), "Recipient address provided invalid");
+        require(to != address(0), "Recipient address invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);
     }
@@ -346,7 +350,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
      * @notice Sets the liquidStaking address
      */
     function setLiquidStaking(address liquidStaking_) external onlyDao {
-        require(liquidStaking_ != address(0), "LiquidStaking address provided invalid");
+        require(liquidStaking_ != address(0), "LiquidStaking address invalid");
         emit LiquidStakingChanged(address(liquidStakingContract), liquidStaking_);
         liquidStakingContract = ILiquidStaking(liquidStaking_);
     }
@@ -380,7 +384,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     /**
      * @notice set dao address
      */
-    function setDaoAddress(address _dao) external onlyDao {
+    function setDaoAddress(address _dao) external onlyOwner {
+        require(_dao != address(0), "Dao address invalid");
+        emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
 

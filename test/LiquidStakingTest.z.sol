@@ -589,7 +589,6 @@ contract LiquidStakingTest is Test {
         assertEq(false, operatorRegistry.isConformBasicPledge(operatorId));
         assertEq(_to.balance, 10.9 ether);
 
-        vm.prank(_dao);
         operatorRegistry.setDaoAddress(address(50));
         assertEq(operatorRegistry.dao(), address(50));
         _dao = address(50);

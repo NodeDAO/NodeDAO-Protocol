@@ -144,7 +144,6 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeETH() public {
-        vm.prank(_dao);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
         liquidStaking.setDepositFeeRate(0);
@@ -165,13 +164,13 @@ contract LiquidStakingTest is Test {
         liquidStaking.stakeNFT{value: 32 ether}(4);
         failed();
 
-        vm.expectRevert("Incorrect Ether amount provided");
+        vm.expectRevert("Incorrect Ether amount");
         vm.prank(address(20));
         vm.deal(address(20), 32 ether);
         liquidStaking.stakeNFT{value: 1 ether}(1);
         failed();
 
-        vm.expectRevert("Incorrect Ether amount provided");
+        vm.expectRevert("Incorrect Ether amount");
         vm.prank(address(20));
         vm.deal(address(20), 20 ether);
         liquidStaking.stakeNFT{value: 3 ether}(1);

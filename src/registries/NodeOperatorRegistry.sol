@@ -183,7 +183,7 @@ contract NodeOperatorRegistry is
      * @param withdrawAmount withdrawal amount
      */
     function withdrawOperator(uint256 operatorId, uint256 withdrawAmount, address to) external nonReentrant {
-        require(to != address(0), "Recipient address provided invalid");
+        require(to != address(0), "Recipient address invalid");
 
         NodeOperator memory operator = operators[operatorId];
         require(operator.owner == msg.sender, "PERMISSION_DENIED");
@@ -221,7 +221,7 @@ contract NodeOperatorRegistry is
         uint256 nowPledge = operatorPledgeVaultBalances[operatorId];
         operatorPledgeVaultBalances[operatorId] = 0;
 
-        require(to != address(0), "Recipient address provided invalid");
+        require(to != address(0), "Recipient address invalid");
         payable(to).transfer(nowPledge);
         operators[operatorId].isQuit = true;
 
@@ -558,7 +558,7 @@ contract NodeOperatorRegistry is
      * @dev will only allow call of function by the address registered as the owner
      */
     function setLiquidStaking(address liquidStakingProxyAddress_) external onlyDao {
-        require(liquidStakingProxyAddress_ != address(0), "liquidStaking address provided invalid");
+        require(liquidStakingProxyAddress_ != address(0), "liquidStaking address invalid");
         emit LiquidStakingChanged(address(liquidStakingContract), liquidStakingProxyAddress_);
         liquidStakingContract = ILiquidStaking(liquidStakingProxyAddress_);
     }
@@ -567,8 +567,8 @@ contract NodeOperatorRegistry is
      * @notice set dao vault address
      * @param  _dao new dao address
      */
-    function setDaoAddress(address _dao) external onlyDao {
-        require(_dao != address(0), "Dao address provided invalid");
+    function setDaoAddress(address _dao) external onlyOwner {
+        require(_dao != address(0), "Dao address invalid");
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
@@ -578,7 +578,7 @@ contract NodeOperatorRegistry is
      * @param _daoVaultAddress new dao vault address
      */
     function setDaoVaultAddress(address _daoVaultAddress) external onlyDao {
-        require(_daoVaultAddress != address(0), "dao vault address provided invalid");
+        require(_daoVaultAddress != address(0), "dao vault address invalid");
         emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
         daoVaultAddress = _daoVaultAddress;
     }
@@ -633,7 +633,7 @@ contract NodeOperatorRegistry is
      * @notice transfer amount to an address
      */
     function transfer(uint256 amount, address to) internal {
-        require(to != address(0), "Recipient address provided invalid");
+        require(to != address(0), "Recipient address invalid");
         payable(to).transfer(amount);
         emit Transferred(to, amount);
     }

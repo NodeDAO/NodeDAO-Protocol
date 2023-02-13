@@ -148,7 +148,9 @@ contract BeaconOracle is
     /**
      * set dao vault address
      */
-    function setDaoAddress(address _dao) external onlyDao {
+    function setDaoAddress(address _dao) external onlyOwner {
+        require(_dao != address(0), "Dao address invalid");
+        emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
 
@@ -321,7 +323,7 @@ contract BeaconOracle is
      * Whether the address of the caller has performed reportBeacon
      */
     function isReportBeacon(address _oracleMember) external view returns (bool) {
-        require(_oracleMember != address(0), "address provided invalid");
+        require(_oracleMember != address(0), "Address invalid");
         // make sure the oracle is from members list and has not yet voted
         uint256 index = getMemberId(_oracleMember);
         require(index != MEMBER_NOT_FOUND, "MEMBER_NOT_FOUND");
