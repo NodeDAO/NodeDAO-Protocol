@@ -72,27 +72,27 @@ contract LiquidStaking is
     // historical total Rewards
     uint256 public totalReinvestRewardsSum;
 
-    event BlacklistOperatorAssigned(uint256 blacklistOperatorId, uint256 totalAmount);
-    event EthStake(address indexed from, uint256 amount, uint256 amountOut);
-    event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
-    event NftStake(address indexed from, uint256 count);
-    event ValidatorRegistered(uint256 operator, uint256 tokenId);
-    event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
-    event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
-    event UserClaimRewards(uint256 operatorId, uint256 tokenId, uint256 rewards);
+    event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _totalAmount);
+    event EthStake(address indexed _from, uint256 _amount, uint256 _amountOut);
+    event EthUnstake(address indexed _from, uint256 _amount, uint256 _amountOut);
+    event NftStake(address indexed _from, uint256 _count);
+    event ValidatorRegistered(uint256 _operatorId, uint256 _tokenId);
+    event NftWrap(uint256 _tokenId, uint256 _operatorId, uint256 _value, uint256 _amountOut);
+    event NftUnwrap(uint256 _tokenId, uint256 operatorId, uint256 _value, uint256 _amountOut);
+    event UserClaimRewards(uint256 _operatorId, uint256 _tokenId, uint256 _rewards);
     event Transferred(address _to, uint256 _amount);
-    event OperatorReinvestRewards(uint256 operatorId, uint256 rewards);
-    event RewardsReceive(uint256 rewards);
-    event SlashReceive(uint256 amount);
+    event OperatorReinvestRewards(uint256 _operatorId, uint256 _rewards);
+    event RewardsReceive(uint256 _rewards);
+    event SlashReceive(uint256 _amount);
     event LiquidStakingWithdrawalCredentialsSet(
-        bytes oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
+        bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
     );
-    event BeaconOracleContractSet(address oldBeaconOracleContract, address _beaconOracleContractAddress);
+    event BeaconOracleContractSet(address _oldBeaconOracleContract, address _beaconOracleContractAddress);
     event NodeOperatorRegistryContractSet(
-        address oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
+        address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
     );
-    event DaoAddressChanged(address dao, address _dao);
-    event DepositFeeRateSet(uint256 depositFeeRate, uint256 _feeRate);
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event DepositFeeRateSet(uint256 _oldFeeRate, uint256 _feeRate);
 
     modifier onlyDao() {
         require(msg.sender == dao, "PERMISSION_DENIED");
@@ -342,7 +342,11 @@ contract LiquidStaking is
      * @param _proof Merkle tree proof from the oracle for this validator
      * @param _value value from the oracle for this validator
      */
-    function unwrapNFT(uint256 _tokenId, bytes32[] calldata _proof, uint256 _value) external nonReentrant whenNotPaused {
+    function unwrapNFT(uint256 _tokenId, bytes32[] calldata _proof, uint256 _value)
+        external
+        nonReentrant
+        whenNotPaused
+    {
         require(_value <= MAX_NODE_VALUE, "Value check failed");
 
         uint256 operatorId = vNFTContract.operatorOf(_tokenId);
@@ -502,7 +506,10 @@ contract LiquidStaking is
      * @notice Set LiquidStaking contract withdrawalCredentials
      * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
      */
-    function setLiquidStakingWithdrawalCredentials(bytes calldata _liquidStakingWithdrawalCredentials) external onlyDao {
+    function setLiquidStakingWithdrawalCredentials(bytes calldata _liquidStakingWithdrawalCredentials)
+        external
+        onlyDao
+    {
         emit LiquidStakingWithdrawalCredentialsSet(
             liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
             );

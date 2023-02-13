@@ -26,8 +26,8 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         _;
     }
 
-    event ELVaultProxyDeployed(address proxyAddress);
-    event NodeOperatorRegistrySet(address oldNodeOperatorRegistryAddress, address _nodeOperatorRegistryAddress);
+    event ELVaultProxyDeployed(address _proxyAddress);
+    event NodeOperatorRegistrySet(address _oldNodeOperatorRegistryAddress, address _nodeOperatorRegistryAddress);
 
     /**
      * @notice initialize ELVaultFactory Contract

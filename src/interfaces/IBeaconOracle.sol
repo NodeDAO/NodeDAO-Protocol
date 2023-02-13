@@ -17,10 +17,12 @@ interface IBeaconOracle {
      * @param {uint256} nftTokenID
      * @return whether the validation passed
      */
-    function verifyNftValue(bytes32[] calldata proof, bytes calldata pubkey, uint256 validatorBalance, uint256 nftTokenID)
-        external
-        view
-        returns (bool);
+    function verifyNftValue(
+        bytes32[] calldata proof,
+        bytes calldata pubkey,
+        uint256 validatorBalance,
+        uint256 nftTokenID
+    ) external view returns (bool);
 
     /**
      * @return {bool} is oracleMember
@@ -56,29 +58,29 @@ interface IBeaconOracle {
      */
     function addPendingBalances(uint256 _pendingBalance) external;
 
-    event AddOracleMember(address oracleMember);
-    event RemoveOracleMember(address oracleMember);
-    event ResetExpectedEpochId(uint256 expectedEpochId);
-    event ExpectedEpochIdUpdated(uint256 expectedEpochId);
-    event ResetEpochsPerFrame(uint256 epochsPerFrame);
+    event AddOracleMember(address _oracleMember);
+    event RemoveOracleMember(address _oracleMember);
+    event ResetExpectedEpochId(uint256 _expectedEpochId);
+    event ExpectedEpochIdUpdated(uint256 _expectedEpochId);
+    event ResetEpochsPerFrame(uint256 _epochsPerFrame);
     event ReportBeacon(
-        uint256 epochId,
-        address oracleMember,
-        uint32 sameReportCount,
+        uint256 _pochId,
+        address _oracleMember,
+        uint32 _sameReportCount,
         uint256 _beaconBalance,
         uint256 _beaconValidators,
         bytes32 _validatorRankingRoot
     );
     event ReportSuccess(
-        uint256 epochId,
-        uint256 sameReportCount,
-        uint32 quorum,
+        uint256 _epochId,
+        uint256 _sameReportCount,
+        uint32 _quorum,
         uint256 _beaconBalance,
         uint256 _beaconValidators,
         bytes32 _validatorRankingRoot
     );
-    event PendingBalancesAdd(uint256 addBalance, uint256 totalBalance);
-    event PendingBalancesReset(uint256 totalBalance);
+    event PendingBalancesAdd(uint256 _addBalance, uint256 _totalBalance);
+    event PendingBalancesReset(uint256 _totalBalance);
     event LiquidStakingChanged(address _before, address _after);
-    event DaoAddressChanged(address dao, address _dao);
+    event DaoAddressChanged(address _oldDao, address _dao);
 }
