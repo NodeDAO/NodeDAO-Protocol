@@ -11,7 +11,7 @@ import "src/interfaces/INETH.sol";
 contract NETH is INETH, ERC20, Ownable {
     address public liquidStakingContractAddress;
 
-    event LiquidStakingContractSet(address liquidStakingContractAddress, address _liquidStaking);
+    event LiquidStakingContractSet(address _OldLiquidStakingContractAddress, address _liquidStakingContractAddress);
 
     modifier onlyLiquidStaking() {
         require(liquidStakingContractAddress == msg.sender, "Not allowed to touch funds");
@@ -22,28 +22,29 @@ contract NETH is INETH, ERC20, Ownable {
 
     /**
      * @notice set LiquidStaking contract address
-     * @param _liquidStaking liquidStaking address
+     * @param _liquidStakingContractAddress liquidStaking address
      */
-    function setLiquidStaking(address _liquidStaking) public onlyOwner {
-        emit LiquidStakingContractSet(liquidStakingContractAddress, _liquidStaking);
-        liquidStakingContractAddress = _liquidStaking;
+    function setLiquidStaking(address _liquidStakingContractAddress) public onlyOwner {
+        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        emit LiquidStakingContractSet(liquidStakingContractAddress, _liquidStakingContractAddress);
+        liquidStakingContractAddress = _liquidStakingContractAddress;
     }
 
     /**
      * @notice mint nETHH
-     * @param amount mint amount
-     * @param account mint account
+     * @param _amount mint amount
+     * @param _account mint account
      */
-    function whiteListMint(uint256 amount, address account) external onlyLiquidStaking {
-        _mint(account, amount);
+    function whiteListMint(uint256 _amount, address _account) external onlyLiquidStaking {
+        _mint(_account, _amount);
     }
 
     /**
      * @notice burn nETHH
-     * @param amount burn amount
-     * @param account burn account
+     * @param _amount burn amount
+     * @param _account burn account
      */
-    function whiteListBurn(uint256 amount, address account) external onlyLiquidStaking {
-        _burn(account, amount);
+    function whiteListBurn(uint256 _amount, address _account) external onlyLiquidStaking {
+        _burn(_account, _amount);
     }
 }

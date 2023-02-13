@@ -66,7 +66,7 @@ contract BeaconOracle is
     // oracle commit members
     address[] internal oracleMembers;
 
-    address public liquidStakingContract;
+    address public liquidStakingContractAddress;
 
     // current pending balance
     uint256 public pendingBalances;
@@ -89,7 +89,7 @@ contract BeaconOracle is
     }
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingContract == msg.sender, "Not allowed addPendingBalances");
+        require(liquidStakingContractAddress == msg.sender, "Not allowed addPendingBalances");
         _;
     }
 
@@ -398,11 +398,11 @@ contract BeaconOracle is
 
     /**
      * @notice set LiquidStaking contract address
-     * @param _liqStakingAddress - contract address
+     * @param _liquidStakingContractAddress - contract address
      */
-    function setLiquidStaking(address _liqStakingAddress) external onlyDao {
-        require(_liqStakingAddress != address(0), "LiquidStaking address provided invalid");
-        emit LiquidStakingChanged(liquidStakingContract, _liqStakingAddress);
-        liquidStakingContract = _liqStakingAddress;
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
+        liquidStakingContractAddress = _liquidStakingContractAddress;
     }
 }

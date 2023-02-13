@@ -18,7 +18,7 @@ contract VNFT is
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable
 {
-    address public liquidStakingContract;
+    address public liquidStakingContractAddress;
 
     uint256 public constant MAX_SUPPLY = 6942069420;
 
@@ -40,8 +40,8 @@ contract VNFT is
     // Record the last owner when nft burned
     mapping(uint256 => address) public lastOwners;
 
-    event NFTMinted(uint256 tokenId);
-    event NFTBurned(uint256 tokenId);
+    event NFTMinted(uint256 _tokenId);
+    event NFTBurned(uint256 _tokenId);
     event BaseURIChanged(string _before, string _after);
     event LiquidStakingChanged(address _before, address _after);
 
@@ -55,7 +55,7 @@ contract VNFT is
     }
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingContract == msg.sender, "Not allowed to mint/burn nft");
+        require(liquidStakingContractAddress == msg.sender, "Not allowed to mint/burn nft");
         _;
     }
 
@@ -103,39 +103,39 @@ contract VNFT is
 
     /**
      * @notice Checks if a validator exists
-     * @param pubkey - A 48 bytes representing the validator's public key
+     * @param _pubkey - A 48 bytes representing the validator's public key
      */
-    function validatorExists(bytes calldata pubkey) external view returns (bool) {
-        return validatorRecords[pubkey] != 0;
+    function validatorExists(bytes calldata _pubkey) external view returns (bool) {
+        return validatorRecords[_pubkey] != 0;
     }
 
     /**
      * @notice Finds the validator's public key of a nft
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function validatorOf(uint256 tokenId) external view returns (bytes memory) {
-        return validators[tokenId].pubkey;
+    function validatorOf(uint256 _tokenId) external view returns (bytes memory) {
+        return validators[_tokenId].pubkey;
     }
 
     /**
      * @notice Finds the operator id of a nft
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function operatorOf(uint256 tokenId) external view returns (uint256) {
-        return validators[tokenId].operatorId;
+    function operatorOf(uint256 _tokenId) external view returns (uint256) {
+        return validators[_tokenId].operatorId;
     }
 
     /**
      * @notice Finds all the validator's public key of a particular address
-     * @param owner - The particular address
+     * @param _owner - The particular address
      */
-    function validatorsOfOwner(address owner) external view returns (bytes[] memory) {
+    function validatorsOfOwner(address _owner) external view returns (bytes[] memory) {
         unchecked {
             //slither-disable-next-line uninitialized-local
             uint256 tokenIdsIdx;
             //slither-disable-next-line uninitialized-local
             address currOwnershipAddr;
-            uint256 tokenIdsLength = balanceOf(owner);
+            uint256 tokenIdsLength = balanceOf(_owner);
             bytes[] memory pubkeys = new bytes[](tokenIdsLength);
             TokenOwnership memory ownership;
             for (uint256 i = 0; tokenIdsIdx != tokenIdsLength; ++i) {
@@ -146,7 +146,7 @@ contract VNFT is
                 if (ownership.addr != address(0)) {
                     currOwnershipAddr = ownership.addr;
                 }
-                if (currOwnershipAddr == owner) {
+                if (currOwnershipAddr == _owner) {
                     pubkeys[tokenIdsIdx++] = validators[i].pubkey;
                 }
             }
@@ -157,12 +157,12 @@ contract VNFT is
     /**
      * @notice Finds the tokenId of a validator
      * @dev Returns MAX_SUPPLY if not found
-     * @param pubkey - A 48 bytes representing the validator's public key
+     * @param _pubkey - A 48 bytes representing the validator's public key
      */
-    function tokenOfValidator(bytes calldata pubkey) external view returns (uint256) {
-        require(pubkey.length != 0, "Invalid pubkey");
+    function tokenOfValidator(bytes calldata _pubkey) external view returns (uint256) {
+        require(_pubkey.length != 0, "Invalid pubkey");
         for (uint256 i = 0; i < validators.length; i++) {
-            if (keccak256(validators[i].pubkey) == keccak256(pubkey) && _exists(i)) {
+            if (keccak256(validators[i].pubkey) == keccak256(_pubkey) && _exists(i)) {
                 return i;
             }
         }
@@ -171,9 +171,9 @@ contract VNFT is
 
     /**
      * @notice Finds all the validator's public key of a particular operator
-     * @param operatorId - The particular address of the operator
+     * @param _operatorId - The particular address of the operator
      */
-    function validatorsOfOperator(uint256 operatorId) external view returns (bytes[] memory) {
+    function validatorsOfOperator(uint256 _operatorId) external view returns (bytes[] memory) {
         uint256 total = _nextTokenId();
         uint256 tokenIdsIdx;
         bytes[] memory _validators = new bytes[](total);
@@ -184,7 +184,7 @@ contract VNFT is
             if (ownership.burned) {
                 continue;
             }
-            if (validatorRecords[validators[i].pubkey] == operatorId) {
+            if (validatorRecords[validators[i].pubkey] == _operatorId) {
                 _validators[tokenIdsIdx++] = validators[i].pubkey;
             }
         }
@@ -194,22 +194,22 @@ contract VNFT is
 
     /**
      * @notice Returns the init height of the tokenId
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function initHeightOf(uint256 tokenId) external view returns (uint256) {
-        require(_exists(tokenId), "Token does not exist");
+    function initHeightOf(uint256 _tokenId) external view returns (uint256) {
+        require(_exists(_tokenId), "Token does not exist");
 
-        return validators[tokenId].initHeight;
+        return validators[_tokenId].initHeight;
     }
 
     /**
      * @notice Returns the last owner before the nft is burned
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function lastOwnerOf(uint256 tokenId) external view returns (address) {
-        require(_ownershipAt(tokenId).burned, "Token not burned yet");
+    function lastOwnerOf(uint256 _tokenId) external view returns (address) {
+        require(_ownershipAt(_tokenId).burned, "Token not burned yet");
 
-        return lastOwners[tokenId];
+        return lastOwners[_tokenId];
     }
 
     /**
@@ -251,21 +251,21 @@ contract VNFT is
 
     /**
      * @notice Burns a Validator nft (vNFT)
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function whiteListBurn(uint256 tokenId) external onlyLiquidStaking {
-        lastOwners[tokenId] = ownerOf(tokenId);
-        _burn(tokenId);
-        emit NFTBurned(tokenId);
-        operatorRecords[validators[tokenId].operatorId] -= 1;
+    function whiteListBurn(uint256 _tokenId) external onlyLiquidStaking {
+        lastOwners[_tokenId] = ownerOf(_tokenId);
+        _burn(_tokenId);
+        emit NFTBurned(_tokenId);
+        operatorRecords[validators[_tokenId].operatorId] -= 1;
     }
 
     /**
      * @notice Get the number of operator's nft
-     * @param operatorId - operator id
+     * @param _operatorId - operator id
      */
-    function getNftCountsOfOperator(uint256 operatorId) external view returns (uint256) {
-        return operatorRecords[operatorId];
+    function getNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
+        return operatorRecords[_operatorId];
     }
 
     // // metadata URI
@@ -277,40 +277,40 @@ contract VNFT is
 
     /**
      * @notice set nft baseURI
-     * @param baseURI baseURI
+     * @param _baseURI baseURI
      */
-    function setBaseURI(string calldata baseURI) external onlyOwner {
-        emit BaseURIChanged(_baseTokenURI, baseURI);
-        _baseTokenURI = baseURI;
+    function setBaseURI(string calldata _baseURI) external onlyOwner {
+        emit BaseURIChanged(_baseTokenURI, _baseURI);
+        _baseTokenURI = _baseURI;
     }
 
     /**
      * @notice set LiquidStaking contract address
-     * @param _liqStakingAddress contract address
+     * @param _liquidStakingContractAddress contract address
      */
-    function setLiquidStaking(address _liqStakingAddress) external onlyOwner {
-        require(_liqStakingAddress != address(0), "LiquidStaking address invalid");
-        emit LiquidStakingChanged(liquidStakingContract, _liqStakingAddress);
-        liquidStakingContract = _liqStakingAddress;
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyOwner {
+        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
+        liquidStakingContractAddress = _liquidStakingContractAddress;
     }
 
     /**
      * @notice Returns the number of tokens minted by `owner`.
-     * @param owner nft owner address
+     * @param _owner nft owner address
      */
-    function numberMinted(address owner) external view returns (uint256) {
-        return _numberMinted(owner);
+    function numberMinted(address _owner) external view returns (uint256) {
+        return _numberMinted(_owner);
     }
 
     ////////below is the new code//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    function isApprovedForAll(address owner, address operator) public view override returns (bool) {
+    function isApprovedForAll(address _owner, address _operator) public view override returns (bool) {
         // Get a reference to OpenSea's proxy registry contract by instantiating
         // the contract using the already existing address.
 
-        if (operator == liquidStakingContract) {
+        if (_operator == liquidStakingContractAddress) {
             return true;
         }
 
-        return super.isApprovedForAll(owner, operator);
+        return super.isApprovedForAll(_owner, _operator);
     }
 }

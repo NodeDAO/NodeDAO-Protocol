@@ -54,7 +54,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
     event RewardClaimed(address _owner, uint256 _amount);
     event Transferred(address _to, uint256 _amount);
     event Settle(uint256 _blockNumber, uint256 _settleRewards);
-    event DaoAddressChanged(address dao, address _dao);
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event OperatorRewardsClaimed(uint256 _rewards);
+    event DaoRewardsClaimed(uint256 _rewards, address _to);
 
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "Not allowed to touch funds");
@@ -77,22 +79,22 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
     /**
      * @notice initialize Vault Contract
      * @param _nVNFTContractAddress vNFT contract address
-     * @param dao_ Dao Address
-     * @param operatorId_ operator Id
-     * @param liquidStakingAddress_ liquidStaking contract address
-     * @param nodeOperatorRegistryAddress_ nodeOperatorRegistry Address
+     * @param _dao Dao Address
+     * @param _operatorId operator Id
+     * @param _liquidStakingAddress liquidStaking contract address
+     * @param _nodeOperatorRegistryAddress nodeOperatorRegistry Address
      */
     function initialize(
         address _nVNFTContractAddress,
-        address dao_,
-        uint256 operatorId_,
-        address liquidStakingAddress_,
-        address nodeOperatorRegistryAddress_
+        address _dao,
+        uint256 _operatorId,
+        address _liquidStakingAddress,
+        address _nodeOperatorRegistryAddress
     ) external initializer {
         __Ownable_init();
 
         vNFTContract = IVNFT(_nVNFTContractAddress);
-        dao = dao_;
+        dao = _dao;
 
         RewardMetadata memory r = RewardMetadata({value: 0, height: 0});
 
@@ -102,17 +104,17 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
         publicSettleLimit = 216000;
         comissionRate = 1000;
         daoComissionRate = 3000;
-        operatorId = operatorId_;
-        liquidStakingContract = ILiquidStaking(liquidStakingAddress_);
-        nodeOperatorRegistryContract = INodeOperatorsRegistry(nodeOperatorRegistryAddress_);
+        operatorId = _operatorId;
+        liquidStakingContract = ILiquidStaking(_liquidStakingAddress);
+        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryAddress);
     }
 
     /**
      * @notice Computes the reward a nft has
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function _rewards(uint256 tokenId) internal view returns (uint256) {
-        uint256 gasHeight = userGasHeight[tokenId];
+    function _rewards(uint256 _tokenId) internal view returns (uint256) {
+        uint256 gasHeight = userGasHeight[_tokenId];
         if (gasHeight == 0) {
             gasHeight = liquidStakingGasHeight;
         }
@@ -170,10 +172,10 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
 
     /**
      * @notice Computes the reward a nft has
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function rewards(uint256 tokenId) external view override returns (uint256) {
-        return _rewards(tokenId);
+    function rewards(uint256 _tokenId) external view override returns (uint256) {
+        return _rewards(_tokenId);
     }
 
     /**
@@ -192,16 +194,16 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
 
     /**
      * @notice Returns an array of recent `RewardMetadata`
-     * @param amt - The amount of `RewardMetdata` to return, ordered according to the most recent
+     * @param _amt - The amount of `RewardMetdata` to return, ordered according to the most recent
      */
-    function rewardsAndHeights(uint256 amt) external view override returns (RewardMetadata[] memory) {
-        if (amt >= cumArr.length) {
+    function rewardsAndHeights(uint256 _amt) external view override returns (RewardMetadata[] memory) {
+        if (_amt >= cumArr.length) {
             return cumArr;
         }
 
-        RewardMetadata[] memory r = new RewardMetadata[](amt);
+        RewardMetadata[] memory r = new RewardMetadata[](_amt);
 
-        for (uint256 i = 0; i < amt; i++) {
+        for (uint256 i = 0; i < _amt; i++) {
             r[i] = cumArr[cumArr.length - 1 - i];
         }
 
@@ -231,10 +233,10 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
     }
 
     //slither-disable-next-line arbitrary-send
-    function transfer(uint256 amount, address to) internal {
-        require(to != address(0), "Recipient address invalid");
-        payable(to).transfer(amount);
-        emit Transferred(to, amount);
+    function transfer(uint256 _amount, address _to) internal {
+        require(_to != address(0), "Recipient address invalid");
+        payable(_to).transfer(_amount);
+        emit Transferred(_to, _amount);
     }
 
     /**
@@ -253,18 +255,18 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
 
     /**
      * @notice Claims the rewards belonging to a validator nft and transfer it to the owner
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function claimRewardsOfUser(uint256 tokenId) external nonReentrant onlyLiquidStaking returns (uint256) {
-        require(userGasHeight[tokenId] != 0, "must be user tokenId");
+    function claimRewardsOfUser(uint256 _tokenId) external nonReentrant onlyLiquidStaking returns (uint256) {
+        require(userGasHeight[_tokenId] != 0, "must be user tokenId");
 
-        address owner = vNFTContract.ownerOf(tokenId);
-        uint256 nftRewards = _rewards(tokenId);
+        address owner = vNFTContract.ownerOf(_tokenId);
+        uint256 nftRewards = _rewards(_tokenId);
 
         unclaimedRewards -= nftRewards;
         transfer(nftRewards, owner);
 
-        userGasHeight[tokenId] = cumArr[cumArr.length - 1].height;
+        userGasHeight[_tokenId] = cumArr[cumArr.length - 1].height;
         emit RewardClaimed(owner, nftRewards);
 
         return nftRewards;
@@ -273,14 +275,14 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
     /**
      * @notice Set the gas height of user nft
      */
-    function setUserNft(uint256 tokenId, uint256 number) external onlyLiquidStaking {
-        if (number == 0) {
+    function setUserNft(uint256 _tokenId, uint256 _number) external onlyLiquidStaking {
+        if (_number == 0) {
             userNftsCount -= 1;
         } else {
             userNftsCount += 1;
         }
 
-        userGasHeight[tokenId] = number;
+        userGasHeight[_tokenId] = _number;
     }
 
     /**
@@ -295,6 +297,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
      */
     function claimOperatorRewards() external nonReentrant onlyNodeOperatorRegistryContract returns (uint256) {
         uint256 rewards = operatorRewards;
+        emit OperatorRewardsClaimed(rewards);
         operatorRewards = 0;
 
         // Pledge the required funds based on the number of validators
@@ -339,20 +342,21 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
     /**
      * @notice Dao Claims the rewards
      */
-    function claimDaoRewards(address to) external nonReentrant onlyNodeOperatorRegistryContract returns (uint256) {
+    function claimDaoRewards(address _to) external nonReentrant onlyNodeOperatorRegistryContract returns (uint256) {
         uint256 rewards = daoRewards;
+        emit DaoRewardsClaimed(rewards, _to);
         daoRewards = 0;
-        transfer(rewards, to);
+        transfer(rewards, _to);
         return rewards;
     }
 
     /**
      * @notice Sets the liquidStaking address
      */
-    function setLiquidStaking(address liquidStaking_) external onlyDao {
-        require(liquidStaking_ != address(0), "LiquidStaking address invalid");
-        emit LiquidStakingChanged(address(liquidStakingContract), liquidStaking_);
-        liquidStakingContract = ILiquidStaking(liquidStaking_);
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
     }
 
     /**
