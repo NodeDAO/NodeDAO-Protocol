@@ -366,9 +366,19 @@ contract LiquidStakingTest is Test {
         amounts2[0] = 1;
         amounts2[1] = 2;
 
-        // vm.expectRevert("Invalid length");
-        // vm.prank(_dao);
-        // liquidStaking.assignBlacklistOperator(2, operatorIds, amounts2);
+        vm.expectRevert("This operator is not in the blacklist");
+        vm.prank(_dao);
+        liquidStaking.assignBlacklistOperator(2, operatorIds, amounts2);
+        
+        vm.prank(_dao);
+        operatorRegistry.setBlacklistOperator(2);
+        vm.expectRevert("Invalid length");
+        vm.prank(_dao);
+        liquidStaking.assignBlacklistOperator(2, operatorIds, amounts2);
+        
+        vm.expectRevert("Insufficient balance of blacklist operator");
+        vm.prank(_dao);
+        liquidStaking.assignBlacklistOperator(2, operatorIds, amounts);
     }
 
 
