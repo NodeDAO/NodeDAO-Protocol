@@ -161,7 +161,7 @@ contract VNFT is
      */
     function tokenOfValidator(bytes calldata _pubkey) external view returns (uint256) {
         require(_pubkey.length != 0, "Invalid pubkey");
-        for (uint256 i = 0; i < validators.length; i++) {
+        for (uint256 i = 0; i < validators.length; ++i) {
             if (keccak256(validators[i].pubkey) == keccak256(_pubkey) && _exists(i)) {
                 return i;
             }

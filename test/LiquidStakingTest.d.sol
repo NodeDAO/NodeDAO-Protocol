@@ -180,7 +180,7 @@ contract LiquidStakingTest is Test {
     function testRegisterOperatorFailRequireCases() public {
         vm.prank(address(45));
         vm.deal(address(45), 22 ether);
-        vm.expectRevert("Invalid registration operator fee");
+        vm.expectRevert("Insufficient amount");
         operatorRegistry.registerOperator{value: 0.1 ether}(
             "five", address(_controllerAddress3), address(8), _rewardAddresses5, _ratios
         );

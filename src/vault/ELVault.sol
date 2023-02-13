@@ -203,7 +203,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
 
         RewardMetadata[] memory r = new RewardMetadata[](_amt);
 
-        for (uint256 i = 0; i < _amt; i++) {
+        for (uint256 i = 0; i < _amt; ++i) {
             r[i] = cumArr[cumArr.length - 1 - i];
         }
 
@@ -320,7 +320,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
 
         uint256 totalAmount = 0;
         uint256 totalRatios = 0;
-        for (uint256 i = 0; i < rewardAddresses.length; i++) {
+        for (uint256 i = 0; i < rewardAddresses.length; ++i) {
             uint256 ratio = ratios[i];
             totalRatios += ratio;
 

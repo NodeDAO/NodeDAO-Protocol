@@ -168,7 +168,7 @@ contract LiquidStaking is
 
         // Update operator available funds
         uint256 totalAmount = 0;
-        for (uint256 i = 0; i < _operatorIds.length; i++) {
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
             uint256 amount = _amounts[i];
             totalAmount += amount;
@@ -245,7 +245,7 @@ contract LiquidStaking is
         nETHContract.whiteListMint(amountOut, address(this));
 
         uint256 mintNftsCount = msg.value / DEPOSIT_SIZE;
-        for (uint256 i = 0; i < mintNftsCount; i++) {
+        for (uint256 i = 0; i < mintNftsCount; ++i) {
             uint256 tokenId = vNFTContract.whiteListMint(bytes(""), msg.sender, _operatorId);
             IELVault(vaultContractAddress).setUserNft(tokenId, block.number);
         }
@@ -279,7 +279,7 @@ contract LiquidStaking is
 
         reinvestRewardsOfOperator(operatorId);
 
-        for (uint256 i = 0; i < _pubkeys.length; i++) {
+        for (uint256 i = 0; i < _pubkeys.length; ++i) {
             _stakeAndMint(operatorId, _pubkeys[i], _signatures[i], _depositDataRoots[i]);
         }
 
@@ -400,7 +400,7 @@ contract LiquidStaking is
      * @param _operatorIds The operatorIds of the re-investment
      */
     function batchReinvestRewardsOfOperator(uint256[] memory _operatorIds) public whenNotPaused {
-        for (uint256 i = 0; i < _operatorIds.length; i++) {
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
             reinvestRewardsOfOperator(_operatorIds[i]);
         }
     }

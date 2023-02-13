@@ -146,7 +146,7 @@ contract NodeOperatorRegistry is
         uint256[] memory _ratios
     ) external payable nonReentrant validAddress(_controllerAddress) validAddress(_owner) returns (uint256 id) {
         require(bytes(_name).length <= 32, "Invalid length");
-        require(msg.value == BASIC_PLEDGE + registrationFee, "Invalid registration operator fee");
+        require(msg.value >= BASIC_PLEDGE + registrationFee, "Insufficient amount");
         require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
         id = totalOperators + 1;
 
@@ -169,8 +169,9 @@ contract NodeOperatorRegistry is
         usedControllerAddress[_controllerAddress] = true;
         controllerAddress[_controllerAddress] = id;
 
-        operatorPledgeVaultBalances[id] += BASIC_PLEDGE;
-        emit PledgeDeposited(BASIC_PLEDGE, id);
+        uint256 pledgeAmount = msg.value - registrationFee;
+        operatorPledgeVaultBalances[id] += pledgeAmount;
+        emit PledgeDeposited(pledgeAmount, id);
 
         transfer(registrationFee, daoVaultAddress);
 
@@ -330,7 +331,7 @@ contract NodeOperatorRegistry is
         delete operatorRewardSetting[_id];
 
         uint256 totalRatio = 0;
-        for (uint256 i = 0; i < _rewardAddresses.length; i++) {
+        for (uint256 i = 0; i < _rewardAddresses.length; ++i) {
             require(_rewardAddresses[i] != address(0), "EMPTY_ADDRESS");
             operatorRewardSetting[_id].push(RewardSetting({rewardAddress: _rewardAddresses[i], ratio: _ratios[i]}));
 
@@ -440,7 +441,7 @@ contract NodeOperatorRegistry is
         RewardSetting[] memory rewardSetting = operatorRewardSetting[_operatorId];
         rewardAddresses = new address[] (rewardSetting.length);
         ratios = new uint256[] (rewardSetting.length);
-        for (uint256 i = 0; i < rewardSetting.length; i++) {
+        for (uint256 i = 0; i < rewardSetting.length; ++i) {
             rewardAddresses[i] = rewardSetting[i].rewardAddress;
             ratios[i] = rewardSetting[i].ratio;
         }
