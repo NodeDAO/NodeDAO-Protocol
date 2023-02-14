@@ -47,17 +47,6 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
 
     uint256 public userNftsCount;
 
-    event ComissionRateChanged(uint256 _before, uint256 _after);
-    event LiquidStakingChanged(address _before, address _after);
-    event PublicSettleLimitChanged(uint256 _before, uint256 _after);
-    event RewardClaimed(address _owner, uint256 _amount);
-    event RewardReinvestment(address _liquidStakingContract, uint256 _nftRewards);
-    event Transferred(address _to, uint256 _amount);
-    event Settle(uint256 _blockNumber, uint256 _settleRewards);
-    event DaoAddressChanged(address _oldDao, address _dao);
-    event OperatorRewardsClaimed(uint256 _rewards);
-    event DaoRewardsClaimed(uint256 _rewards, address _to);
-
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "Not allowed to touch funds");
         _;

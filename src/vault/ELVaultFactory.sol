@@ -8,13 +8,14 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "src/vault/ELVault.sol";
+import "src/interfaces/IELVaultFactory.sol";
 
 /**
  * @title ELVaultFactory Contract
  *
  * Vault's factory contract, which automatically creates its own vault contract for each operator
  */
-contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public dao;
     address public vNFTContract;
     address public liquidStakingAddress;
@@ -25,9 +26,6 @@ contract ELVaultFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         require(nodeOperatorRegistryAddress == msg.sender, "Not allowed to create vault");
         _;
     }
-
-    event ELVaultProxyDeployed(address _proxyAddress);
-    event NodeOperatorRegistrySet(address _oldNodeOperatorRegistryAddress, address _nodeOperatorRegistryAddress);
 
     /**
      * @notice initialize ELVaultFactory Contract

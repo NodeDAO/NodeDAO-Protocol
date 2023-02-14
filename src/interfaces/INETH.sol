@@ -20,4 +20,6 @@ interface INETH is IERC20 {
      * @param _account burn account
      */
     function whiteListBurn(uint256 _amount, address _account) external;
+
+    event LiquidStakingContractSet(address _OldLiquidStakingContractAddress, address _liquidStakingContractAddress);
 }

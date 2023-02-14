@@ -340,11 +340,12 @@ contract BeaconOracle is
      * @param _tokenId token id
      * @return whether the validation passed
      */
-    function verifyNftValue(bytes32[] calldata _proof, bytes calldata _pubkey, uint256 _validatorBalance, uint256 _tokenId)
-        external
-        view
-        returns (bool)
-    {
+    function verifyNftValue(
+        bytes32[] calldata _proof,
+        bytes calldata _pubkey,
+        uint256 _validatorBalance,
+        uint256 _tokenId
+    ) external view returns (bool) {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(_pubkey, _validatorBalance, _tokenId))));
         return MerkleProof.verify(_proof, merkleTreeRoot, leaf);
     }
