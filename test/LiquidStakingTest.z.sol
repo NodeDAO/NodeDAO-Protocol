@@ -675,7 +675,7 @@ contract LiquidStakingTest is Test {
 
         address _controllerAddress3 = address(80);
         address _owner3 = address(81);
-        
+
         uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
             "testELVault", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
         );
@@ -717,8 +717,7 @@ contract LiquidStakingTest is Test {
         liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
 
         address vaultContractAddress;
-        (, , , , vaultContractAddress) =
-            operatorRegistry.getNodeOperator(operatorId, false);
+        (,,,, vaultContractAddress) = operatorRegistry.getNodeOperator(operatorId, false);
 
         assertEq(address(vaultContractAddress).balance, 0);
         payable(vaultContractAddress).transfer(10 ether);
@@ -793,7 +792,7 @@ contract LiquidStakingTest is Test {
 
         uint256 nethAmount = uint256(32 ether) * uint256(64 ether) / uint256(73 ether);
         console.log("==========nethAmount=============", nethAmount);
-        assertEq(nethAmount, liquidStaking.getNethOut(32 ether)); 
+        assertEq(nethAmount, liquidStaking.getNethOut(32 ether));
         console.log("==========getNethOut=============", liquidStaking.getNethOut(32 ether));
         assertEq(nethAmount, neth.balanceOf(address(liquidStaking)));
 

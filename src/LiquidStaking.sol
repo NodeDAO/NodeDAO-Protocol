@@ -72,7 +72,11 @@ contract LiquidStaking is
     // historical total Rewards
     uint256 public totalReinvestRewardsSum;
 
+    // slash record
+    mapping(uint256 => uint256) public operatorSlashRecords;
+
     event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _totalAmount);
+    event OperatorSlashed(uint256 _operatorId, uint256 _amount);
     event EthStake(address indexed _from, uint256 _amount, uint256 _amountOut);
     event EthUnstake(address indexed _from, uint256 _amount, uint256 _amountOut);
     event NftStake(address indexed _from, uint256 _count);
@@ -157,12 +161,12 @@ contract LiquidStaking is
         uint256 _assignOperatorId,
         uint256[] calldata _operatorIds,
         uint256[] calldata _amounts
-    ) public whenNotPaused onlyDao {
+    ) external onlyOwner {
         // assignOperatorId must be a blacklist operator
         require(
             !nodeOperatorRegistryContract.isTrustedOperator(_assignOperatorId)
                 || nodeOperatorRegistryContract.isQuitOperator(_assignOperatorId),
-            "This operator is not in the blacklist"
+            "This operator is trusted"
         );
         require(_operatorIds.length == _amounts.length, "Invalid length");
 
@@ -178,6 +182,18 @@ contract LiquidStaking is
         require(operatorPoolBalances[_assignOperatorId] >= totalAmount, "Insufficient balance of blacklist operator");
         operatorPoolBalances[_assignOperatorId] -= totalAmount;
         emit BlacklistOperatorAssigned(_assignOperatorId, totalAmount);
+    }
+
+    /**
+     * @notice slash operator
+     * @param _operatorId operator id
+     * @param _amount slash amount
+     */
+    function slashOperator(uint256 _operatorId, uint256 _amount) external onlyOwner {
+        nodeOperatorRegistryContract.slash(_amount, _operatorId);
+        operatorPoolBalances[_operatorId] += _amount;
+
+        emit OperatorSlashed(_operatorId, _amount);
     }
 
     /**

@@ -118,9 +118,7 @@ contract LiquidStakingTest is Test {
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
         );
 
-        operatorRegistry.registerOperator{value: 1.1 ether}(
-            "two", address(888), address(4), _rewardAddresses, _ratios
-        );
+        operatorRegistry.registerOperator{value: 1.1 ether}("two", address(888), address(4), _rewardAddresses, _ratios);
 
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
@@ -187,7 +185,6 @@ contract LiquidStakingTest is Test {
     }
 
     function testAssignBlacklistOrQuitOperator() public {
-        vm.prank(_dao);
         uint256[] memory _operatorIdsToAllocateShare = new uint256[] (1);
         _operatorIdsToAllocateShare[0] = uint256(1);
 
