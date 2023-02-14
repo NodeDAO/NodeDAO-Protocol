@@ -483,6 +483,10 @@ contract NodeOperatorRegistry is
             return false;
         }
 
+        if (operators[_id].isQuit) {
+            return false;
+        }
+
         if (permissionlessBlockNumber != 0 && block.number >= permissionlessBlockNumber) {
             return true;
         }
@@ -505,6 +509,10 @@ contract NodeOperatorRegistry is
     function isTrustedOperatorOfControllerAddress(address _controllerAddress) external view returns (uint256) {
         uint256 _id = controllerAddress[_controllerAddress];
         if (blacklistOperators[_id]) {
+            return 0;
+        }
+
+        if (operators[_id].isQuit) {
             return 0;
         }
 

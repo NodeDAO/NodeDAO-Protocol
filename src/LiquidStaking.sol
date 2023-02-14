@@ -7,6 +7,7 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
+import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INETH.sol";
 import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IDepositContract.sol";
@@ -27,6 +28,7 @@ import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUp
  * thereby making Ethereum staking more decentralized.
  */
 contract LiquidStaking is
+    ILiquidStaking,
     Initializable,
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -72,27 +74,8 @@ contract LiquidStaking is
     // historical total Rewards
     uint256 public totalReinvestRewardsSum;
 
-    event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _totalAmount);
-    event EthStake(address indexed _from, uint256 _amount, uint256 _amountOut);
-    event EthUnstake(address indexed _from, uint256 _amount, uint256 _amountOut);
-    event NftStake(address indexed _from, uint256 _count);
-    event ValidatorRegistered(uint256 _operatorId, uint256 _tokenId);
-    event NftWrap(uint256 _tokenId, uint256 _operatorId, uint256 _value, uint256 _amountOut);
-    event NftUnwrap(uint256 _tokenId, uint256 operatorId, uint256 _value, uint256 _amountOut);
-    event UserClaimRewards(uint256 _operatorId, uint256 _tokenId, uint256 _rewards);
-    event Transferred(address _to, uint256 _amount);
-    event OperatorReinvestRewards(uint256 _operatorId, uint256 _rewards);
-    event RewardsReceive(uint256 _rewards);
-    event SlashReceive(uint256 _amount);
-    event LiquidStakingWithdrawalCredentialsSet(
-        bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
-    );
-    event BeaconOracleContractSet(address _oldBeaconOracleContract, address _beaconOracleContractAddress);
-    event NodeOperatorRegistryContractSet(
-        address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
-    );
-    event DaoAddressChanged(address _oldDao, address _dao);
-    event DepositFeeRateSet(uint256 _oldFeeRate, uint256 _feeRate);
+    // slash record
+    mapping(uint256 => uint256) public operatorSlashRecords;
 
     modifier onlyDao() {
         require(msg.sender == dao, "PERMISSION_DENIED");
@@ -157,12 +140,12 @@ contract LiquidStaking is
         uint256 _assignOperatorId,
         uint256[] calldata _operatorIds,
         uint256[] calldata _amounts
-    ) public whenNotPaused onlyDao {
+    ) external onlyOwner {
         // assignOperatorId must be a blacklist operator
         require(
             !nodeOperatorRegistryContract.isTrustedOperator(_assignOperatorId)
                 || nodeOperatorRegistryContract.isQuitOperator(_assignOperatorId),
-            "This operator is not in the blacklist"
+            "This operator is trusted"
         );
         require(_operatorIds.length == _amounts.length, "Invalid length");
 
@@ -178,6 +161,18 @@ contract LiquidStaking is
         require(operatorPoolBalances[_assignOperatorId] >= totalAmount, "Insufficient balance of blacklist operator");
         operatorPoolBalances[_assignOperatorId] -= totalAmount;
         emit BlacklistOperatorAssigned(_assignOperatorId, totalAmount);
+    }
+
+    /**
+     * @notice slash operator
+     * @param _operatorId operator id
+     * @param _amount slash amount
+     */
+    function slashOperator(uint256 _operatorId, uint256 _amount) external onlyOwner {
+        nodeOperatorRegistryContract.slash(_amount, _operatorId);
+        operatorPoolBalances[_operatorId] += _amount;
+
+        emit OperatorSlashed(_operatorId, _amount);
     }
 
     /**

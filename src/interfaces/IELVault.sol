@@ -14,9 +14,9 @@ interface IELVault {
 
     /**
      * @notice Computes the reward a nft has
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function rewards(uint256 tokenId) external view returns (uint256);
+    function rewards(uint256 _tokenId) external view returns (uint256);
 
     /**
      * @notice get liquidStaking pool reward
@@ -30,9 +30,9 @@ interface IELVault {
 
     /**
      * @notice Returns an array of recent `RewardMetadata`
-     * @param amt - The amount of `RewardMetdata` to return, ordered according to the most recent
+     * @param _amt - The amount of `RewardMetdata` to return, ordered according to the most recent
      */
-    function rewardsAndHeights(uint256 amt) external view returns (RewardMetadata[] memory);
+    function rewardsAndHeights(uint256 _amt) external view returns (RewardMetadata[] memory);
 
     function dao() external view returns (address);
 
@@ -55,14 +55,14 @@ interface IELVault {
 
     /**
      * @notice Claims the rewards belonging to a validator nft and transfer it to the owner
-     * @param tokenId - tokenId of the validator nft
+     * @param _tokenId - tokenId of the validator nft
      */
-    function claimRewardsOfUser(uint256 tokenId) external returns (uint256);
+    function claimRewardsOfUser(uint256 _tokenId) external returns (uint256);
 
     /**
      * @notice Set the gas height of user nft
      */
-    function setUserNft(uint256 tokenId, uint256 number) external;
+    function setUserNft(uint256 _tokenId, uint256 _number) external;
 
     /**
      * @notice Set the gas height of liquidStaking nft
@@ -77,5 +77,16 @@ interface IELVault {
     /**
      * @notice Dao Claims the rewards
      */
-    function claimDaoRewards(address to) external returns (uint256);
+    function claimDaoRewards(address _to) external returns (uint256);
+
+    event ComissionRateChanged(uint256 _before, uint256 _after);
+    event LiquidStakingChanged(address _before, address _after);
+    event PublicSettleLimitChanged(uint256 _before, uint256 _after);
+    event RewardClaimed(address _owner, uint256 _amount);
+    event RewardReinvestment(address _liquidStakingContract, uint256 _nftRewards);
+    event Transferred(address _to, uint256 _amount);
+    event Settle(uint256 _blockNumber, uint256 _settleRewards);
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event OperatorRewardsClaimed(uint256 _rewards);
+    event DaoRewardsClaimed(uint256 _rewards, address _to);
 }

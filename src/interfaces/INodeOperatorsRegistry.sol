@@ -114,9 +114,9 @@ interface INodeOperatorsRegistry {
 
     /**
      * @notice operator pledge balance
-     * @param operatorId operator id
+     * @param _operatorId operator id
      */
-    function getPledgeBalanceOfOperator(uint256 operatorId) external view returns (uint256);
+    function getPledgeBalanceOfOperator(uint256 _operatorId) external view returns (uint256);
 
     /**
      * @notice Get operator owner address
@@ -126,22 +126,22 @@ interface INodeOperatorsRegistry {
 
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
-     * @param operatorId operator id
-     * @param amount slash amount
+     * @param _operatorId operator id
+     * @param _amount slash amount
      */
-    function slash(uint256 amount, uint256 operatorId) external;
+    function slash(uint256 _amount, uint256 _operatorId) external;
 
     /**
      * @notice deposit pledge fund for operator
-     * @param operatorId operator Id
+     * @param _operatorId operator Id
      */
-    function deposit(uint256 operatorId) external payable;
+    function deposit(uint256 _operatorId) external payable;
 
     /**
      * @notice Determine whether the operator meets the pledge requirements
-     * @param operatorId operator id
+     * @param _operatorId operator id
      */
-    function isConformBasicPledge(uint256 operatorId) external view returns (bool);
+    function isConformBasicPledge(uint256 _operatorId) external view returns (bool);
 
     /**
      * @notice Returns whether an operator is quit
@@ -150,9 +150,9 @@ interface INodeOperatorsRegistry {
     function isQuitOperator(uint256 _id) external view returns (bool);
 
     event NodeOperatorRegistered(
-        uint256 id,
-        string name,
-        address controllerAddress,
+        uint256 _id,
+        string _name,
+        address _controllerAddress,
         address _vaultContractAddress,
         address[] _rewardAddresses,
         uint256[] _ratios

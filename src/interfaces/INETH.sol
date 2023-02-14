@@ -9,15 +9,17 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 interface INETH is IERC20 {
     /**
      * @notice mint nETHH
-     * @param amount mint amount
-     * @param account mint account
+     * @param _amount mint amount
+     * @param _account mint account
      */
-    function whiteListMint(uint256 amount, address account) external;
+    function whiteListMint(uint256 _amount, address _account) external;
 
     /**
      * @notice burn nETHH
-     * @param amount burn amount
-     * @param account burn account
+     * @param _amount burn amount
+     * @param _account burn account
      */
-    function whiteListBurn(uint256 amount, address account) external;
+    function whiteListBurn(uint256 _amount, address _account) external;
+
+    event LiquidStakingContractSet(address _OldLiquidStakingContractAddress, address _liquidStakingContractAddress);
 }

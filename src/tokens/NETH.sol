@@ -11,8 +11,6 @@ import "src/interfaces/INETH.sol";
 contract NETH is INETH, ERC20, Ownable {
     address public liquidStakingContractAddress;
 
-    event LiquidStakingContractSet(address _OldLiquidStakingContractAddress, address _liquidStakingContractAddress);
-
     modifier onlyLiquidStaking() {
         require(liquidStakingContractAddress == msg.sender, "Not allowed to touch funds");
         _;

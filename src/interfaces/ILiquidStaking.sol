@@ -14,30 +14,37 @@ pragma solidity 0.8.8;
  */
 interface ILiquidStaking {
     /**
-     * @notice Register an operator to accept the user's stake
-     * @param _name operator name
-     * @param _controllerAddress operator contraller address
-     * @param _owner This address is the operator owner and has the authority to change the control address and rewards address
-     * @param _rewardAddresses Up to three addresses that accept operator rewards can be set
-     * @param _ratios The allocation ratio corresponding to the rewards address by the operator
-     */
-    function registerOperator(
-        string memory _name,
-        address _controllerAddress,
-        address _owner,
-        address[] memory _rewardAddresses,
-        uint256[] memory _ratios
-    ) external payable returns (uint256);
-
-    /**
      * @notice Receive Rewards
-     * @param rewards rewards amount
+     * @param _rewards rewards amount
      */
-    function receiveRewards(uint256 rewards) external payable;
+    function receiveRewards(uint256 _rewards) external payable;
 
     /**
      * @notice Receive slash fund
-     * @param amount amount
+     * @param _amount amount
      */
-    function slashReceive(uint256 amount) external payable;
+    function slashReceive(uint256 _amount) external payable;
+
+    event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _totalAmount);
+    event OperatorSlashed(uint256 _operatorId, uint256 _amount);
+    event EthStake(address indexed _from, uint256 _amount, uint256 _amountOut);
+    event EthUnstake(address indexed _from, uint256 _amount, uint256 _amountOut);
+    event NftStake(address indexed _from, uint256 _count);
+    event ValidatorRegistered(uint256 _operatorId, uint256 _tokenId);
+    event NftWrap(uint256 _tokenId, uint256 _operatorId, uint256 _value, uint256 _amountOut);
+    event NftUnwrap(uint256 _tokenId, uint256 operatorId, uint256 _value, uint256 _amountOut);
+    event UserClaimRewards(uint256 _operatorId, uint256 _tokenId, uint256 _rewards);
+    event Transferred(address _to, uint256 _amount);
+    event OperatorReinvestRewards(uint256 _operatorId, uint256 _rewards);
+    event RewardsReceive(uint256 _rewards);
+    event SlashReceive(uint256 _amount);
+    event LiquidStakingWithdrawalCredentialsSet(
+        bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
+    );
+    event BeaconOracleContractSet(address _oldBeaconOracleContract, address _beaconOracleContractAddress);
+    event NodeOperatorRegistryContractSet(
+        address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
+    );
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event DepositFeeRateSet(uint256 _oldFeeRate, uint256 _feeRate);
 }

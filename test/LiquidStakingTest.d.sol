@@ -361,7 +361,6 @@ contract LiquidStakingTest is Test {
 
     function testAssignBlacklistOperatorFailCases() public {
         vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
-        vm.prank(_dao);
         uint256[] memory operatorIds = new uint256[](1);
         operatorIds[0] = 1;
         uint256[] memory amounts = new uint256[](1);
@@ -369,26 +368,22 @@ contract LiquidStakingTest is Test {
         liquidStaking.assignBlacklistOrQuitOperator(100, operatorIds, amounts);
         failed();
 
-        vm.expectRevert("This operator is not in the blacklist");
-        vm.prank(_dao);
+        vm.expectRevert("This operator is trusted");
         liquidStaking.assignBlacklistOrQuitOperator(1, operatorIds, amounts);
 
         uint256[] memory amounts2 = new uint256[](2);
         amounts2[0] = 1;
         amounts2[1] = 2;
 
-        vm.expectRevert("This operator is not in the blacklist");
-        vm.prank(_dao);
+        vm.expectRevert("This operator is trusted");
         liquidStaking.assignBlacklistOrQuitOperator(2, operatorIds, amounts2);
 
         vm.prank(_dao);
         operatorRegistry.setBlacklistOperator(2);
         vm.expectRevert("Invalid length");
-        vm.prank(_dao);
         liquidStaking.assignBlacklistOrQuitOperator(2, operatorIds, amounts2);
 
         vm.expectRevert("Insufficient balance of blacklist operator");
-        vm.prank(_dao);
         liquidStaking.assignBlacklistOrQuitOperator(2, operatorIds, amounts);
     }
 
