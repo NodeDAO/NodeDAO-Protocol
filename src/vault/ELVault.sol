@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.8;
 
-import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts/utils/math/Math.sol";
@@ -14,7 +13,7 @@ import "src/interfaces/INodeOperatorsRegistry.sol";
 /**
  * @title ELVault for managing rewards
  */
-contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable {
+contract ELVault is IELVault, ReentrancyGuard, Initializable {
     using Math for uint256;
 
     IVNFT public vNFTContract;
@@ -41,7 +40,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
     // liquidStaking nft gas height
     uint256 public liquidStakingGasHeight;
     // liquidStaking reward
-    uint256 public liquidStakingReward;
+    uint256 public liquidStakingRewards;
 
     // key tokenId; value gasheight
     mapping(uint256 => uint256) public userGasHeight;
@@ -91,8 +90,6 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
         address _liquidStakingAddress,
         address _nodeOperatorRegistryAddress
     ) external initializer {
-        __Ownable_init();
-
         vNFTContract = IVNFT(_nVNFTContractAddress);
         dao = _dao;
 
@@ -160,7 +157,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
         uint256 averageRewards = outstandingRewards / operatorNftCounts;
 
         // Calculate the rewards belonging to the liquidStaking pool
-        liquidStakingReward += averageRewards * (operatorNftCounts - userNftsCount);
+        liquidStakingRewards += averageRewards * (operatorNftCounts - userNftsCount);
 
         // Calculation of Cumulative Average Rewards
         uint256 currentValue = cumArr[cumArr.length - 1].value + averageRewards;
@@ -179,10 +176,10 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
     }
 
     /**
-     * @notice get liquidStaking pool reward
+     * @notice get liquidStaking pool rewards
      */
-    function getLiquidStakingReward() external view returns (uint256) {
-        return liquidStakingReward;
+    function getLiquidStakingRewards() external view returns (uint256) {
+        return liquidStakingRewards;
     }
 
     /**
@@ -243,9 +240,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
      * @notice Reinvesting rewards belonging to the liquidStaking pool
      */
     function reinvestmentOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
-        uint256 nftRewards = liquidStakingReward;
+        uint256 nftRewards = liquidStakingRewards;
         unclaimedRewards -= nftRewards;
-        liquidStakingReward = 0;
+        liquidStakingRewards = 0;
         liquidStakingContract.receiveRewards{value: nftRewards}(nftRewards);
 
         emit RewardClaimed(address(liquidStakingContract), nftRewards);
@@ -388,7 +385,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable, OwnableUpgradeable
     /**
      * @notice set dao address
      */
-    function setDaoAddress(address _dao) external onlyOwner {
+    function setDaoAddress(address _dao) external onlyDao {
         require(_dao != address(0), "Dao address invalid");
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;

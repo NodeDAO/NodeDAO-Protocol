@@ -21,7 +21,7 @@ interface IELVault {
     /**
      * @notice get liquidStaking pool reward
      */
-    function getLiquidStakingReward() external view returns (uint256);
+    function getLiquidStakingRewards() external view returns (uint256);
 
     /**
      * @notice Gets the last recorded height which rewards was last dispersed + 1

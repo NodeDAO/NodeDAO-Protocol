@@ -301,7 +301,7 @@ contract LiquidStakingTest is Test {
         liquidStaking.claimRewardsOfUser(1);
         assertEq(address(22).balance, 0);
         assertEq(address(21).balance, 0.9 ether);
-        assertEq(IELVault(operatorVaultAddr).getLiquidStakingReward(), 0);
+        assertEq(IELVault(operatorVaultAddr).getLiquidStakingRewards(), 0);
 
         assertEq(96 ether, liquidStaking.operatorPoolBalances(1));
 
