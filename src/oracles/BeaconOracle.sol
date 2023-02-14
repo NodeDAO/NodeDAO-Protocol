@@ -333,21 +333,20 @@ contract BeaconOracle is
     }
 
     /**
-     * Verify the value of nft
-     * leaf: bytes calldata pubkey, uint256 validatorBalance, uint256 nftTokenID
-     * @param {bytes32[] calldata} proof validator's merkleTree proof
-     * @param {bytes calldata} pubkey
-     * @param {uint256} beaconBalance validator consensus layer balance
-     * @param {uint256} nftTokenID
+     * @notice Verify the value of nft. leaf: bytes calldata pubkey, uint256 validatorBalance, uint256 nftTokenID
+     * @param _proof validator's merkleTree proof
+     * @param _pubkey validator pubkey
+     * @param _validatorBalance validator consensus layer balance
+     * @param _tokenId token id
      * @return whether the validation passed
      */
-    function verifyNftValue(bytes32[] calldata proof, bytes calldata pubkey, uint256 beaconBalance, uint256 nftTokenID)
+    function verifyNftValue(bytes32[] calldata _proof, bytes calldata _pubkey, uint256 _validatorBalance, uint256 _tokenId)
         external
         view
         returns (bool)
     {
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(pubkey, beaconBalance, nftTokenID))));
-        return MerkleProof.verify(proof, merkleTreeRoot, leaf);
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(_pubkey, _validatorBalance, _tokenId))));
+        return MerkleProof.verify(_proof, merkleTreeRoot, leaf);
     }
 
     /**

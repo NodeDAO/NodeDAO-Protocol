@@ -9,25 +9,24 @@ pragma solidity 0.8.8;
  */
 interface IBeaconOracle {
     /**
-     * Verify the value of nft
-     * leaf: bytes calldata pubkey, uint256 validatorBalance, uint256 nftTokenID
-     * @param {bytes32[] calldata} proof validator's merkleTree proof
-     * @param {bytes calldata} pubkey
-     * @param {uint256} beaconBalance validator consensus layer balance
-     * @param {uint256} nftTokenID
+     * @notice Verify the value of nft. leaf: bytes calldata pubkey, uint256 validatorBalance, uint256 nftTokenID
+     * @param _proof validator's merkleTree proof
+     * @param _pubkey validator pubkey
+     * @param _validatorBalance validator consensus layer balance
+     * @param _tokenId nft token Id
      * @return whether the validation passed
      */
     function verifyNftValue(
-        bytes32[] calldata proof,
-        bytes calldata pubkey,
-        uint256 validatorBalance,
-        uint256 nftTokenID
+        bytes32[] calldata _proof,
+        bytes calldata _pubkey,
+        uint256 _validatorBalance,
+        uint256 _tokenId
     ) external view returns (bool);
 
     /**
      * @return {bool} is oracleMember
      */
-    function isOracleMember(address oracleMember) external view returns (bool);
+    function isOracleMember(address _oracleMember) external view returns (bool);
 
     /**
      * Add oracle member

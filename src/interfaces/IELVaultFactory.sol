@@ -8,7 +8,7 @@ pragma solidity 0.8.8;
 interface IELVaultFactory {
     /**
      * @notice create vault contract proxy
-     * @param operatorId operator id
+     * @param _operatorId operator id
      */
-    function create(uint256 operatorId) external returns (address);
+    function create(uint256 _operatorId) external returns (address);
 }

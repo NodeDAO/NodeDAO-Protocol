@@ -31,13 +31,13 @@ interface ILiquidStaking {
 
     /**
      * @notice Receive Rewards
-     * @param rewards rewards amount
+     * @param _rewards rewards amount
      */
-    function receiveRewards(uint256 rewards) external payable;
+    function receiveRewards(uint256 _rewards) external payable;
 
     /**
      * @notice Receive slash fund
-     * @param amount amount
+     * @param _amount amount
      */
-    function slashReceive(uint256 amount) external payable;
+    function slashReceive(uint256 _amount) external payable;
 }
