@@ -417,9 +417,15 @@ contract LiquidStaking is
         uint256 nftRewards = IELVault(vaultContractAddress).reinvestmentOfLiquidStaking();
         IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
+        if (nftRewards == 0) {
+            return;
+        }
+
         // update available funds
         operatorPoolBalances[_operatorId] += nftRewards;
         operatorPoolBalancesSum += nftRewards;
+        totalReinvestRewardsSum += nftRewards;
+
         emit OperatorReinvestRewards(_operatorId, nftRewards);
     }
 
@@ -550,7 +556,6 @@ contract LiquidStaking is
      * @param _rewards rewards amount
      */
     function receiveRewards(uint256 _rewards) external payable {
-        totalReinvestRewardsSum += _rewards;
         emit RewardsReceive(_rewards);
     }
 

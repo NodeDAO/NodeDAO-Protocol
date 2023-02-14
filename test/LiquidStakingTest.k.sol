@@ -389,12 +389,13 @@ contract LiquidStakingTest is Test {
     function testBatchReinvestmentRewardsOfOperator() public {
         uint256[] memory operatorIds = new uint256[](1);
         operatorIds[0] = 1;
-        vm.expectEmit(true, true, false, false);
-        emit RewardsReceive(0);
-        vm.expectEmit(false, false, false, false);
-        emit RewardClaimed(address(liquidStaking), 0);
-        vm.expectEmit(true, true, false, false);
-        emit OperatorReinvestRewards(1, 0);
+        // no reward, no emit
+        // vm.expectEmit(true, true, false, false);
+        // emit RewardsReceive(0);
+        // vm.expectEmit(false, false, false, false);
+        // emit RewardClaimed(address(liquidStaking), 0);
+        // vm.expectEmit(true, true, false, false);
+        // emit OperatorReinvestRewards(1, 0);
         liquidStaking.batchReinvestRewardsOfOperator(operatorIds);
     }
 

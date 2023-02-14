@@ -51,6 +51,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
     event LiquidStakingChanged(address _before, address _after);
     event PublicSettleLimitChanged(uint256 _before, uint256 _after);
     event RewardClaimed(address _owner, uint256 _amount);
+    event RewardReinvestment(address _liquidStakingContract, uint256 _nftRewards);
     event Transferred(address _to, uint256 _amount);
     event Settle(uint256 _blockNumber, uint256 _settleRewards);
     event DaoAddressChanged(address _oldDao, address _dao);
@@ -240,12 +241,16 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
      * @notice Reinvesting rewards belonging to the liquidStaking pool
      */
     function reinvestmentOfLiquidStaking() external nonReentrant onlyLiquidStaking returns (uint256) {
+        if (liquidStakingRewards == 0) {
+            return 0;
+        }
+
         uint256 nftRewards = liquidStakingRewards;
         unclaimedRewards -= nftRewards;
         liquidStakingRewards = 0;
         liquidStakingContract.receiveRewards{value: nftRewards}(nftRewards);
 
-        emit RewardClaimed(address(liquidStakingContract), nftRewards);
+        emit RewardReinvestment(address(liquidStakingContract), nftRewards);
 
         return nftRewards;
     }
