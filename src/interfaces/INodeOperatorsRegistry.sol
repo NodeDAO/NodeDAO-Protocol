@@ -17,11 +17,11 @@ interface INodeOperatorsRegistry {
      * @return id a unique key of the added operator
      */
     function registerOperator(
-        string memory _name,
+        string calldata _name,
         address _controllerAddress,
         address _owner,
-        address[] memory _rewardAddresses,
-        uint256[] memory _ratios
+        address[] calldata _rewardAddresses,
+        uint256[] calldata _ratios
     ) external payable returns (uint256 id);
 
     /**
@@ -157,25 +157,25 @@ interface INodeOperatorsRegistry {
         address[] _rewardAddresses,
         uint256[] _ratios
     );
-    event OperatorWithdraw(uint256 operatorId, uint256 withdrawAmount, address to);
-    event OperatorQuit(uint256 operatorId, uint256 nowVault, address to);
-    event NodeOperatorTrustedSet(uint256 id, string name, bool trusted);
-    event NodeOperatorTrustedRemove(uint256 id, string name, bool trusted);
-    event NodeOperatorBlacklistSet(uint256 id);
-    event NodeOperatorBlacklistRemove(uint256 id);
-    event NodeOperatorNameSet(uint256 id, string name);
-    event NodeOperatorRewardAddressSet(uint256 id, address[] _rewardAddresses, uint256[] _ratios);
-    event NodeOperatorControllerAddressSet(uint256 id, string name, address controllerAddress);
-    event NodeOperatorOwnerAddressSet(uint256 id, string name, address ownerAddress);
+    event OperatorWithdraw(uint256 _operatorId, uint256 _withdrawAmount, address _to);
+    event OperatorQuit(uint256 _operatorId, uint256 _nowVault, address _to);
+    event NodeOperatorTrustedSet(uint256 _id, string _name, bool _trusted);
+    event NodeOperatorTrustedRemove(uint256 _id, string _name, bool _trusted);
+    event NodeOperatorBlacklistSet(uint256 _id);
+    event NodeOperatorBlacklistRemove(uint256 _id);
+    event NodeOperatorNameSet(uint256 _id, string _name);
+    event NodeOperatorRewardAddressSet(uint256 _id, address[] _rewardAddresses, uint256[] _ratios);
+    event NodeOperatorControllerAddressSet(uint256 _id, string _name, address _controllerAddress);
+    event NodeOperatorOwnerAddressSet(uint256 _id, string _name, address _ownerAddress);
     event Transferred(address _to, uint256 _amount);
     event Slashed(uint256 _amount, uint256 _operatorId);
     event PledgeDeposited(uint256 _amount, uint256 _operatorId);
     event Withdraw(uint256 _amount, uint256 _operatorId, address _to);
     event LiquidStakingChanged(address _from, address _to);
-    event DaoAddressChanged(address dao, address _dao);
-    event DaoVaultAddressChanged(address daoVaultAddress, address _daoVaultAddress);
-    event RegistrationFeeChanged(uint256 registrationFee, uint256 _fee);
-    event PermissionlessBlockNumberSet(uint256 blockNumber);
-    event OperatorClaimRewards(uint256 operatorId, uint256 rewards);
-    event DaoClaimRewards(uint256 operatorId, uint256 rewards);
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event DaoVaultAddressChanged(address _oldDaoVaultAddress, address _daoVaultAddress);
+    event RegistrationFeeChanged(uint256 _oldFee, uint256 _fee);
+    event PermissionlessBlockNumberSet(uint256 _blockNumber);
+    event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
+    event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
 }

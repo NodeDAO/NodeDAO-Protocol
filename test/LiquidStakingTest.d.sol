@@ -150,12 +150,12 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeEthFailRequireCases() public {
-        vm.expectRevert("Stake amount must be minimum  1000 wei");
+        vm.expectRevert("Stake amount must be minimum 1000 gwei");
         vm.prank(address(2));
         vm.deal(address(2), 12 ether);
         liquidStaking.stakeETH{value: 100 wei}(1);
 
-        vm.expectRevert("Stake amount must be minimum  1000 wei");
+        vm.expectRevert("Stake amount must be minimum 1000 gwei");
         vm.prank(address(2));
         liquidStaking.stakeETH{value: 200 wei}(2);
 
@@ -180,7 +180,7 @@ contract LiquidStakingTest is Test {
     function testRegisterOperatorFailRequireCases() public {
         vm.prank(address(45));
         vm.deal(address(45), 22 ether);
-        vm.expectRevert("Invalid registration operator fee");
+        vm.expectRevert("Insufficient amount");
         operatorRegistry.registerOperator{value: 0.1 ether}(
             "five", address(_controllerAddress3), address(8), _rewardAddresses5, _ratios
         );
@@ -217,11 +217,25 @@ contract LiquidStakingTest is Test {
         vm.expectEmit(true, true, false, true);
         emit OperatorWithdraw(1, 1 ether, address(12));
 
+        assertEq(1 ether, operatorRegistry.getPledgeBalanceOfOperator(2));
+        assertEq(false, operatorRegistry.isQuitOperator(2));
         vm.prank(address(4));
         vm.deal(address(4), 15 ether);
         operatorRegistry.deposit{value: 1 ether}(2);
         vm.prank(address(4));
         operatorRegistry.withdrawOperator(1, 1 ether, address(12));
+        assertEq(2 ether, operatorRegistry.getPledgeBalanceOfOperator(2));
+
+        assertEq(1 ether, operatorRegistry.getPledgeBalanceOfOperator(3));
+        assertEq(false, operatorRegistry.isQuitOperator(3));
+        vm.prank(address(4));
+        vm.deal(address(4), 15 ether);
+        operatorRegistry.deposit{value: 1 ether}(3);
+        vm.prank(address(4));
+        vm.expectRevert("Insufficient pledge balance");
+
+        operatorRegistry.withdrawOperator(1, 1 ether, address(882));
+        assertEq(2 ether, operatorRegistry.getPledgeBalanceOfOperator(3));
     }
 
     function testGetNFTOut() public {}

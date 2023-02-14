@@ -72,27 +72,27 @@ contract LiquidStaking is
     // historical total Rewards
     uint256 public totalReinvestRewardsSum;
 
-    event BlacklistOperatorAssigned(uint256 blacklistOperatorId, uint256 totalAmount);
-    event EthStake(address indexed from, uint256 amount, uint256 amountOut);
-    event EthUnstake(address indexed from, uint256 amount, uint256 amountOut);
-    event NftStake(address indexed from, uint256 count);
-    event ValidatorRegistered(uint256 operator, uint256 tokenId);
-    event NftWrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
-    event NftUnwrap(uint256 tokenId, uint256 operatorId, uint256 value, uint256 amountOut);
-    event UserClaimRewards(uint256 operatorId, uint256 tokenId, uint256 rewards);
+    event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _totalAmount);
+    event EthStake(address indexed _from, uint256 _amount, uint256 _amountOut);
+    event EthUnstake(address indexed _from, uint256 _amount, uint256 _amountOut);
+    event NftStake(address indexed _from, uint256 _count);
+    event ValidatorRegistered(uint256 _operatorId, uint256 _tokenId);
+    event NftWrap(uint256 _tokenId, uint256 _operatorId, uint256 _value, uint256 _amountOut);
+    event NftUnwrap(uint256 _tokenId, uint256 operatorId, uint256 _value, uint256 _amountOut);
+    event UserClaimRewards(uint256 _operatorId, uint256 _tokenId, uint256 _rewards);
     event Transferred(address _to, uint256 _amount);
-    event OperatorReinvestRewards(uint256 operatorId, uint256 rewards);
-    event RewardsReceive(uint256 rewards);
-    event SlashReceive(uint256 amount);
+    event OperatorReinvestRewards(uint256 _operatorId, uint256 _rewards);
+    event RewardsReceive(uint256 _rewards);
+    event SlashReceive(uint256 _amount);
     event LiquidStakingWithdrawalCredentialsSet(
-        bytes oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
+        bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
     );
-    event BeaconOracleContractSet(address oldBeaconOracleContract, address _beaconOracleContractAddress);
+    event BeaconOracleContractSet(address _oldBeaconOracleContract, address _beaconOracleContractAddress);
     event NodeOperatorRegistryContractSet(
-        address oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
+        address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
     );
-    event DaoAddressChanged(address dao, address _dao);
-    event DepositFeeRateSet(uint256 depositFeeRate, uint256 _feeRate);
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event DepositFeeRateSet(uint256 _oldFeeRate, uint256 _feeRate);
 
     modifier onlyDao() {
         require(msg.sender == dao, "PERMISSION_DENIED");
@@ -155,8 +155,8 @@ contract LiquidStaking is
      */
     function assignBlacklistOrQuitOperator(
         uint256 _assignOperatorId,
-        uint256[] memory _operatorIds,
-        uint256[] memory _amounts
+        uint256[] calldata _operatorIds,
+        uint256[] calldata _amounts
     ) public whenNotPaused onlyDao {
         // assignOperatorId must be a blacklist operator
         require(
@@ -168,7 +168,7 @@ contract LiquidStaking is
 
         // Update operator available funds
         uint256 totalAmount = 0;
-        for (uint256 i = 0; i < _operatorIds.length; i++) {
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
             uint256 amount = _amounts[i];
             totalAmount += amount;
@@ -185,7 +185,7 @@ contract LiquidStaking is
      * @param _operatorId operator id
      */
     function stakeETH(uint256 _operatorId) external payable nonReentrant whenNotPaused {
-        require(msg.value >= 1000 wei, "Stake amount must be minimum  1000 wei");
+        require(msg.value >= 1000 gwei, "Stake amount must be minimum 1000 gwei");
 
         // operatorId must be a trusted operator
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
@@ -245,7 +245,7 @@ contract LiquidStaking is
         nETHContract.whiteListMint(amountOut, address(this));
 
         uint256 mintNftsCount = msg.value / DEPOSIT_SIZE;
-        for (uint256 i = 0; i < mintNftsCount; i++) {
+        for (uint256 i = 0; i < mintNftsCount; ++i) {
             uint256 tokenId = vNFTContract.whiteListMint(bytes(""), msg.sender, _operatorId);
             IELVault(vaultContractAddress).setUserNft(tokenId, block.number);
         }
@@ -279,7 +279,7 @@ contract LiquidStaking is
 
         reinvestRewardsOfOperator(operatorId);
 
-        for (uint256 i = 0; i < _pubkeys.length; i++) {
+        for (uint256 i = 0; i < _pubkeys.length; ++i) {
             _stakeAndMint(operatorId, _pubkeys[i], _signatures[i], _depositDataRoots[i]);
         }
 
@@ -310,7 +310,7 @@ contract LiquidStaking is
      * @param _proof Merkle tree proof from the oracle for this validator
      * @param _value value from the oracle for this validator
      */
-    function wrapNFT(uint256 _tokenId, bytes32[] memory _proof, uint256 _value) external nonReentrant whenNotPaused {
+    function wrapNFT(uint256 _tokenId, bytes32[] calldata _proof, uint256 _value) external nonReentrant whenNotPaused {
         require(_value >= DEPOSIT_SIZE, "Value check failed");
 
         uint256 operatorId = vNFTContract.operatorOf(_tokenId);
@@ -342,7 +342,11 @@ contract LiquidStaking is
      * @param _proof Merkle tree proof from the oracle for this validator
      * @param _value value from the oracle for this validator
      */
-    function unwrapNFT(uint256 _tokenId, bytes32[] memory _proof, uint256 _value) external nonReentrant whenNotPaused {
+    function unwrapNFT(uint256 _tokenId, bytes32[] calldata _proof, uint256 _value)
+        external
+        nonReentrant
+        whenNotPaused
+    {
         require(_value <= MAX_NODE_VALUE, "Value check failed");
 
         uint256 operatorId = vNFTContract.operatorOf(_tokenId);
@@ -380,7 +384,7 @@ contract LiquidStaking is
      * @param _proof Merkle tree proof from the oracle for this validator
      * @param _value value from the oracle for this validator
      */
-    function getNFTOut(uint256 _tokenId, bytes32[] memory _proof, uint256 _value) external view returns (uint256) {
+    function getNFTOut(uint256 _tokenId, bytes32[] calldata _proof, uint256 _value) external view returns (uint256) {
         uint256 operatorId = vNFTContract.operatorOf(_tokenId);
 
         bool trusted;
@@ -399,8 +403,8 @@ contract LiquidStaking is
      * @notice Batch Reinvestment Rewards
      * @param _operatorIds The operatorIds of the re-investment
      */
-    function batchReinvestRewardsOfOperator(uint256[] memory _operatorIds) public whenNotPaused {
-        for (uint256 i = 0; i < _operatorIds.length; i++) {
+    function batchReinvestRewardsOfOperator(uint256[] calldata _operatorIds) public whenNotPaused {
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
             reinvestRewardsOfOperator(_operatorIds[i]);
         }
     }
@@ -413,9 +417,15 @@ contract LiquidStaking is
         uint256 nftRewards = IELVault(vaultContractAddress).reinvestmentOfLiquidStaking();
         IELVault(vaultContractAddress).setLiquidStakingGasHeight(block.number);
 
+        if (nftRewards == 0) {
+            return;
+        }
+
         // update available funds
         operatorPoolBalances[_operatorId] += nftRewards;
         operatorPoolBalancesSum += nftRewards;
+        totalReinvestRewardsSum += nftRewards;
+
         emit OperatorReinvestRewards(_operatorId, nftRewards);
     }
 
@@ -502,7 +512,10 @@ contract LiquidStaking is
      * @notice Set LiquidStaking contract withdrawalCredentials
      * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
      */
-    function setLiquidStakingWithdrawalCredentials(bytes memory _liquidStakingWithdrawalCredentials) external onlyDao {
+    function setLiquidStakingWithdrawalCredentials(bytes calldata _liquidStakingWithdrawalCredentials)
+        external
+        onlyDao
+    {
         emit LiquidStakingWithdrawalCredentialsSet(
             liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
             );
@@ -543,7 +556,6 @@ contract LiquidStaking is
      * @param _rewards rewards amount
      */
     function receiveRewards(uint256 _rewards) external payable {
-        totalReinvestRewardsSum += _rewards;
         emit RewardsReceive(_rewards);
     }
 
@@ -559,7 +571,7 @@ contract LiquidStaking is
      * @notice The protocol has been Paused
      */
     function isPaused() public view returns (bool) {
-        paused();
+        return paused();
     }
 
     /**

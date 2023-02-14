@@ -139,14 +139,14 @@ contract NodeOperatorRegistry is
      * @return id a unique key of the added operator
      */
     function registerOperator(
-        string memory _name,
+        string calldata _name,
         address _controllerAddress,
         address _owner,
-        address[] memory _rewardAddresses,
-        uint256[] memory _ratios
+        address[] calldata _rewardAddresses,
+        uint256[] calldata _ratios
     ) external payable nonReentrant validAddress(_controllerAddress) validAddress(_owner) returns (uint256 id) {
         require(bytes(_name).length <= 32, "Invalid length");
-        require(msg.value == BASIC_PLEDGE + registrationFee, "Invalid registration operator fee");
+        require(msg.value >= BASIC_PLEDGE + registrationFee, "Insufficient amount");
         require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
         id = totalOperators + 1;
 
@@ -169,8 +169,9 @@ contract NodeOperatorRegistry is
         usedControllerAddress[_controllerAddress] = true;
         controllerAddress[_controllerAddress] = id;
 
-        operatorPledgeVaultBalances[id] += BASIC_PLEDGE;
-        emit PledgeDeposited(BASIC_PLEDGE, id);
+        uint256 pledgeAmount = msg.value - registrationFee;
+        operatorPledgeVaultBalances[id] += pledgeAmount;
+        emit PledgeDeposited(pledgeAmount, id);
 
         transfer(registrationFee, daoVaultAddress);
 
@@ -283,7 +284,7 @@ contract NodeOperatorRegistry is
         emit NodeOperatorBlacklistRemove(_id);
     }
 
-    function _checkPermission() internal {
+    function _checkPermission() internal view {
         if (permissionlessBlockNumber != 0) {
             require(block.number < permissionlessBlockNumber, "No permission phase");
         }
@@ -294,7 +295,7 @@ contract NodeOperatorRegistry is
      * @param _id operator id
      * @param _name operator new name
      */
-    function setNodeOperatorName(uint256 _id, string memory _name) external operatorExists(_id) {
+    function setNodeOperatorName(uint256 _id, string calldata _name) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
         require(msg.sender == operator.owner, "PERMISSION_DENIED");
 
@@ -308,7 +309,7 @@ contract NodeOperatorRegistry is
      * @param _rewardAddresses Ethereum 1 address which receives ETH rewards for this operator
      * @param _ratios reward ratios
      */
-    function setNodeOperatorRewardAddress(uint256 _id, address[] memory _rewardAddresses, uint256[] memory _ratios)
+    function setNodeOperatorRewardAddress(uint256 _id, address[] calldata _rewardAddresses, uint256[] calldata _ratios)
         external
         operatorExists(_id)
     {
@@ -319,7 +320,7 @@ contract NodeOperatorRegistry is
         emit NodeOperatorRewardAddressSet(_id, _rewardAddresses, _ratios);
     }
 
-    function _setNodeOperatorRewardAddress(uint256 _id, address[] memory _rewardAddresses, uint256[] memory _ratios)
+    function _setNodeOperatorRewardAddress(uint256 _id, address[] calldata _rewardAddresses, uint256[] calldata _ratios)
         internal
     {
         require(_rewardAddresses.length != 0, "Invalid length");
@@ -330,7 +331,7 @@ contract NodeOperatorRegistry is
         delete operatorRewardSetting[_id];
 
         uint256 totalRatio = 0;
-        for (uint256 i = 0; i < _rewardAddresses.length; i++) {
+        for (uint256 i = 0; i < _rewardAddresses.length; ++i) {
             require(_rewardAddresses[i] != address(0), "EMPTY_ADDRESS");
             operatorRewardSetting[_id].push(RewardSetting({rewardAddress: _rewardAddresses[i], ratio: _ratios[i]}));
 
@@ -440,7 +441,7 @@ contract NodeOperatorRegistry is
         RewardSetting[] memory rewardSetting = operatorRewardSetting[_operatorId];
         rewardAddresses = new address[] (rewardSetting.length);
         ratios = new uint256[] (rewardSetting.length);
-        for (uint256 i = 0; i < rewardSetting.length; i++) {
+        for (uint256 i = 0; i < rewardSetting.length; ++i) {
             rewardAddresses[i] = rewardSetting[i].rewardAddress;
             ratios[i] = rewardSetting[i].ratio;
         }

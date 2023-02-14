@@ -33,6 +33,7 @@ contract LiquidStakingTest is Test {
     event DaoClaimRewards(uint256 operatorId, uint256 rewards);
     event RewardsReceive(uint256 rewards);
     event SlashReceive(uint256 amount);
+    event RewardClaimed(address _owner, uint256 _amount);
 
     LiquidStaking liquidStaking;
     NETH neth;
@@ -44,7 +45,7 @@ contract LiquidStakingTest is Test {
     ELVaultFactory vaultFactoryContract;
 
     address _dao = address(1);
-    address _daoValutAddress = address(2);
+    address _daoVaultAddress = address(2);
     address _rewardAddress = address(3);
     address _controllerAddress = address(4);
     address _oracleMember1 = address(11);
@@ -52,8 +53,8 @@ contract LiquidStakingTest is Test {
     address _oracleMember3 = address(13);
     address _oracleMember4 = address(14);
     address _oracleMember5 = address(15);
-    address[] _rewardAddresses = new address[] (1);
-    uint256[] _ratios = new uint256[] (1);
+    address[] _rewardAddresses = new address[] (2);
+    uint256[] _ratios = new uint256[] (2);
     bytes withdrawalCreds = hex"00baaf6f093e5f5ea02487e58fbc2733b6716b106ceb2bc9fa95e454fb25b4d0";
     bytes tempSignature =
         hex"b6f352fbd336da8a0d7ba52e0a42d31d207cafac2694f200da9d867e74ca9b5c5ccff6277bb091c57b954cbefc76764802d3bf47602070dca2abce2085af039f14983c082c27038d9c8a012aa6ff48d85886dd638520f7b1bd9ecfa041d56310";
@@ -63,7 +64,9 @@ contract LiquidStakingTest is Test {
 
     function setUp() public {
         _rewardAddresses[0] = address(5);
+        _rewardAddresses[1] = address(6);
         _ratios[0] = 100;
+        _ratios[1] = 0;
         liquidStaking = new LiquidStaking();
 
         neth = new NETH();
@@ -79,7 +82,7 @@ contract LiquidStakingTest is Test {
         vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
 
         operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
+        operatorRegistry.initialize(_dao, _daoVaultAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
         operatorRegistry.setLiquidStaking(address(liquidStaking));
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
@@ -102,7 +105,7 @@ contract LiquidStakingTest is Test {
 
         liquidStaking.initialize(
             _dao,
-            _daoValutAddress,
+            _daoVaultAddress,
             withdrawalCreds,
             address(operatorRegistry),
             address(neth),
@@ -113,6 +116,10 @@ contract LiquidStakingTest is Test {
 
         operatorRegistry.registerOperator{value: 1.1 ether}(
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
+        );
+
+        operatorRegistry.registerOperator{value: 1.1 ether}(
+            "two", address(888), address(4), _rewardAddresses, _ratios
         );
 
         vm.prank(_dao);
@@ -135,7 +142,7 @@ contract LiquidStakingTest is Test {
         vaultFactoryContract.initialize(address(vaultContract), address(vnft), address(liquidStaking), _dao);
 
         operatorRegistry = new NodeOperatorRegistry();
-        operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
+        operatorRegistry.initialize(_dao, _daoVaultAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
         operatorRegistry.setLiquidStaking(address(liquidStaking));
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
@@ -157,7 +164,7 @@ contract LiquidStakingTest is Test {
 
         liquidStaking.initialize(
             _dao,
-            _daoValutAddress,
+            _daoVaultAddress,
             withdrawalCreds,
             address(operatorRegistry),
             address(neth),
@@ -179,6 +186,24 @@ contract LiquidStakingTest is Test {
         assertEq(liquidStaking.dao(), address(10));
     }
 
+    function testAssignBlacklistOrQuitOperator() public {
+        vm.prank(_dao);
+        uint256[] memory _operatorIdsToAllocateShare = new uint256[] (1);
+        _operatorIdsToAllocateShare[0] = uint256(1);
+
+        uint256[] memory _shareAmounts = new uint256[] (1);
+        _shareAmounts[0] = uint256(0);
+
+        vm.expectEmit(true, true, false, false, address(liquidStaking));
+        emit BlacklistOperatorAssigned(2, 0);
+
+        liquidStaking.assignBlacklistOrQuitOperator(
+            2, // blacklisted operator
+            _operatorIdsToAllocateShare,
+            _shareAmounts
+        );
+    }
+
     function testFailSetDepositFeeRate(uint256 feeRate) public {
         vm.assume(feeRate > 1000);
         vm.prank(_dao);
@@ -194,7 +219,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testGetEthOut(uint256 nethAmount) public {
-        vm.assume(nethAmount > 1000 wei);
+        vm.assume(nethAmount > 1000 gwei);
         vm.assume(nethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -209,7 +234,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testGetNethValue(uint256 ethAmount) public {
-        vm.assume(ethAmount > 1000 wei);
+        vm.assume(ethAmount > 1000 gwei);
         vm.assume(ethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -225,7 +250,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testGetExchangeRate(uint256 nethAmount) public {
-        vm.assume(nethAmount > 1000 wei);
+        vm.assume(nethAmount > 1000 gwei);
         vm.assume(nethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -240,7 +265,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testStakeEthWithDiscount(uint256 nethAmount) public {
-        vm.assume(nethAmount > 1000 wei);
+        vm.assume(nethAmount > 1000 gwei);
         vm.assume(nethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -328,16 +353,49 @@ contract LiquidStakingTest is Test {
         console.log("neth.balanceOf liquidStaking:");
         console.log(neth.balanceOf(address(liquidStaking)));
 
-        //    vm.prank(address(liquidStaking));
-        //    neth.approve(address(liquidStaking), 100 ether);
-
         vm.prank(address(2));
         liquidStaking.unwrapNFT(tokenIds[0], proof, 32 ether);
+    }
+
+    function testGetNFTOut() public {
+        bytes32[] memory _proof = new bytes32[](1);
+        _proof[0] = 0x2d17183ec955000e448f9ba74cb9cfec4690d35ed96aef6901f68892b38ae58e;
+        vm.prank(_dao);
+        liquidStaking.setDepositFeeRate(0);
+        vm.prank(address(2));
+        vm.deal(address(2), 1000000 ether);
+        liquidStaking.stakeETH{value: 1000 ether}(1);
+
+        bytes[] memory localpk = new bytes[](1);
+        bytes[] memory localSig = new bytes[](1);
+        bytes32[] memory localDataRoot = new bytes32[](1);
+        localpk[0] = pubKey;
+        localSig[0] = tempSignature;
+        localDataRoot[0] = tempDepositDataRoot;
+
+        vm.prank(_controllerAddress);
+        liquidStaking.registerValidator(localpk, localSig, localDataRoot);
+        vm.prank(address(3));
+        vm.deal(address(3), 1000000 ether);
+        liquidStaking.stakeETH{value: 1000 ether}(1);
+        uint256[] memory _tokenIds = vnft.tokensOfOwner(address(liquidStaking));
+
+        uint256 _value = 32000000000000000000;
+        uint256 nftOut = liquidStaking.getNFTOut(_tokenIds[0], _proof, _value);
+        uint256 nethOut = liquidStaking.getNethOut(_value);
+        assertEq(nftOut, nethOut);
     }
 
     function testBatchReinvestmentRewardsOfOperator() public {
         uint256[] memory operatorIds = new uint256[](1);
         operatorIds[0] = 1;
+        // no reward, no emit
+        // vm.expectEmit(true, true, false, false);
+        // emit RewardsReceive(0);
+        // vm.expectEmit(false, false, false, false);
+        // emit RewardClaimed(address(liquidStaking), 0);
+        // vm.expectEmit(true, true, false, false);
+        // emit OperatorReinvestRewards(1, 0);
         liquidStaking.batchReinvestRewardsOfOperator(operatorIds);
     }
 
@@ -363,16 +421,14 @@ contract LiquidStakingTest is Test {
         vm.deal(address(3), 1000000 ether);
         liquidStaking.stakeETH{value: 1000 ether}(1);
         uint256[] memory tokenIds = vnft.tokensOfOwner(address(liquidStaking));
-        console.log("tokenIds.length");
-        console.log(tokenIds.length);
-        console.log("tokenIds[0]");
-        console.log(tokenIds[0]);
-        console.log("vaultContractAddress");
-        console.log(address(vaultContract));
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
+        vm.deal(address(vaultContractAddress), 10 ether);
+        vm.prank(address(liquidStaking));
+        IELVault(vaultContractAddress).settle();
         // liquidStaking.claimRewardsOfUser must be called by the user
+        // liquidStaking.claimRewardsOfUser(tokenIds[0]);
     }
 
     function testClaimOperaterRewards() public {
@@ -431,12 +487,6 @@ contract LiquidStakingTest is Test {
         vm.deal(address(3), 1000000 ether);
         liquidStaking.stakeETH{value: 1000 ether}(1);
         uint256[] memory tokenIds = vnft.tokensOfOwner(address(liquidStaking));
-        console.log("tokenIds.length");
-        console.log(tokenIds.length);
-        console.log("tokenIds[0]");
-        console.log(tokenIds[0]);
-        console.log("vaultContractAddress");
-        console.log(address(vaultContract));
         address vaultContractAddress = operatorRegistry.getNodeOperatorVaultContract(1);
         vm.prank(address(liquidStaking));
         IELVault(vaultContractAddress).setUserNft(tokenIds[0], 1000);
@@ -444,7 +494,7 @@ contract LiquidStakingTest is Test {
     }
 
     function testGetNethOut(uint256 ethAmount) public {
-        vm.assume(ethAmount > 1000 wei);
+        vm.assume(ethAmount > 1000 gwei);
         vm.assume(ethAmount < 1000000 ether);
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
@@ -487,7 +537,7 @@ contract LiquidStakingTest is Test {
     }
 
     // function testUnstakeETHWithDiscount(uint256 nethAmount) public {
-    //     vm.assume(nethAmount > 1000 wei);
+    //     vm.assume(nethAmount > 1000 gwei);
     //     vm.assume(nethAmount < 1000000 ether);
     //     liquidStaking.setDaoAddress(_dao);
     //     liquidStaking.setDepositFeeRate(1000);
