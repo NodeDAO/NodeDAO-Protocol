@@ -34,6 +34,7 @@ contract LiquidStakingTest is Test {
     event DaoClaimRewards(uint256 operatorId, uint256 rewards);
     event RewardsReceive(uint256 rewards);
     event SlashReceive(uint256 amount);
+    event OperatorSlashed(uint256 _operatorId, uint256 _amount);
 
     LiquidStaking liquidStaking;
     NETH neth;
@@ -123,6 +124,7 @@ contract LiquidStakingTest is Test {
         beaconOracle.setLiquidStaking(address(liquidStaking));
         vm.stopPrank();
 
+        vm.prank(_dao);
         liquidStaking.initialize(
             _dao,
             _daoValutAddress,
@@ -238,9 +240,24 @@ contract LiquidStakingTest is Test {
         assertEq(2 ether, operatorRegistry.getPledgeBalanceOfOperator(3));
     }
 
-    function testGetNFTOut() public {}
+    function testSlashReceive() public {
+        vm.expectEmit(true, true, false, true);
+        emit SlashReceive(2 ether);
+        vm.deal(address(23), 32 ether);
+        liquidStaking.slashReceive{value: 2 ether}(2 ether);
+    }
+
+        
+    function testSlashOperator() public {
+        vm.expectEmit(true, true, false, true);
+        emit OperatorSlashed(1 , 1 ether );
+        vm.prank(_dao);
+        liquidStaking.slashOperator(1 , 1 ether );
+    }
 
     function testStakeETH() public {
+        vm.prank(_dao);
+
         liquidStaking.setDaoAddress(_dao);
         vm.prank(_dao);
         liquidStaking.setDepositFeeRate(0);
@@ -359,31 +376,44 @@ contract LiquidStakingTest is Test {
         liquidStaking.registerValidator(pubkeys3, signatures3, depositDataRoots3);
     }
 
+
     function testAssignBlacklistOperatorFailCases() public {
-        vm.expectRevert("NODE_OPERATOR_NOT_FOUND");
+        vm.expectRevert("Ownable: caller is not the owner");
         uint256[] memory operatorIds = new uint256[](1);
         operatorIds[0] = 1;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1;
+        vm.prank(address(liquidStaking));
+        console.log("address(liquidStaking): ",address(liquidStaking)) ;
         liquidStaking.assignBlacklistOrQuitOperator(100, operatorIds, amounts);
         failed();
 
         vm.expectRevert("This operator is trusted");
+        vm.prank(_dao);
         liquidStaking.assignBlacklistOrQuitOperator(1, operatorIds, amounts);
+        failed();
 
         uint256[] memory amounts2 = new uint256[](2);
         amounts2[0] = 1;
         amounts2[1] = 2;
 
         vm.expectRevert("This operator is trusted");
-        liquidStaking.assignBlacklistOrQuitOperator(2, operatorIds, amounts2);
-
         vm.prank(_dao);
+        liquidStaking.assignBlacklistOrQuitOperator(2, operatorIds, amounts2);
+        failed();
+
+        vm.expectRevert("PERMISSION_DENIED");
+        vm.prank(address(liquidStaking));
+        operatorRegistry.setBlacklistOperator(2);
+
+        vm.prank(address(_dao));
         operatorRegistry.setBlacklistOperator(2);
         vm.expectRevert("Invalid length");
+        vm.prank(_dao);
         liquidStaking.assignBlacklistOrQuitOperator(2, operatorIds, amounts2);
 
         vm.expectRevert("Insufficient balance of blacklist operator");
+        vm.prank(_dao);
         liquidStaking.assignBlacklistOrQuitOperator(2, operatorIds, amounts);
     }
 
