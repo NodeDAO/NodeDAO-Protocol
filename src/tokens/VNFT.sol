@@ -40,6 +40,8 @@ contract VNFT is
     // Record the last owner when nft burned
     mapping(uint256 => address) public lastOwners;
 
+    uint256 public emptyNftCounts;
+
     event NFTMinted(uint256 _tokenId);
     event NFTBurned(uint256 _tokenId);
     event BaseURIChanged(string _before, string _after);
@@ -64,13 +66,31 @@ contract VNFT is
      */
     function activeValidators() external view returns (bytes[] memory) {
         uint256 total = _nextTokenId();
-        uint256 tokenIdsIdx;
-        bytes[] memory _validators = new bytes[](total);
+        uint256 activeCounts = 0;
         TokenOwnership memory ownership;
 
         for (uint256 i = _startTokenId(); i < total; ++i) {
             ownership = _ownershipAt(i);
             if (ownership.burned) {
+                continue;
+            }
+
+            if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
+                continue;
+            }
+
+            activeCounts += 1;
+        }
+
+        uint256 tokenIdsIdx = 0;
+        bytes[] memory _validators = new bytes[](activeCounts);
+        for (uint256 i = _startTokenId(); i < total; ++i) {
+            ownership = _ownershipAt(i);
+            if (ownership.burned) {
+                continue;
+            }
+
+            if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
                 continue;
             }
 
@@ -85,13 +105,31 @@ contract VNFT is
      */
     function activeNfts() external view returns (uint256[] memory) {
         uint256 total = _nextTokenId();
-        uint256 tokenIdsIdx;
-        uint256[] memory _nfts = new uint256[](total);
+        uint256 activeCounts = 0;
         TokenOwnership memory ownership;
 
         for (uint256 i = _startTokenId(); i < total; ++i) {
             ownership = _ownershipAt(i);
             if (ownership.burned) {
+                continue;
+            }
+
+            if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
+                continue;
+            }
+
+            activeCounts += 1;
+        }
+
+        uint256 tokenIdsIdx = 0;
+        uint256[] memory _nfts = new uint256[](activeCounts);
+        for (uint256 i = _startTokenId(); i < total; ++i) {
+            ownership = _ownershipAt(i);
+            if (ownership.burned) {
+                continue;
+            }
+
+            if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
                 continue;
             }
 
@@ -227,6 +265,7 @@ contract VNFT is
 
         uint256 nextTokenId = _nextTokenId();
         if (_pubkey.length == 0) {
+            emptyNftCounts += 1;
             operatorEmptyNfts[_operatorId].push(nextTokenId);
         } else {
             require(validatorRecords[_pubkey] == 0, "Pub key already in used");
@@ -236,6 +275,7 @@ contract VNFT is
                 uint256 tokenId = operatorEmptyNfts[_operatorId][operatorEmptyNftIndex[_operatorId]];
                 operatorEmptyNftIndex[_operatorId] += 1;
                 validators[tokenId].pubkey = _pubkey;
+                emptyNftCounts -= 1;
                 return tokenId;
             }
         }
