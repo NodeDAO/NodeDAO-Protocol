@@ -107,14 +107,17 @@ contract VNFTTest is Test {
         assertEq(2, tokenId2);
         assertEq(0, vnft.activeNfts()[0]);
         assertEq(2, vnft.activeNfts()[1]);
+
+        assertEq(vnft.emptyNftCounts(), 1);
         uint256 tokenId3 = vnft.whiteListMint(bytes("3"), address(2), 1);
         assertEq(tokenId3, tokenId1);
-
+        assertEq(vnft.emptyNftCounts(), 0);
         assertEq(vnft.activeValidators()[0], bytes("1"));
         assertEq(vnft.activeValidators()[1], bytes("3"));
         assertEq(vnft.activeValidators()[2], bytes("2"));
         assertEq(0, vnft.activeNfts()[0]);
         assertEq(1, vnft.activeNfts()[1]);
         assertEq(2, vnft.activeNfts()[2]);
+        assertEq(vnft.totalSupply(), 3);
     }
 }

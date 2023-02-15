@@ -40,6 +40,8 @@ contract VNFT is
     // Record the last owner when nft burned
     mapping(uint256 => address) public lastOwners;
 
+    uint256 public emptyNftCounts;
+
     event NFTMinted(uint256 _tokenId);
     event NFTBurned(uint256 _tokenId);
     event BaseURIChanged(string _before, string _after);
@@ -263,6 +265,7 @@ contract VNFT is
 
         uint256 nextTokenId = _nextTokenId();
         if (_pubkey.length == 0) {
+            emptyNftCounts += 1;
             operatorEmptyNfts[_operatorId].push(nextTokenId);
         } else {
             require(validatorRecords[_pubkey] == 0, "Pub key already in used");
@@ -272,6 +275,7 @@ contract VNFT is
                 uint256 tokenId = operatorEmptyNfts[_operatorId][operatorEmptyNftIndex[_operatorId]];
                 operatorEmptyNftIndex[_operatorId] += 1;
                 validators[tokenId].pubkey = _pubkey;
+                emptyNftCounts -= 1;
                 return tokenId;
             }
         }
