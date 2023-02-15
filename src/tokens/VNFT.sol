@@ -64,13 +64,31 @@ contract VNFT is
      */
     function activeValidators() external view returns (bytes[] memory) {
         uint256 total = _nextTokenId();
-        uint256 tokenIdsIdx;
-        bytes[] memory _validators = new bytes[](total);
+        uint256 activeCounts = 0;
         TokenOwnership memory ownership;
 
         for (uint256 i = _startTokenId(); i < total; ++i) {
             ownership = _ownershipAt(i);
             if (ownership.burned) {
+                continue;
+            }
+
+            if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
+                continue;
+            }
+
+            activeCounts += 1;
+        }
+
+        uint256 tokenIdsIdx = 0;
+        bytes[] memory _validators = new bytes[](activeCounts);
+        for (uint256 i = _startTokenId(); i < total; ++i) {
+            ownership = _ownershipAt(i);
+            if (ownership.burned) {
+                continue;
+            }
+
+            if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
                 continue;
             }
 
@@ -85,13 +103,31 @@ contract VNFT is
      */
     function activeNfts() external view returns (uint256[] memory) {
         uint256 total = _nextTokenId();
-        uint256 tokenIdsIdx;
-        uint256[] memory _nfts = new uint256[](total);
+        uint256 activeCounts = 0;
         TokenOwnership memory ownership;
 
         for (uint256 i = _startTokenId(); i < total; ++i) {
             ownership = _ownershipAt(i);
             if (ownership.burned) {
+                continue;
+            }
+
+            if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
+                continue;
+            }
+
+            activeCounts += 1;
+        }
+
+        uint256 tokenIdsIdx = 0;
+        uint256[] memory _nfts = new uint256[](activeCounts);
+        for (uint256 i = _startTokenId(); i < total; ++i) {
+            ownership = _ownershipAt(i);
+            if (ownership.burned) {
+                continue;
+            }
+
+            if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
                 continue;
             }
 

@@ -3,6 +3,7 @@ pragma solidity ^0.8.7;
 
 import "forge-std/Test.sol";
 import "src/tokens/VNFT.sol";
+import "forge-std/console.sol";
 
 contract VNFTTest is Test {
     VNFT vnft;
@@ -90,14 +91,30 @@ contract VNFTTest is Test {
         vnft.setLiquidStaking(address(1));
         vm.startPrank(address(1));
 
-        vnft.whiteListMint(bytes("1"), address(2), 1);
+        uint256 tokenId0 = vnft.whiteListMint(bytes("1"), address(2), 1);
         assertEq(vnft.validatorOf(0), bytes("1"));
         assertEq(vnft.activeValidators().length, 1);
-        vnft.whiteListMint(bytes(""), address(2), 1);
-        assertEq(vnft.activeValidators().length, 2);
+        uint256 tokenId1 = vnft.whiteListMint(bytes(""), address(2), 1);
+        assertEq(vnft.activeValidators().length, 1);
         assertEq(vnft.activeValidators().length, vnft.activeNfts().length);
-        vnft.whiteListMint(bytes("2"), address(2), 1);
+        uint256 tokenId2 = vnft.whiteListMint(bytes("2"), address(2), 2);
         assertEq(vnft.activeValidators()[0], bytes("1"));
         assertEq(vnft.activeValidators()[1], bytes("2"));
+        assertEq(vnft.activeValidators().length, 2);
+        assertEq(vnft.activeValidators().length, vnft.activeNfts().length);
+        assertEq(0, tokenId0);
+        assertEq(1, tokenId1);
+        assertEq(2, tokenId2);
+        assertEq(0, vnft.activeNfts()[0]);
+        assertEq(2, vnft.activeNfts()[1]);
+        uint256 tokenId3 = vnft.whiteListMint(bytes("3"), address(2), 1);
+        assertEq(tokenId3, tokenId1);
+
+        assertEq(vnft.activeValidators()[0], bytes("1"));
+        assertEq(vnft.activeValidators()[1], bytes("3"));
+        assertEq(vnft.activeValidators()[2], bytes("2"));
+        assertEq(0, vnft.activeNfts()[0]);
+        assertEq(1, vnft.activeNfts()[1]);
+        assertEq(2, vnft.activeNfts()[2]);
     }
 }
