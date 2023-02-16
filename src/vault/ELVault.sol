@@ -47,6 +47,9 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
 
     uint256 public userNftsCount;
 
+    // el cumulative rewards
+    uint256 public cumulativeRewards;
+
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "Not allowed to touch funds");
         _;
@@ -133,6 +136,14 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
             return;
         }
 
+        // Calculated average reward per nft
+        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        if (operatorNftCounts == 0) {
+            return;
+        }
+
+        cumulativeRewards += outstandingRewards;
+
         // Compute the rewards belonging to the operator and dao
         uint256 comission = (outstandingRewards * comissionRate) / 10000;
         uint256 daoReward = (comission * daoComissionRate) / 10000;
@@ -142,8 +153,6 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         outstandingRewards -= comission;
         unclaimedRewards += outstandingRewards;
 
-        // Calculated average reward per nft
-        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
         uint256 averageRewards = outstandingRewards / operatorNftCounts;
 
         // Calculate the rewards belonging to the liquidStaking pool
