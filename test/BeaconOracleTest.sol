@@ -5,11 +5,13 @@ import "forge-std/Test.sol";
 import "src/oracles/BeaconOracle.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
 import "src/oracles/ReportUtils.sol";
+import "src/tokens/VNFT.sol";
 
 contract BeaconOracleTest is Test {
     using ReportUtils for bytes;
 
     BeaconOracle beaconOracle;
+    VNFT vnft;
 
     address _dao = address(1);
 
@@ -17,10 +19,18 @@ contract BeaconOracleTest is Test {
         vm.warp(1673161943);
         beaconOracle = new BeaconOracle();
 
+        vnft = new VNFT();
+        vnft.initialize();
+        vnft.setLiquidStaking(address(1));
+        vm.startPrank(address(1));
+        vnft.whiteListMint(bytes("1"), address(2), 1);
+        vnft.whiteListMint(bytes("2"), address(2), 1);
+        vm.stopPrank();
+
         // goerli: 1616508000
         // mainnet: 1606824023
         uint64 genesisTime = 1616508000;
-        beaconOracle.initialize(_dao, genesisTime);
+        beaconOracle.initialize(_dao, genesisTime, address(vnft));
 
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(address(11));
@@ -104,27 +114,27 @@ contract BeaconOracleTest is Test {
 
         vm.startPrank(address(11));
         assertFalse(beaconOracle.isReportBeacon(address(11)));
-        beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+        beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
         assertEq(beaconOracle.isReportBeacon(address(11)), true);
         vm.stopPrank();
 
         vm.startPrank(address(12));
-        beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+        beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
         assertEq(beaconOracle.isReportBeacon(address(12)), true);
         vm.stopPrank();
 
         vm.startPrank(address(13));
-        beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+        beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
         vm.stopPrank();
 
         vm.startPrank(address(14));
-        beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+        beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
         assertEq(beaconOracle.isReportBeacon(address(14)), false);
         vm.stopPrank();
 
         if (beaconOracle.isCurrentFrame()) {
             vm.startPrank(address(15));
-            beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+            beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
             assertEq(beaconOracle.isReportBeacon(address(15)), false);
             vm.stopPrank();
         }
@@ -132,15 +142,15 @@ contract BeaconOracleTest is Test {
         vm.startPrank(address(11));
         assertFalse(beaconOracle.isReportBeacon(address(11)));
         if (beaconOracle.isCurrentFrame()) {
-            beaconOracle.reportBeacon(147375, 123456789, 12345, root);
+            beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
             assertEq(beaconOracle.isReportBeacon(address(11)), true);
         }
         vm.stopPrank();
 
-        assertEq(beaconOracle.beaconBalances(), 123456789);
-        assertEq(beaconOracle.getBeaconBalances(), 123456789);
-        assertEq(beaconOracle.beaconValidators(), 12345);
-        assertEq(beaconOracle.getBeaconValidators(), 12345);
+        assertEq(beaconOracle.beaconBalances(), 64000000000000000000);
+        assertEq(beaconOracle.getBeaconBalances(), 64000000000000000000);
+        assertEq(beaconOracle.beaconValidators(), 2);
+        assertEq(beaconOracle.getBeaconValidators(), 2);
         assertEq(beaconOracle.isCurrentFrame(), false);
 
         vm.prank(address(11));

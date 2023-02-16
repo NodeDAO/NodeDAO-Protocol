@@ -106,7 +106,7 @@ contract NodeOperatorRegistryTest is Test {
         // goerli: 1616508000
         // mainnet: 1606824023
         uint64 genesisTime = 1616508000;
-        beaconOracle.initialize(_dao, genesisTime);
+        beaconOracle.initialize(_dao, genesisTime, address(vnft));
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(_oracleMember1);
         beaconOracle.addOracleMember(_oracleMember2);
