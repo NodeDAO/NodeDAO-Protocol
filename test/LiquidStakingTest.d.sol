@@ -114,7 +114,7 @@ contract LiquidStakingTest is Test {
         // goerli: 1616508000
         // mainnet: 1606824023
         uint64 genesisTime = 1616508000;
-        beaconOracle.initialize(_dao, genesisTime);
+        beaconOracle.initialize(_dao, genesisTime, address(vnft));
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(_oracleMember1);
         beaconOracle.addOracleMember(_oracleMember2);
@@ -247,12 +247,11 @@ contract LiquidStakingTest is Test {
         liquidStaking.slashReceive{value: 2 ether}(2 ether);
     }
 
-        
     function testSlashOperator() public {
         vm.expectEmit(true, true, false, true);
-        emit OperatorSlashed(1 , 1 ether );
+        emit OperatorSlashed(1, 1 ether);
         vm.prank(_dao);
-        liquidStaking.slashOperator(1 , 1 ether );
+        liquidStaking.slashOperator(1, 1 ether);
     }
 
     function testStakeETH() public {
@@ -376,7 +375,6 @@ contract LiquidStakingTest is Test {
         liquidStaking.registerValidator(pubkeys3, signatures3, depositDataRoots3);
     }
 
-
     function testAssignBlacklistOperatorFailCases() public {
         vm.expectRevert("Ownable: caller is not the owner");
         uint256[] memory operatorIds = new uint256[](1);
@@ -384,7 +382,7 @@ contract LiquidStakingTest is Test {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1;
         vm.prank(address(liquidStaking));
-        console.log("address(liquidStaking): ",address(liquidStaking)) ;
+        console.log("address(liquidStaking): ", address(liquidStaking));
         liquidStaking.assignBlacklistOrQuitOperator(100, operatorIds, amounts);
         failed();
 

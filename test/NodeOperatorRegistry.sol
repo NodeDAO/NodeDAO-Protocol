@@ -10,8 +10,11 @@ import "src/mocks/DepositContract.sol";
 import "src/vault/ELVault.sol";
 import "src/vault/ELVaultFactory.sol";
 import "src/oracles/BeaconOracle.sol";
+import "openzeppelin-contracts/utils/math/Math.sol";
 
 contract NodeOperatorRegistryTest is Test {
+    using Math for uint256;
+
     event NodeOperatorRegistered(
         uint256 id,
         string name,
@@ -106,7 +109,7 @@ contract NodeOperatorRegistryTest is Test {
         // goerli: 1616508000
         // mainnet: 1606824023
         uint64 genesisTime = 1616508000;
-        beaconOracle.initialize(_dao, genesisTime);
+        beaconOracle.initialize(_dao, genesisTime, address(vnft));
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(_oracleMember1);
         beaconOracle.addOracleMember(_oracleMember2);
@@ -334,5 +337,29 @@ contract NodeOperatorRegistryTest is Test {
         vm.prank(_dao);
         operatorRegistry.setDaoVaultAddress(address(10));
         assertEq(operatorRegistry.daoVaultAddress(), address(10));
+    }
+
+    function testGetOperatorRequirePledge(uint256 _operatorId) public {
+        uint256 operatorNftCounts = 100;
+        // Pledge the required funds based on the number of validators
+        uint256 requireVault = 0;
+        if (operatorNftCounts <= 100) {
+            requireVault = (operatorNftCounts * 10 / 100) * 1 ether;
+        } else {
+            requireVault = operatorNftCounts.sqrt() * 1 ether;
+        }
+
+        assertEq(requireVault, 10 ether);
+
+        operatorNftCounts = 10000;
+        // Pledge the required funds based on the number of validators
+        requireVault = 0;
+        if (operatorNftCounts <= 100) {
+            requireVault = (operatorNftCounts * 10 / 100) * 1 ether;
+        } else {
+            requireVault = operatorNftCounts.sqrt() * 1 ether;
+        }
+
+        assertEq(requireVault, 100 ether);
     }
 }

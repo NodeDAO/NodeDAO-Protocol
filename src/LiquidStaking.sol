@@ -60,22 +60,13 @@ contract LiquidStaking is
     // operator's internal stake pool, key is operator_id
     mapping(uint256 => uint256) public operatorPoolBalances;
 
-    // Number of Wrap/Unwrap
-    uint256 public nftWrapNonce;
+    // unused funds in the current liquidStaking pool
+    uint256 internal operatorPoolBalancesSum;
 
     // dao address
     address public dao;
     // dao treasury address
     address public daoVaultAddress;
-
-    // unused funds in the current liquidStaking pool
-    uint256 internal operatorPoolBalancesSum;
-
-    // Total Reinvestment Incentive Amount
-    uint256 public totalReinvestRewardsSum;
-
-    // slash record
-    mapping(uint256 => uint256) public operatorSlashRecords;
 
     modifier onlyDao() {
         require(msg.sender == dao, "PERMISSION_DENIED");
@@ -153,6 +144,7 @@ contract LiquidStaking is
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
+            require(nodeOperatorRegistryContract.isTrustedOperator(operatorId), "Operator must be trusted");
             uint256 amount = _amounts[i];
             totalAmount += amount;
             operatorPoolBalances[operatorId] += amount;
@@ -171,7 +163,7 @@ contract LiquidStaking is
     function slashOperator(uint256 _operatorId, uint256 _amount) external onlyOwner {
         nodeOperatorRegistryContract.slash(_amount, _operatorId);
         operatorPoolBalances[_operatorId] += _amount;
-
+        operatorPoolBalancesSum += _amount;
         emit OperatorSlashed(_operatorId, _amount);
     }
 
@@ -326,7 +318,6 @@ contract LiquidStaking is
 
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
         IELVault(vaultContractAddress).setUserNft(_tokenId, block.number);
-        nftWrapNonce = nftWrapNonce + 1;
 
         emit NftWrap(_tokenId, operatorId, _value, amountOut);
     }
@@ -368,7 +359,6 @@ contract LiquidStaking is
 
         // Change the gas height of this nft
         IELVault(vaultContractAddress).setUserNft(_tokenId, 0);
-        nftWrapNonce = nftWrapNonce + 1;
 
         emit NftUnwrap(_tokenId, operatorId, _value, amountOut);
     }
@@ -419,7 +409,6 @@ contract LiquidStaking is
         // update available funds
         operatorPoolBalances[_operatorId] += nftRewards;
         operatorPoolBalancesSum += nftRewards;
-        totalReinvestRewardsSum += nftRewards;
 
         emit OperatorReinvestRewards(_operatorId, nftRewards);
     }

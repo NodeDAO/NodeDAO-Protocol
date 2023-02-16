@@ -89,7 +89,7 @@ contract LiquidStakingTest is Test {
         // goerli: 1616508000
         // mainnet: 1606824023
         uint64 genesisTime = 1616508000;
-        beaconOracle.initialize(_dao, genesisTime);
+        beaconOracle.initialize(_dao, genesisTime, address(vnft));
         vm.startPrank(_dao);
         beaconOracle.addOracleMember(_oracleMember1);
         beaconOracle.addOracleMember(_oracleMember2);
@@ -881,5 +881,138 @@ contract LiquidStakingTest is Test {
         assertEq(3 ether, address(74).balance);
         liquidStaking.claimRewardsOfUser(2);
         assertEq(6 ether, address(74).balance);
+    }
+
+    function testAssignBlacklistOrQuitOperatorOfBlacklist() public {
+        vm.roll(100);
+        address[] memory _rewardAddresses3 = new address[] (3);
+        uint256[] memory _ratios3 = new uint256[] (3);
+        _rewardAddresses3[0] = address(70);
+        _rewardAddresses3[1] = address(71);
+        _rewardAddresses3[2] = address(72);
+        _ratios3[0] = 70;
+        _ratios3[1] = 20;
+        _ratios3[2] = 10;
+
+        address _controllerAddress3 = address(80);
+        address _owner3 = address(81);
+
+        uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test1", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
+        );
+
+        uint256 operatorId2 = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test2", address(81), _owner3, _rewardAddresses3, _ratios3
+        );
+
+        uint256 operatorId3 = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test3", address(82), _owner3, _rewardAddresses3, _ratios3
+        );
+
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId);
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId2);
+
+        vm.deal(address(73), 100 ether);
+        vm.prank(address(73));
+        liquidStaking.stakeETH{value: 64 ether}(operatorId);
+        assertEq(64 ether, liquidStaking.operatorPoolBalances(operatorId));
+
+        vm.prank(_dao);
+        operatorRegistry.setBlacklistOperator(operatorId);
+
+        uint256[] memory _operatorIds = new uint256[] (1);
+        _operatorIds[0] = operatorId2;
+        uint256[] memory _amounts = new uint256[] (1);
+        _amounts[0] = 60 ether;
+        liquidStaking.assignBlacklistOrQuitOperator(operatorId, _operatorIds, _amounts);
+        assertEq(4 ether, liquidStaking.operatorPoolBalances(operatorId));
+        assertEq(60 ether, liquidStaking.operatorPoolBalances(operatorId2));
+
+        _operatorIds[0] = operatorId3;
+        _amounts[0] = 1 ether;
+        vm.expectRevert("Operator must be trusted");
+        liquidStaking.assignBlacklistOrQuitOperator(operatorId, _operatorIds, _amounts);
+    }
+
+    function testAssignBlacklistOrQuitOperatorOfQuit() public {
+        vm.roll(100);
+        address[] memory _rewardAddresses3 = new address[] (3);
+        uint256[] memory _ratios3 = new uint256[] (3);
+        _rewardAddresses3[0] = address(70);
+        _rewardAddresses3[1] = address(71);
+        _rewardAddresses3[2] = address(72);
+        _ratios3[0] = 70;
+        _ratios3[1] = 20;
+        _ratios3[2] = 10;
+
+        address _controllerAddress3 = address(80);
+        address _owner3 = address(81);
+
+        uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test1", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
+        );
+
+        uint256 operatorId2 = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test2", address(81), _owner3, _rewardAddresses3, _ratios3
+        );
+
+        uint256 operatorId3 = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test3", address(82), _owner3, _rewardAddresses3, _ratios3
+        );
+
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId);
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId2);
+
+        vm.deal(address(73), 100 ether);
+        vm.prank(address(73));
+        liquidStaking.stakeETH{value: 64 ether}(operatorId);
+        assertEq(64 ether, liquidStaking.operatorPoolBalances(operatorId));
+
+        vm.prank(_owner3);
+        operatorRegistry.quitOperator(operatorId, address(100));
+
+        uint256[] memory _operatorIds = new uint256[] (1);
+        _operatorIds[0] = operatorId2;
+        uint256[] memory _amounts = new uint256[] (1);
+        _amounts[0] = 60 ether;
+        liquidStaking.assignBlacklistOrQuitOperator(operatorId, _operatorIds, _amounts);
+        assertEq(4 ether, liquidStaking.operatorPoolBalances(operatorId));
+        assertEq(60 ether, liquidStaking.operatorPoolBalances(operatorId2));
+
+        _operatorIds[0] = operatorId3;
+        _amounts[0] = 1 ether;
+        vm.expectRevert("Operator must be trusted");
+        liquidStaking.assignBlacklistOrQuitOperator(operatorId, _operatorIds, _amounts);
+
+        vm.expectRevert("This operator is trusted");
+        liquidStaking.assignBlacklistOrQuitOperator(operatorId2, _operatorIds, _amounts);
+    }
+
+    function testSlashOperator() public {
+        vm.roll(100);
+        address[] memory _rewardAddresses3 = new address[] (3);
+        uint256[] memory _ratios3 = new uint256[] (3);
+        _rewardAddresses3[0] = address(70);
+        _rewardAddresses3[1] = address(71);
+        _rewardAddresses3[2] = address(72);
+        _ratios3[0] = 70;
+        _ratios3[1] = 20;
+        _ratios3[2] = 10;
+
+        address _controllerAddress3 = address(80);
+        address _owner3 = address(81);
+
+        uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test1", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
+        );
+
+        liquidStaking.slashOperator(operatorId, 0.1 ether);
+        assertEq(0.1 ether, liquidStaking.operatorPoolBalances(operatorId));
+
+        assertEq(operatorRegistry.operatorPledgeVaultBalances(operatorId), 0.9 ether);
     }
 }

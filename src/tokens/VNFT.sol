@@ -5,7 +5,6 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 import "ERC721A-Upgradeable/extensions/ERC721AQueryableUpgradeable.sol";
 /**
  * @title NodeDao vNFT Contract
@@ -28,19 +27,21 @@ contract VNFT is
         bytes pubkey;
     }
 
+    Validator[] public validators;
+
     // key is pubkey, value is operator_id
     mapping(bytes => uint256) public validatorRecords;
     // key is operator_id, value is token counts
     mapping(uint256 => uint256) public operatorRecords;
+
     // Empty nft belonging to operator, not yet filled with pubkey
     mapping(uint256 => uint256[]) public operatorEmptyNfts;
     mapping(uint256 => uint256) public operatorEmptyNftIndex;
+    // empty nft counts
+    uint256 internal emptyNftCounts;
 
-    Validator[] public validators;
     // Record the last owner when nft burned
     mapping(uint256 => address) public lastOwners;
-
-    uint256 public emptyNftCounts;
 
     event NFTMinted(uint256 _tokenId);
     event NFTBurned(uint256 _tokenId);
@@ -137,6 +138,13 @@ contract VNFT is
         }
 
         return _nfts;
+    }
+
+    /**
+     * @notice get empty nft counts
+     */
+    function getEmptyNftCounts() external view returns (uint256) {
+        return emptyNftCounts;
     }
 
     /**

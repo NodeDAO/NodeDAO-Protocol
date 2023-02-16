@@ -7,6 +7,7 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/oracles/ReportUtils.sol";
+import "src/interfaces/IVNFT.sol";
 
 /**
  * @title Beacon Oracle and Dao
@@ -22,6 +23,10 @@ contract BeaconOracle is
     IBeaconOracle
 {
     using ReportUtils for bytes;
+
+    address public liquidStakingContractAddress;
+
+    IVNFT public vNFTContract;
 
     // Use the maximum value of uint256 as the index that does not exist
     uint256 internal constant MEMBER_NOT_FOUND = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
@@ -66,12 +71,10 @@ contract BeaconOracle is
     // oracle commit members
     address[] internal oracleMembers;
 
-    address public liquidStakingContractAddress;
-
     // current pending balance
     uint256 public pendingBalances;
 
-    function initialize(address _dao, uint256 _genesisTime) public initializer {
+    function initialize(address _dao, uint256 _genesisTime, address _nVNFTContractAddress) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
@@ -81,6 +84,8 @@ contract BeaconOracle is
         epochsPerFrame = 225;
         // So the initial is the first epochId
         expectedEpochId = getFrameFirstEpochOfDay(getCurrentEpochId());
+
+        vNFTContract = IVNFT(_nVNFTContractAddress);
     }
 
     modifier onlyDao() {
@@ -248,6 +253,12 @@ contract BeaconOracle is
         uint256 _beaconValidators,
         bytes32 _validatorRankingRoot
     ) external {
+        require(
+            _beaconValidators == vNFTContract.totalSupply() - vNFTContract.getEmptyNftCounts(),
+            "Incorrect number of validators"
+        );
+        require(_beaconBalance >= _beaconValidators * 31 ether, "REPORT_LESS_BALANCE");
+
         require(getCurrentEpochId() >= expectedEpochId, "EPOCH_IS_NOT_CURRENT_FRAME");
         require(_epochId >= expectedEpochId, "EPOCH_IS_TOO_OLD");
 
