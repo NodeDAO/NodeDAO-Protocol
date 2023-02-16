@@ -47,9 +47,6 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
 
     uint256 public userNftsCount;
 
-    // el cumulative rewards
-    uint256 public cumulativeRewards;
-
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "Not allowed to touch funds");
         _;
@@ -142,8 +139,6 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
             return;
         }
 
-        cumulativeRewards += outstandingRewards;
-
         // Compute the rewards belonging to the operator and dao
         uint256 comission = (outstandingRewards * comissionRate) / 10000;
         uint256 daoReward = (comission * daoComissionRate) / 10000;
@@ -163,7 +158,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         RewardMetadata memory r = RewardMetadata({value: currentValue, height: block.number});
         cumArr.push(r);
 
-        emit Settle(block.number, averageRewards);
+        emit Settle(block.number, outstandingRewards, operatorNftCounts, averageRewards);
     }
 
     /**

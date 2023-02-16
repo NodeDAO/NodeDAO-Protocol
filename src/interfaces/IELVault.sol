@@ -85,7 +85,7 @@ interface IELVault {
     event RewardClaimed(address _owner, uint256 _amount);
     event RewardReinvestment(address _liquidStakingContract, uint256 _nftRewards);
     event Transferred(address _to, uint256 _amount);
-    event Settle(uint256 _blockNumber, uint256 _settleRewards);
+    event Settle(uint256 _blockNumber, uint256 _settleRewards, uint256 _operatorNftCounts, uint256 _averageRewards);
     event DaoAddressChanged(address _oldDao, address _dao);
     event OperatorRewardsClaimed(uint256 _rewards);
     event DaoRewardsClaimed(uint256 _rewards, address _to);
