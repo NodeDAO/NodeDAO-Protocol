@@ -144,6 +144,7 @@ contract LiquidStaking is
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
+            require(nodeOperatorRegistryContract.isTrustedOperator(operatorId), "Operator must be trusted");
             uint256 amount = _amounts[i];
             totalAmount += amount;
             operatorPoolBalances[operatorId] += amount;
