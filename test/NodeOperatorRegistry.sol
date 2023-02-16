@@ -362,5 +362,4 @@ contract NodeOperatorRegistryTest is Test {
 
         assertEq(requireVault, 100 ether);
     }
-
 }
