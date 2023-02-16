@@ -71,7 +71,7 @@ contract LiquidStaking is
     // unused funds in the current liquidStaking pool
     uint256 internal operatorPoolBalancesSum;
 
-    // historical total Rewards
+    // Total Reinvestment Incentive Amount
     uint256 public totalReinvestRewardsSum;
 
     // slash record
