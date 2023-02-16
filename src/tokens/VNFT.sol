@@ -40,7 +40,8 @@ contract VNFT is
     // Record the last owner when nft burned
     mapping(uint256 => address) public lastOwners;
 
-    uint256 public emptyNftCounts;
+    // empty nft counts
+    uint256 internal emptyNftCounts;
 
     event NFTMinted(uint256 _tokenId);
     event NFTBurned(uint256 _tokenId);
@@ -137,6 +138,13 @@ contract VNFT is
         }
 
         return _nfts;
+    }
+
+    /**
+     * @notice get empty nft counts
+     */
+    function getEmptyNftCounts() external view returns (uint256) {
+        return emptyNftCounts;
     }
 
     /**

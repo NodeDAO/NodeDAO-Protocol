@@ -13,6 +13,11 @@ interface IVNFT is IERC721AUpgradeable {
     function activeValidators() external view returns (bytes[] memory);
 
     /**
+     * @notice get empty nft counts
+     */
+    function getEmptyNftCounts() external view returns (uint256);
+
+    /**
      * @notice Checks if a validator exists
      * @param _pubkey - A 48 bytes representing the validator's public key
      */
