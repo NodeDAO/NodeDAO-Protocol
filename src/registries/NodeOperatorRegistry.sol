@@ -41,6 +41,12 @@ contract NodeOperatorRegistry is
         string name; // operator name, Human-readable name
     }
 
+    IELVaultFactory public vaultFactoryContract;
+
+    ILiquidStaking public liquidStakingContract;
+
+    IVNFT public vNFTContract;
+
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) internal operators;
 
@@ -64,21 +70,18 @@ contract NodeOperatorRegistry is
 
     // dao address
     address public dao;
-
     // dao treasury address
     address public daoVaultAddress;
+
     // operator registration fee
     uint256 public registrationFee;
+
     // The block height at the start of the permissionless phase
     uint256 public permissionlessBlockNumber;
 
     uint256 public constant BASIC_PLEDGE = 1 ether;
     // operator pledge funds set
     mapping(uint256 => uint256) public operatorPledgeVaultBalances;
-
-    IELVaultFactory public vaultFactoryContract;
-    ILiquidStaking public liquidStakingContract;
-    IVNFT public vNFTContract;
 
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "PERMISSION_DENIED");

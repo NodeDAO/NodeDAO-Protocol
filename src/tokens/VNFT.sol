@@ -27,20 +27,21 @@ contract VNFT is
         bytes pubkey;
     }
 
+    Validator[] public validators;
+
     // key is pubkey, value is operator_id
     mapping(bytes => uint256) public validatorRecords;
     // key is operator_id, value is token counts
     mapping(uint256 => uint256) public operatorRecords;
+
     // Empty nft belonging to operator, not yet filled with pubkey
     mapping(uint256 => uint256[]) public operatorEmptyNfts;
     mapping(uint256 => uint256) public operatorEmptyNftIndex;
-
-    Validator[] public validators;
-    // Record the last owner when nft burned
-    mapping(uint256 => address) public lastOwners;
-
     // empty nft counts
     uint256 internal emptyNftCounts;
+
+    // Record the last owner when nft burned
+    mapping(uint256 => address) public lastOwners;
 
     event NFTMinted(uint256 _tokenId);
     event NFTBurned(uint256 _tokenId);

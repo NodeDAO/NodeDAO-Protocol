@@ -24,6 +24,10 @@ contract BeaconOracle is
 {
     using ReportUtils for bytes;
 
+    address public liquidStakingContractAddress;
+
+    IVNFT public vNFTContract;
+
     // Use the maximum value of uint256 as the index that does not exist
     uint256 internal constant MEMBER_NOT_FOUND = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
@@ -69,10 +73,6 @@ contract BeaconOracle is
 
     // current pending balance
     uint256 public pendingBalances;
-
-    address public liquidStakingContractAddress;
-
-    IVNFT public vNFTContract;
 
     function initialize(address _dao, uint256 _genesisTime, address _nVNFTContractAddress) public initializer {
         __Ownable_init();
