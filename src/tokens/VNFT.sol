@@ -5,7 +5,6 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 import "ERC721A-Upgradeable/extensions/ERC721AQueryableUpgradeable.sol";
 /**
  * @title NodeDao vNFT Contract
