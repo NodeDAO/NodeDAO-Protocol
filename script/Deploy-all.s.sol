@@ -92,13 +92,12 @@ abstract contract BaseContract {
     ConsensusVault consensusVault;
     address payable consensusVaultProxy;
 
+    // =============================================
+    // deploy implement
+    // =============================================
     function deployContracts(uint256 delayTime, address[] memory proposersArray, address[] memory executorsArray)
         public
     {
-        // =============================================
-        // deploy implement
-        // =============================================
-
         // deploy timelock
         // timelock: admin is address(0), self administration
         timelock = new TimelockController(delayTime, proposersArray, executorsArray, address(0));
@@ -204,11 +203,10 @@ abstract contract BaseContract {
         );
     }
 
+    // =============================================
+    // configure contract settings
+    // =============================================
     function setContractSettings(address[] memory memberArray) public {
-        // =============================================
-        // configure contract settings
-        // =============================================
-
         // ELVaultFactory setNodeOperatorRegistry
         ELVaultFactory(vaultFactoryContractProxy).setNodeOperatorRegistry(address(operatorRegistryProxy));
 
@@ -278,7 +276,7 @@ abstract contract BaseContract {
 // export GOERLI_RPC_URL=""
 // export PRIVATE_KEY=""
 // export ETHERSCAN_API_KEY=""
-// forge script script/Deploy-all.s.sol:DeployGolierScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify
+// forge script script/Deploy-all.s.sol:DeployGolierScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify --with-gas-price 30000000000 --retries 10 --delay 30
 contract DeployGolierScript is Script, BaseContract, GoerliHelperContract {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -296,7 +294,7 @@ contract DeployGolierScript is Script, BaseContract, GoerliHelperContract {
 // export MAINNET_RPC_URL=""
 // export PRIVATE_KEY=""
 // export ETHERSCAN_API_KEY=""
-// forge script script/Deploy-all.s.sol:DeployMainnetScript  --rpc-url $MAINNET_RPC_URL --broadcast --verify
+// forge script script/Deploy-all.s.sol:DeployMainnetScript  --rpc-url $MAINNET_RPC_URL --broadcast --verify --with-gas-price 20000000000 --retries 10 --delay 30
 contract DeployMainnetScript is Script, BaseContract, MainnetHelperContract {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
