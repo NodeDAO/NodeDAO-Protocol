@@ -14,6 +14,7 @@ contract ConsensusVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, R
     address public liquidStakingContractAddress;
     address public dao;
 
+    event DaoAddressChanged(address _oldDao, address _dao);
     event LiquidStakingChanged(address _from, address _to);
     event Transferred(address _to, uint256 _amount);
 
@@ -67,6 +68,16 @@ contract ConsensusVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, R
         require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
         emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
         liquidStakingContractAddress = _liquidStakingContractAddress;
+    }
+
+    /**
+     * @notice set dao address
+     * @param _dao new dao address
+     */
+    function setDaoAddress(address _dao) external onlyOwner {
+        require(_dao != address(0), "Dao address invalid");
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
     }
 
     receive() external payable {}
