@@ -14,4 +14,5 @@ interface IELVaultFactory {
 
     event ELVaultProxyDeployed(address _proxyAddress);
     event NodeOperatorRegistrySet(address _oldNodeOperatorRegistryAddress, address _nodeOperatorRegistryAddress);
+    event DaoAddressChanged(address _oldDao, address _dao);
 }

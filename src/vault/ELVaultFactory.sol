@@ -77,4 +77,14 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
         emit NodeOperatorRegistrySet(nodeOperatorRegistryAddress, _nodeOperatorRegistryAddress);
         nodeOperatorRegistryAddress = _nodeOperatorRegistryAddress;
     }
+
+    /**
+     * @notice set dao address
+     * @param _dao new dao address
+     */
+    function setDaoAddress(address _dao) external onlyOwner {
+        require(_dao != address(0), "Dao address invalid");
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
+    }
 }
