@@ -46,5 +46,6 @@ interface ILiquidStaking {
         address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
     );
     event DaoAddressChanged(address _oldDao, address _dao);
+    event DaoVaultAddressChanged(address _oldDaoVaultAddress, address _daoVaultAddress);
     event DepositFeeRateSet(uint256 _oldFeeRate, uint256 _feeRate);
 }

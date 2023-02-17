@@ -78,7 +78,7 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
         nodeOperatorRegistryAddress = _nodeOperatorRegistryAddress;
     }
 
-        /**
+    /**
      * @notice set dao address
      * @param _dao new dao address
      */

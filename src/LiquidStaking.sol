@@ -483,6 +483,16 @@ contract LiquidStaking is
     }
 
     /**
+     * @notice set dao vault address
+     * @param _daoVaultAddress new dao vault address
+     */
+    function setDaoVaultAddress(address _daoVaultAddress) external onlyDao {
+        require(_daoVaultAddress != address(0), "dao vault address invalid");
+        emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
+        daoVaultAddress = _daoVaultAddress;
+    }
+
+    /**
      * @notice Set staking fee rate
      * @param _feeRate new stake fee rate
      */
