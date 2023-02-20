@@ -190,7 +190,7 @@ abstract contract BaseContract {
         );
 
         // initialize BeaconOracle
-        BeaconOracle(beaconOracleProxy).initialize(_daoEOA, _genesisTime, address(vnft));
+        BeaconOracle(beaconOracleProxy).initialize(_daoEOA, _genesisTime, address(vnftProxy));
 
         bytes memory withdrawalCredentials =
             bytes.concat(hex"010000000000000000000000", abi.encodePacked(consensusVaultProxy));
