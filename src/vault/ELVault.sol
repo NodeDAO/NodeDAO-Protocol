@@ -80,7 +80,7 @@ contract ELVault is IELVault, ReentrancyGuard, Initializable {
         uint256 _operatorId,
         address _liquidStakingAddress,
         address _nodeOperatorRegistryAddress
-    ) external initializer {
+    ) public initializer {
         vNFTContract = IVNFT(_nVNFTContractAddress);
         dao = _dao;
 

@@ -329,7 +329,6 @@ contract LiquidStakingTest is Test {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        vm.prank(_dao);
         liquidStaking.setLiquidStakingWithdrawalCredentials(
             bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
         );
@@ -355,7 +354,6 @@ contract LiquidStakingTest is Test {
         assertEq(vnft.validatorExists(pubkey), true);
         assertEq(vnft.tokenOfValidator(pubkey), 0);
 
-        vm.prank(_dao);
         liquidStaking.setLiquidStakingWithdrawalCredentials(
             bytes(hex"010000000000000000000000d9e2dc13b0d2f6f73cd21c32fbf7de143c558e29")
         );
@@ -401,7 +399,6 @@ contract LiquidStakingTest is Test {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        vm.prank(_dao);
         liquidStaking.setLiquidStakingWithdrawalCredentials(
             bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
         );
@@ -645,7 +642,6 @@ contract LiquidStakingTest is Test {
         assertEq(50 ether, address(consensusVaultContract).balance);
         assertEq(50 ether, address(60).balance);
 
-        vm.prank(_dao);
         consensusVaultContract.setLiquidStaking(address(61));
         assertEq(consensusVaultContract.liquidStakingContractAddress(), address(61));
     }
@@ -698,7 +694,6 @@ contract LiquidStakingTest is Test {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        vm.prank(_dao);
         liquidStaking.setLiquidStakingWithdrawalCredentials(
             bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
         );
@@ -727,7 +722,6 @@ contract LiquidStakingTest is Test {
         vm.roll(200);
 
         // registerValidator 2
-        vm.prank(_dao);
         liquidStaking.setLiquidStakingWithdrawalCredentials(
             bytes(hex"010000000000000000000000d9e2dc13b0d2f6f73cd21c32fbf7de143c558e29")
         );
@@ -799,7 +793,6 @@ contract LiquidStakingTest is Test {
         vm.roll(300);
 
         // registerValidator 3
-        vm.prank(_dao);
         liquidStaking.setLiquidStakingWithdrawalCredentials(
             bytes(hex"010000000000000000000000b553a401fbc2427777d05ec21dd37a03e1fa6894")
         );

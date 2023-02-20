@@ -284,7 +284,6 @@ contract LiquidStakingTest is Test {
         vm.prank(address(22));
         liquidStaking.stakeETH{value: 32 ether}(1);
 
-        vm.prank(_dao);
         liquidStaking.setLiquidStakingWithdrawalCredentials(
             bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
         );
@@ -333,7 +332,6 @@ contract LiquidStakingTest is Test {
         vm.prank(address(22));
         liquidStaking.stakeNFT{value: 32 ether}(1);
 
-        vm.prank(_dao);
         liquidStaking.setLiquidStakingWithdrawalCredentials(
             bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
         );
