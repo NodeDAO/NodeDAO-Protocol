@@ -84,7 +84,10 @@ contract DeployExampleScript is Script, DeployProxy {
 
         // deploy BeaconOracle proxy
         setType("uups");
-        beaconOracleProxy = deploy(address(beaconOracle), abi.encodeWithSelector(BeaconOracle.initialize.selector, dao, _genesisTime, vnftProxy));
+        beaconOracleProxy = deploy(
+            address(beaconOracle),
+            abi.encodeWithSelector(BeaconOracle.initialize.selector, dao, _genesisTime, vnftProxy)
+        );
 
         // BeaconOracle setLiquidStaking
         BeaconOracle(beaconOracleProxy).setLiquidStaking(address(liquidStakingProxy));
@@ -103,10 +106,10 @@ contract UpgradeLiquidStakingScript is Script {
     LiquidStaking liquidStaking;
 
     address[] memberArray = [
-            0xe583DC38863aB4b5A94da77A6628e2119eaD4B18,
-            0x3357c09eCf74C281B6f9CCfAf4D894979349AC4B,
-            0x143848A303d424FD75995e5827358ba6d30a1801,
-            0x2D9FdD22936e5577d368a3689c0387bac68EDf24
+        0xe583DC38863aB4b5A94da77A6628e2119eaD4B18,
+        0x3357c09eCf74C281B6f9CCfAf4D894979349AC4B,
+        0x143848A303d424FD75995e5827358ba6d30a1801,
+        0x2D9FdD22936e5577d368a3689c0387bac68EDf24
     ];
 
     function setUp() public {}
