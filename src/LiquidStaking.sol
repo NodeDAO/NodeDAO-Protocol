@@ -93,7 +93,7 @@ contract LiquidStaking is
         address _nVNFTContractAddress,
         address _beaconOracleContractAddress,
         address _depositContractAddress
-    ) external initializer {
+    ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
@@ -508,7 +508,7 @@ contract LiquidStaking is
      */
     function setLiquidStakingWithdrawalCredentials(bytes calldata _liquidStakingWithdrawalCredentials)
         external
-        onlyDao
+        onlyOwner
     {
         emit LiquidStakingWithdrawalCredentialsSet(
             liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials

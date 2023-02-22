@@ -136,21 +136,27 @@ abstract contract BaseContract {
 
         // deploy ConsensusVault proxy
         consensusVaultProxy = payable(deployer.deploy(address(consensusVault)));
+        console.log("========consensusVaultProxy: ", consensusVaultProxy);
 
         // deploy vNFT proxy
         vnftProxy = deployer.deploy(address(vnft));
+        console.log("========vnftProxy: ", vnftProxy);
 
         // deploy ELVaultFactory proxy
         vaultFactoryContractProxy = deployer.deploy(address(vaultFactoryContract));
+        console.log("========vaultFactoryContractProxy: ", vaultFactoryContractProxy);
 
         // deploy NodeOperatorRegistry proxy
         operatorRegistryProxy = deployer.deploy(address(operatorRegistry));
+        console.log("========operatorRegistryProxy: ", operatorRegistryProxy);
 
         // deploy BeaconOracle proxy
         beaconOracleProxy = deployer.deploy(address(beaconOracle));
+        console.log("========beaconOracleProxy: ", beaconOracleProxy);
 
         // deploy LiquidStaking proxy
         liquidStakingProxy = payable(deployer.deploy(address(liquidStaking)));
+        console.log("========liquidStakingProxy: ", liquidStakingProxy);
     }
 
     function initializeContract(
@@ -184,7 +190,7 @@ abstract contract BaseContract {
         );
 
         // initialize BeaconOracle
-        BeaconOracle(beaconOracleProxy).initialize(_daoEOA, _genesisTime, address(vnft));
+        BeaconOracle(beaconOracleProxy).initialize(_daoEOA, _genesisTime, address(vnftProxy));
 
         bytes memory withdrawalCredentials =
             bytes.concat(hex"010000000000000000000000", abi.encodePacked(consensusVaultProxy));
@@ -263,6 +269,11 @@ abstract contract BaseContract {
 
         // ELVaultFactory
         ELVaultFactory(vaultFactoryContractProxy).transferOwnership(address(timelock));
+
+        // UpgradeableBeacon
+        address payable upgradeableBeacon = payable(ELVaultFactory(vaultFactoryContractProxy).beacon());
+        console.log("========upgradeableBeacon: ", upgradeableBeacon);
+        UpgradeableBeacon(upgradeableBeacon).transferOwnership(address(timelock));
 
         // NodeOperatorRegistry
         NodeOperatorRegistry(operatorRegistryProxy).transferOwnership(address(timelock));

@@ -38,7 +38,7 @@ contract ConsensusVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, R
      * @param _dao dao address
      * @param _liquidStakingProxyAddress liquidStaking Address
      */
-    function initialize(address _dao, address _liquidStakingProxyAddress) external initializer {
+    function initialize(address _dao, address _liquidStakingProxyAddress) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
         __ReentrancyGuard_init();
@@ -64,7 +64,7 @@ contract ConsensusVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, R
      * @param _liquidStakingContractAddress proxy address of LiquidStaking
      * @dev will only allow call of function by the address registered as the owner
      */
-    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyOwner {
         require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
         emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
         liquidStakingContractAddress = _liquidStakingContractAddress;

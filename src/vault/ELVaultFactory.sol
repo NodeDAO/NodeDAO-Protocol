@@ -39,7 +39,7 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
         address _nVNFTContractAddress,
         address _liquidStakingAddress,
         address _dao
-    ) external initializer {
+    ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
@@ -72,7 +72,7 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
      * @notice set NodeOperatorRegistry contract address
      * @param _nodeOperatorRegistryAddress nodeOperatorRegistry contract Address
      */
-    function setNodeOperatorRegistry(address _nodeOperatorRegistryAddress) public onlyOwner {
+    function setNodeOperatorRegistry(address _nodeOperatorRegistryAddress) external onlyOwner {
         require(_nodeOperatorRegistryAddress != address(0), "");
         emit NodeOperatorRegistrySet(nodeOperatorRegistryAddress, _nodeOperatorRegistryAddress);
         nodeOperatorRegistryAddress = _nodeOperatorRegistryAddress;
