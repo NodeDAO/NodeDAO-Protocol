@@ -100,7 +100,23 @@ You can see further instructons for Surya [here](https://github.com/ConsenSys/su
 # Contracts 
 ## Goerli
 
-To be updated.
+TimelockController: 0x558dfCfE91E2fF9BA83DA6190f7cCC8bc66c2cCb
+
+LiquidStaking Proxy: 0xa8256fd3a31648d49d0f3551e6e45db6f5f91d53
+
+BeaconOracle Proxy: 0x13766719dacc651065D5FF2a94831B46f84481b7
+
+NodeOperatorRegistry Proxy: 0xd9d87abad8651e1e69799416aec54fccdd1daace
+
+ELVaultFactory Proxy: 0x8b310378011a97f05abb8a7854d2ec4bbd0e3b41
+
+VNFT Proxy: 0xe3ce494d51cb9806187b5deca1b4b06c97e52efc
+
+NETH: 0x78ef0463ae6bbf05969ef38b4cf90ca03537a86e
+
+ConsensusVault Proxy: 0x22e172cb3b7a333d73f321462EEBcadd3f0775a6
+
+KingHash ElVault: 0x6Cd568aA7f3fC4e80f0D9Ea767274B25F1E35306
 
 ## Ethereum
 
