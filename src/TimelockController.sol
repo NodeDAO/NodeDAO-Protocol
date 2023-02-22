@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.7.0) (governance/TimelockController.sol)
+// OpenZeppelin Contracts (last updated v4.8.0) (governance/TimelockController.sol)
 
-pragma solidity 0.8.8;
+pragma solidity ^0.8.8;
 
 import "openzeppelin-contracts/access/AccessControl.sol";
 import "openzeppelin-contracts/token/ERC721/IERC721Receiver.sol";
@@ -30,8 +30,8 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     bytes32 public constant CANCELLER_ROLE = keccak256("CANCELLER_ROLE");
     uint256 internal constant _DONE_TIMESTAMP = uint256(1);
 
-    mapping(bytes32 => uint256) internal _timestamps;
-    uint256 internal _minDelay;
+    mapping(bytes32 => uint256) private _timestamps;
+    uint256 private _minDelay;
 
     /**
      * @dev Emitted when a call is scheduled as part of operation `id`.
@@ -50,6 +50,11 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
      * @dev Emitted when a call is performed as part of operation `id`.
      */
     event CallExecuted(bytes32 indexed id, uint256 indexed index, address target, uint256 value, bytes data);
+
+    /**
+     * @dev Emitted when new proposal is scheduled with non-zero salt.
+     */
+    event CallSalt(bytes32 indexed id, bytes32 salt);
 
     /**
      * @dev Emitted when operation `id` is cancelled.
@@ -124,13 +129,7 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override (IERC165, AccessControl)
-        returns (bool)
-    {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, AccessControl) returns (bool) {
         return interfaceId == type(IERC1155Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
 
@@ -165,7 +164,7 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     }
 
     /**
-     * @dev Returns the timestamp at with an operation becomes ready (0 for
+     * @dev Returns the timestamp at which an operation becomes ready (0 for
      * unset operations, 1 for done operations).
      */
     function getTimestamp(bytes32 id) public view virtual returns (uint256 timestamp) {
@@ -185,12 +184,13 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
      * @dev Returns the identifier of an operation containing a single
      * transaction.
      */
-    function hashOperation(address target, uint256 value, bytes calldata data, bytes32 predecessor, bytes32 salt)
-        public
-        pure
-        virtual
-        returns (bytes32 hash)
-    {
+    function hashOperation(
+        address target,
+        uint256 value,
+        bytes calldata data,
+        bytes32 predecessor,
+        bytes32 salt
+    ) public pure virtual returns (bytes32 hash) {
         return keccak256(abi.encode(target, value, data, predecessor, salt));
     }
 
@@ -211,7 +211,7 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     /**
      * @dev Schedule an operation containing a single transaction.
      *
-     * Emits a {CallScheduled} event.
+     * Emits events {CallScheduled} and {CallSalt}.
      *
      * Requirements:
      *
@@ -228,12 +228,15 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
         bytes32 id = hashOperation(target, value, data, predecessor, salt);
         _schedule(id, delay);
         emit CallScheduled(id, 0, target, value, data, predecessor, delay);
+        if (salt != bytes32(0)) {
+            emit CallSalt(id, salt);
+        }
     }
 
     /**
      * @dev Schedule an operation containing a batch of transactions.
      *
-     * Emits one {CallScheduled} event per transaction in the batch.
+     * Emits a {CallSalt} event and one {CallScheduled} event per transaction in the batch.
      *
      * Requirements:
      *
@@ -255,12 +258,15 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
         for (uint256 i = 0; i < targets.length; ++i) {
             emit CallScheduled(id, i, targets[i], values[i], payloads[i], predecessor, delay);
         }
+        if (salt != bytes32(0)) {
+            emit CallSalt(id, salt);
+        }
     }
 
     /**
-     * @dev Schedule an operation that is to becomes valid after a given delay.
+     * @dev Schedule an operation that is to become valid after a given delay.
      */
-    function _schedule(bytes32 id, uint256 delay) internal {
+    function _schedule(bytes32 id, uint256 delay) private {
         require(!isOperation(id), "TimelockController: operation already scheduled");
         require(delay >= getMinDelay(), "TimelockController: insufficient delay");
         _timestamps[id] = block.timestamp + delay;
@@ -292,12 +298,13 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     // This function can reenter, but it doesn't pose a risk because _afterCall checks that the proposal is pending,
     // thus any modifications to the operation during reentrancy should be caught.
     // slither-disable-next-line reentrancy-eth
-    function execute(address target, uint256 value, bytes calldata payload, bytes32 predecessor, bytes32 salt)
-        public
-        payable
-        virtual
-        onlyRoleOrOpenRole(EXECUTOR_ROLE)
-    {
+    function execute(
+        address target,
+        uint256 value,
+        bytes calldata payload,
+        bytes32 predecessor,
+        bytes32 salt
+    ) public payable virtual onlyRoleOrOpenRole(EXECUTOR_ROLE) {
         bytes32 id = hashOperation(target, value, payload, predecessor, salt);
 
         _beforeCall(id, predecessor);
@@ -315,6 +322,9 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
      *
      * - the caller must have the 'executor' role.
      */
+    // This function can reenter, but it doesn't pose a risk because _afterCall checks that the proposal is pending,
+    // thus any modifications to the operation during reentrancy should be caught.
+    // slither-disable-next-line reentrancy-eth
     function executeBatch(
         address[] calldata targets,
         uint256[] calldata values,
@@ -342,14 +352,14 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
      * @dev Execute an operation's call.
      */
     function _execute(address target, uint256 value, bytes calldata data) internal virtual {
-        (bool success,) = target.call{value: value}(data);
+        (bool success, ) = target.call{value: value}(data);
         require(success, "TimelockController: underlying transaction reverted");
     }
 
     /**
      * @dev Checks before execution of an operation's calls.
      */
-    function _beforeCall(bytes32 id, bytes32 predecessor) internal view {
+    function _beforeCall(bytes32 id, bytes32 predecessor) private view {
         require(isOperationReady(id), "TimelockController: operation is not ready");
         require(predecessor == bytes32(0) || isOperationDone(predecessor), "TimelockController: missing dependency");
     }
@@ -357,7 +367,7 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     /**
      * @dev Checks after execution of an operation's calls.
      */
-    function _afterCall(bytes32 id) internal {
+    function _afterCall(bytes32 id) private {
         require(isOperationReady(id), "TimelockController: operation is not ready");
         _timestamps[id] = _DONE_TIMESTAMP;
     }
@@ -388,24 +398,26 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
     /**
      * @dev See {IERC1155Receiver-onERC1155Received}.
      */
-    function onERC1155Received(address, address, uint256, uint256, bytes memory)
-        public
-        virtual
-        override
-        returns (bytes4)
-    {
+    function onERC1155Received(
+        address,
+        address,
+        uint256,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
         return this.onERC1155Received.selector;
     }
 
     /**
      * @dev See {IERC1155Receiver-onERC1155BatchReceived}.
      */
-    function onERC1155BatchReceived(address, address, uint256[] memory, uint256[] memory, bytes memory)
-        public
-        virtual
-        override
-        returns (bytes4)
-    {
+    function onERC1155BatchReceived(
+        address,
+        address,
+        uint256[] memory,
+        uint256[] memory,
+        bytes memory
+    ) public virtual override returns (bytes4) {
         return this.onERC1155BatchReceived.selector;
     }
 }
