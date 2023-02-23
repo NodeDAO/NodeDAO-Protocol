@@ -222,6 +222,7 @@ contract NodeOperatorRegistry is
     function quitOperator(uint256 _operatorId, address _to) external {
         NodeOperator memory operator = operators[_operatorId];
         require(operator.owner == msg.sender, "PERMISSION_DENIED");
+        require(operators[_operatorId].isQuit == false, "Operator has exited");
 
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(_operatorId);
         // There are active validators and cannot exit
