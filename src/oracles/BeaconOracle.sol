@@ -38,6 +38,9 @@ contract BeaconOracle is
     // Seconds for each slot
     uint64 internal constant SECONDS_PER_SLOT = 12;
 
+    /// Maximum number of oracle committee members
+    uint256 public constant MAX_MEMBERS = 255;
+
     /// The bitmask of the oracle members that pushed their reports (default:0)
     uint256 internal reportBitMaskPosition;
 
@@ -165,6 +168,7 @@ contract BeaconOracle is
      */
     function addOracleMember(address _oracleMember) external onlyDao {
         require(address(0) != _oracleMember, "BAD_ARGUMENT");
+        require(oracleMemberCount < MAX_MEMBERS, "TOO_MANY_MEMBERS");
         require(MEMBER_NOT_FOUND == getMemberId(_oracleMember), "MEMBER_EXISTS");
 
         bool isAdd = false;

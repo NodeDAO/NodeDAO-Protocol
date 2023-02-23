@@ -45,9 +45,9 @@ abstract contract GoerliHelperContract {
 // Mainnet settings
 abstract contract MainnetHelperContract {
     // _daoEOA is sender
-    address _daoEOA = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
-    address _daoMultisigContract = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
-    address _daoValutAddress = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
+    address _daoEOA = 0xeF76D4e75154739F75F6068b3470c7968cC3Fcd1;
+    address _daoMultisigContract = 0x718b7885FEC8511DC8F2A378D3045c90e82d6A1d;
+    address _daoValutAddress = 0x718b7885FEC8511DC8F2A378D3045c90e82d6A1d;
 
     // goerli: 0xff50ed3d0ec03aC01D4C79aAd74928BFF48a7b2b
     // mainnet: 0x00000000219ab540356cBB839Cbe05303d7705Fa
@@ -59,12 +59,17 @@ abstract contract MainnetHelperContract {
     // mainnet: 1606824023
     uint64 _genesisTime = 1606824023;
     // oracle member
-    address[] memberArray = new address[] (0); // address[] memberArray = [];
-
+    address[] memberArray = [
+        0x080C185D164446746068Db1650850F453ffdB92c,
+        0xad7457910Ba258904cFe9B676a68201455CE6e61,
+        0xf4A30Ec717b7F3aCC7fAeD373C941086a292BD5E,
+        0x22E0cAF2B2dD1E11602D58eEfE9865f80aA949c6
+    ];
     // ==================== timelock ====================
 
     uint256 delayTime = 86400;
-    address[] proposersArray = [_daoMultisigContract, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc];
+    address[] proposersArray =
+        [_daoMultisigContract, 0x3E29BF7B650b8910F3B4DDda5b146e8716c683a6, 0xeF76D4e75154739F75F6068b3470c7968cC3Fcd1];
     address[] executorsArray = [_daoMultisigContract];
 }
 
@@ -312,13 +317,11 @@ contract DeployMainnetScript is Script, BaseContract, MainnetHelperContract {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
-
         deployContracts(delayTime, proposersArray, executorsArray);
         initializeContract(_daoEOA, _daoValutAddress, depositContract, _genesisTime);
         setContractSettings(memberArray);
         transferDaoToMultisig(_daoMultisigContract);
         transferOwnerToTimelock();
-
         vm.stopBroadcast();
     }
 }
