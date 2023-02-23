@@ -176,7 +176,9 @@ contract NodeOperatorRegistry is
         operatorPledgeVaultBalances[id] += pledgeAmount;
         emit PledgeDeposited(pledgeAmount, id);
 
-        transfer(registrationFee, daoVaultAddress);
+        if (registrationFee > 0) {
+            transfer(registrationFee, daoVaultAddress);
+        }
 
         emit NodeOperatorRegistered(id, _name, _controllerAddress, vaultContractAddress, _rewardAddresses, _ratios);
     }
