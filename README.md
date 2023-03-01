@@ -28,7 +28,7 @@ This repository contains the core smart contracts for the [NodeDAO Protocol](htt
 * [BeaconOracle](./docs/beaconOracle.md)
 * [Vaults](./docs/vaults.md)
 
-You can find more generic information about NodeDAO Protocol over [here](https://www.kinghash.com/).
+You can find more generic information about NodeDAO Protocol over [here](https://doc.nodedao.com/).
 
 # Quick Commands
 
@@ -140,4 +140,5 @@ KingHash ElVault:
 
 # Audits
 
-To be updated.
+You can see all audits report for NodeDAO here(https://github.com/NodeDAO/audits).
+
