@@ -205,6 +205,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         if (_dao == address(0)) revert DaoCannotBeZero();
         if (reportProcessor == address(0)) revert ReportProcessorCannotBeZero();
 
+        dao = _dao;
         uint256 farFutureEpoch = _computeEpochAtTimestamp(type(uint64).max);
         _setFrameConfig(farFutureEpoch, epochsPerFrame, fastLaneLengthSlots, FrameConfig(0, 0, 0));
 

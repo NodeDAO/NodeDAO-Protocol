@@ -85,13 +85,17 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     /// @notice Initializes the contract storage. Must be called by a descendant
     /// contract as part of its initialization.
     ///
-    function __BaseOracle_init(address consensusContract, uint256 consensusVersion, uint256 lastProcessingRefSlot)
-        internal
-        virtual
-        onlyInitializing
-    {
+    function __BaseOracle_init(
+        address consensusContract,
+        uint256 consensusVersion,
+        uint256 lastProcessingRefSlot,
+        address _dao
+    ) internal virtual onlyInitializing {
         __Ownable_init();
         __UUPSUpgradeable_init();
+
+        if (_dao == address(0)) revert DaoCannotBeZero();
+        dao = _dao;
 
         _initializeContractVersionTo(1);
         _setConsensusContract(consensusContract, lastProcessingRefSlot);
