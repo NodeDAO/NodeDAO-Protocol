@@ -62,6 +62,12 @@ contract LiquidStakingTest is Test {
     bytes pubKey = hex"90e8c1460fdb55b944ad4b9ec73275c2ef701311715d6f8766a02d0b0b8f37a21c871fdc9784276ec74515e7a219cbcf";
     bytes32 merkleTreeRoot = 0x847e7dedeae2fdb5b098c298e3aff134d9cc0a8d61126631f7bfe43b7ba1dfe4;
 
+    uint256 clRewardsVaultBalance = 2 ether;
+    uint256[] slashedTokenIds = new uint256[](1);
+    uint256[] untimelyExitedTokenIds = new uint256[](2);
+
+    BeaconOracle.ExitedValidator[] exitedTokenIds = new BeaconOracle.ExitedValidator[](3);
+
     function setUp() public {
         _rewardAddresses[0] = address(5);
         _rewardAddresses[1] = address(6);
@@ -119,6 +125,14 @@ contract LiquidStakingTest is Test {
 
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
+
+        exitedTokenIds[0] = BeaconOracle.ExitedValidator(2, 322e17, 1573000);
+        exitedTokenIds[0] = BeaconOracle.ExitedValidator(4, 323e17, 1573010);
+        exitedTokenIds[0] = BeaconOracle.ExitedValidator(6, 325e17, 1573020);
+
+        slashedTokenIds[0] = 1;
+        untimelyExitedTokenIds[0] = 2;
+        untimelyExitedTokenIds[1] = 4;
     }
 
     function testInitialize() public {
@@ -313,7 +327,16 @@ contract LiquidStakingTest is Test {
         vm.stopPrank();
 
         vm.prank(_oracleMember1);
-        beaconOracle.reportBeacon(147375, 65000000000000000000, 2, merkleTreeRoot);
+        beaconOracle.reportBeacon(
+            147375,
+            64000000000000000000,
+            2,
+            merkleTreeRoot,
+            clRewardsVaultBalance,
+            slashedTokenIds,
+            exitedTokenIds,
+            untimelyExitedTokenIds
+        );
         uint256 _value = 32000000000000000000;
         bool ok = beaconOracle.verifyNftValue(_proof, pubkey, _value, 0);
 
@@ -361,7 +384,16 @@ contract LiquidStakingTest is Test {
         vm.stopPrank();
 
         vm.prank(_oracleMember1);
-        beaconOracle.reportBeacon(147375, 65000000000000000000, 2, merkleTreeRoot);
+        beaconOracle.reportBeacon(
+            147375,
+            64000000000000000000,
+            2,
+            merkleTreeRoot,
+            clRewardsVaultBalance,
+            slashedTokenIds,
+            exitedTokenIds,
+            untimelyExitedTokenIds
+        );
         uint256 _value = 32000000000000000000;
         bool ok = beaconOracle.verifyNftValue(_proof, pubkey, _value, 0);
 
@@ -380,7 +412,16 @@ contract LiquidStakingTest is Test {
         vnft.whiteListMint(bytes("2"), address(2), 1);
         vm.stopPrank();
         vm.prank(_oracleMember1);
-        beaconOracle.reportBeacon(147375, 65000000000000000000, 2, merkleTreeRoot);
+        beaconOracle.reportBeacon(
+            147375,
+            64000000000000000000,
+            2,
+            merkleTreeRoot,
+            clRewardsVaultBalance,
+            slashedTokenIds,
+            exitedTokenIds,
+            untimelyExitedTokenIds
+        );
         assertEq(vnft.validatorOf(0), pubkey);
         uint256 _value = 32000000000000000000;
 

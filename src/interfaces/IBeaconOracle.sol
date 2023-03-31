@@ -82,4 +82,7 @@ interface IBeaconOracle {
     event PendingBalancesReset(uint256 _totalBalance);
     event LiquidStakingChanged(address _before, address _after);
     event DaoAddressChanged(address _oldDao, address _dao);
+    event SlashedValidators(uint256 _epochId, uint256[] _slashedTokenIds);
+    event ExitedValidators(uint256 _epochId, uint256[] _exitedTokenIds);
+    event UntimelyExitedValidators(uint256 _epochId, uint256[] _untimelyExitedTokenIds);
 }

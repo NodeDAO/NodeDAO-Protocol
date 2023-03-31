@@ -15,6 +15,12 @@ contract BeaconOracleTest is Test {
 
     address _dao = address(1);
 
+    uint256 clRewardsVaultBalance = 2 ether;
+    uint256[] slashedTokenIds = new uint256[](1);
+    uint256[] untimelyExitedTokenIds = new uint256[](2);
+
+    BeaconOracle.ExitedValidator[] exitedTokenIds = new BeaconOracle.ExitedValidator[](3);
+
     function setUp() public {
         vm.warp(1673161943);
         beaconOracle = new BeaconOracle();
@@ -39,6 +45,14 @@ contract BeaconOracleTest is Test {
         beaconOracle.addOracleMember(address(14));
         beaconOracle.addOracleMember(address(15));
         vm.stopPrank();
+
+        exitedTokenIds[0] = BeaconOracle.ExitedValidator(2, 322e17, 1573000);
+        exitedTokenIds[0] = BeaconOracle.ExitedValidator(4, 323e17, 1573010);
+        exitedTokenIds[0] = BeaconOracle.ExitedValidator(6, 325e17, 1573020);
+
+        slashedTokenIds[0] = 1;
+        untimelyExitedTokenIds[0] = 2;
+        untimelyExitedTokenIds[1] = 4;
     }
 
     function testDao() public {
@@ -114,27 +128,72 @@ contract BeaconOracleTest is Test {
 
         vm.startPrank(address(11));
         assertFalse(beaconOracle.isReportBeacon(address(11)));
-        beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
+        beaconOracle.reportBeacon(
+            147375,
+            64000000000000000000,
+            2,
+            root,
+            clRewardsVaultBalance,
+            slashedTokenIds,
+            exitedTokenIds,
+            untimelyExitedTokenIds
+        );
         assertEq(beaconOracle.isReportBeacon(address(11)), true);
         vm.stopPrank();
 
         vm.startPrank(address(12));
-        beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
+        beaconOracle.reportBeacon(
+            147375,
+            64000000000000000000,
+            2,
+            root,
+            clRewardsVaultBalance,
+            slashedTokenIds,
+            exitedTokenIds,
+            untimelyExitedTokenIds
+        );
         assertEq(beaconOracle.isReportBeacon(address(12)), true);
         vm.stopPrank();
 
         vm.startPrank(address(13));
-        beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
+        beaconOracle.reportBeacon(
+            147375,
+            64000000000000000000,
+            2,
+            root,
+            clRewardsVaultBalance,
+            slashedTokenIds,
+            exitedTokenIds,
+            untimelyExitedTokenIds
+        );
         vm.stopPrank();
 
         vm.startPrank(address(14));
-        beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
+        beaconOracle.reportBeacon(
+            147375,
+            64000000000000000000,
+            2,
+            root,
+            clRewardsVaultBalance,
+            slashedTokenIds,
+            exitedTokenIds,
+            untimelyExitedTokenIds
+        );
         assertEq(beaconOracle.isReportBeacon(address(14)), false);
         vm.stopPrank();
 
         if (beaconOracle.isCurrentFrame()) {
             vm.startPrank(address(15));
-            beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
+            beaconOracle.reportBeacon(
+                147375,
+                64000000000000000000,
+                2,
+                root,
+                clRewardsVaultBalance,
+                slashedTokenIds,
+                exitedTokenIds,
+                untimelyExitedTokenIds
+            );
             assertEq(beaconOracle.isReportBeacon(address(15)), false);
             vm.stopPrank();
         }
@@ -142,7 +201,16 @@ contract BeaconOracleTest is Test {
         vm.startPrank(address(11));
         assertFalse(beaconOracle.isReportBeacon(address(11)));
         if (beaconOracle.isCurrentFrame()) {
-            beaconOracle.reportBeacon(147375, 64000000000000000000, 2, root);
+            beaconOracle.reportBeacon(
+                147375,
+                64000000000000000000,
+                2,
+                root,
+                clRewardsVaultBalance,
+                slashedTokenIds,
+                exitedTokenIds,
+                untimelyExitedTokenIds
+            );
             assertEq(beaconOracle.isReportBeacon(address(11)), true);
         }
         vm.stopPrank();

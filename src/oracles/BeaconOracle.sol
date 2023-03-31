@@ -6,6 +6,7 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts/utils/cryptography/MerkleProof.sol";
+import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import "src/interfaces/IBeaconOracle.sol";
 import "src/oracles/ReportUtils.sol";
 import "src/interfaces/IVNFT.sol";
@@ -77,6 +78,24 @@ contract BeaconOracle is
 
     // current pending balance
     uint256 public pendingBalances;
+
+    struct ExitedValidator {
+        uint256 tokenId;
+        // Balance when the validator exited
+        uint256 exitedBalance;
+        // block height corresponding to the epoch when the validator exited
+        uint256 exitedHeight;
+    }
+
+    using EnumerableSet for EnumerableSet.UintSet;
+
+    // The exited validators
+    mapping(uint256 => ExitedValidator) internal exitedValidators;
+
+    // The slashed validators
+    EnumerableSet.UintSet internal slashedTokenIds;
+
+    uint256 clRewardsVaultBalance;
 
     function initialize(address _dao, uint256 _genesisTime, address _nVNFTContractAddress) public initializer {
         __Ownable_init();
@@ -215,6 +234,14 @@ contract BeaconOracle is
         return _isOracleMember(_oracleMember);
     }
 
+    function getOracleMembers() external view returns (address[] memory) {
+        return oracleMembers;
+    }
+
+    function getOracleMembers(uint256 _index) external view returns (address) {
+        return oracleMembers[_index];
+    }
+
     /**
      * Example Reset the reporting frequency
      */
@@ -251,12 +278,20 @@ contract BeaconOracle is
      * @param _beaconBalance Beacon chain balance
      * @param _beaconValidators Number of beacon chain validators
      * @param _validatorRankingRoot merkle root
+     * @param _clRewardsVaultBalance vault balance of the consensus layer
+     * @param _slashedTokenIds The token Id collection that is slashedT
+     * @param _exitedTokenIds Exited Validators collection (containing exited balance)
+     * @param _untimelyExitedTokenIds Collection of Token ids that do not exit in time (only calculated on exitedTokenIds, penalized on final exit)
      */
     function reportBeacon(
         uint256 _epochId,
         uint256 _beaconBalance,
         uint256 _beaconValidators,
-        bytes32 _validatorRankingRoot
+        bytes32 _validatorRankingRoot,
+        uint256 _clRewardsVaultBalance,
+        uint256[] memory _slashedTokenIds,
+        ExitedValidator[] memory _exitedTokenIds,
+        uint256[] memory _untimelyExitedTokenIds
     ) external {
         require(
             _beaconValidators == vNFTContract.totalSupply() - vNFTContract.getEmptyNftCounts(),
