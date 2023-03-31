@@ -1,37 +1,30 @@
-// SPDX-FileCopyrightText: 2023 Lido <info@lido.fi>
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity 0.8.9;
+pragma solidity 0.8.8;
 
-import { SafeCast } from "@openzeppelin/contracts-v4.4/utils/math/SafeCast.sol";
-
-import { UnstructuredStorage } from "../lib/UnstructuredStorage.sol";
-import { Versioned } from "../utils/Versioned.sol";
-import { AccessControlEnumerable } from "../utils/access/AccessControlEnumerable.sol";
-
-import { IReportAsyncProcessor } from "./HashConsensus.sol";
-
+import "openzeppelin-contracts/utils/math/SafeCast.sol";
+import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "src/library/UnstructuredStorage.sol";
+import "src/utils/Versioned.sol";
+import "src/utils/Dao.sol";
+import {IReportAsyncProcessor} from "src/oracles/HashConsensus.sol";
 
 interface IConsensusContract {
     function getIsMember(address addr) external view returns (bool);
 
-    function getCurrentFrame() external view returns (
-        uint256 refSlot,
-        uint256 reportProcessingDeadlineSlot
-    );
+    function getCurrentFrame() external view returns (uint256 refSlot, uint256 reportProcessingDeadlineSlot);
 
-    function getChainConfig() external view returns (
-        uint256 slotsPerEpoch,
-        uint256 secondsPerSlot,
-        uint256 genesisTime
-    );
+    function getChainConfig()
+        external
+        view
+        returns (uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime);
 
     function getFrameConfig() external view returns (uint256 initialEpoch, uint256 epochsPerFrame);
 
     function getInitialRefSlot() external view returns (uint256);
 }
 
-
-abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, Versioned {
+abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versioned, IReportAsyncProcessor {
     using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
 
@@ -61,33 +54,17 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
         uint64 processingDeadlineTime;
     }
 
-    /// @notice An ACL role granting the permission to set the consensus
-    /// contract address by calling setConsensusContract.
-    bytes32 public constant MANAGE_CONSENSUS_CONTRACT_ROLE =
-        keccak256("MANAGE_CONSENSUS_CONTRACT_ROLE");
-
-    /// @notice An ACL role granting the permission to set the consensus
-    /// version by calling setConsensusVersion.
-    bytes32 public constant MANAGE_CONSENSUS_VERSION_ROLE =
-        keccak256("MANAGE_CONSENSUS_VERSION_ROLE");
-
-
     /// @dev Storage slot: address consensusContract
-    bytes32 internal constant CONSENSUS_CONTRACT_POSITION =
-        keccak256("lido.BaseOracle.consensusContract");
+    bytes32 internal constant CONSENSUS_CONTRACT_POSITION = keccak256("lido.BaseOracle.consensusContract");
 
     /// @dev Storage slot: uint256 consensusVersion
-    bytes32 internal constant CONSENSUS_VERSION_POSITION =
-        keccak256("lido.BaseOracle.consensusVersion");
+    bytes32 internal constant CONSENSUS_VERSION_POSITION = keccak256("lido.BaseOracle.consensusVersion");
 
     /// @dev Storage slot: uint256 lastProcessingRefSlot
-    bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION =
-        keccak256("lido.BaseOracle.lastProcessingRefSlot");
+    bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION = keccak256("lido.BaseOracle.lastProcessingRefSlot");
 
     /// @dev Storage slot: ConsensusReport consensusReport
-    bytes32 internal constant CONSENSUS_REPORT_POSITION =
-        keccak256("lido.BaseOracle.consensusReport");
-
+    bytes32 internal constant CONSENSUS_REPORT_POSITION = keccak256("lido.BaseOracle.consensusReport");
 
     uint256 public immutable SECONDS_PER_SLOT;
     uint256 public immutable GENESIS_TIME;
@@ -101,6 +78,35 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
         GENESIS_TIME = genesisTime;
     }
 
+    ///
+    /// Descendant contract interface
+    ///
+
+    /// @notice Initializes the contract storage. Must be called by a descendant
+    /// contract as part of its initialization.
+    ///
+    function __BaseOracle_init(address consensusContract, uint256 consensusVersion, uint256 lastProcessingRefSlot)
+        internal
+        virtual
+        onlyInitializing
+    {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+
+        _initializeContractVersionTo(1);
+        _setConsensusContract(consensusContract, lastProcessingRefSlot);
+        _setConsensusVersion(consensusVersion);
+        LAST_PROCESSING_REF_SLOT_POSITION.setStorageUint256(lastProcessingRefSlot);
+        _storageConsensusReport().value.refSlot = lastProcessingRefSlot.toUint64();
+    }
+
+    // set dao vault address
+    function setDaoAddress(address _dao) external override onlyOwner {
+        require(_dao != address(0), "Dao address invalid");
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
+    }
+
     /// @notice Returns the address of the HashConsensus contract.
     ///
     function getConsensusContract() external view returns (address) {
@@ -109,7 +115,7 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
 
     /// @notice Sets the address of the HashConsensus contract.
     ///
-    function setConsensusContract(address addr) external onlyRole(MANAGE_CONSENSUS_CONTRACT_ROLE) {
+    function setConsensusContract(address addr) external onlyOwner {
         _setConsensusContract(addr, LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256());
     }
 
@@ -124,7 +130,7 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
 
     /// @notice Sets the consensus version expected by the oracle contract.
     ///
-    function setConsensusVersion(uint256 version) external onlyRole(MANAGE_CONSENSUS_VERSION_ROLE) {
+    function setConsensusVersion(uint256 version) external onlyDao {
         _setConsensusVersion(version);
     }
 
@@ -134,12 +140,11 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
 
     /// @notice Returns the last consensus report hash and metadata.
     ///
-    function getConsensusReport() external view returns (
-        bytes32 hash,
-        uint256 refSlot,
-        uint256 processingDeadlineTime,
-        bool processingStarted
-    ) {
+    function getConsensusReport()
+        external
+        view
+        returns (bytes32 hash, uint256 refSlot, uint256 processingDeadlineTime, bool processingStarted)
+    {
         ConsensusReport memory report = _storageConsensusReport().value;
         uint256 processingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
         return (
@@ -198,25 +203,6 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
         return LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
     }
 
-    ///
-    /// Descendant contract interface
-    ///
-
-    /// @notice Initializes the contract storage. Must be called by a descendant
-    /// contract as part of its initialization.
-    ///
-    function _initialize(
-        address consensusContract,
-        uint256 consensusVersion,
-        uint256 lastProcessingRefSlot
-    ) internal virtual {
-        _initializeContractVersionTo(1);
-        _setConsensusContract(consensusContract, lastProcessingRefSlot);
-        _setConsensusVersion(consensusVersion);
-        LAST_PROCESSING_REF_SLOT_POSITION.setStorageUint256(lastProcessingRefSlot);
-        _storageConsensusReport().value.refSlot = lastProcessingRefSlot.toUint64();
-    }
-
     /// @notice Returns whether the given address is a member of the oracle committee.
     ///
     function _isConsensusMember(address addr) internal view returns (bool) {
@@ -240,9 +226,7 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
     /// the currently submitted consensus report, and that processing deadline is not missed.
     /// Reverts otherwise.
     ///
-    function _checkConsensusData(uint256 refSlot, uint256 consensusVersion, bytes32 hash)
-        internal view
-    {
+    function _checkConsensusData(uint256 refSlot, uint256 consensusVersion, bytes32 hash) internal view {
         // 如果错过当前共识报告的处理截止日期，报错
         _checkProcessingDeadline();
 
@@ -297,7 +281,7 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
     ///
     function _getCurrentRefSlot() internal view returns (uint256) {
         address consensusContract = CONSENSUS_CONTRACT_POSITION.getStorageAddress();
-        (uint256 refSlot, ) = IConsensusContract(consensusContract).getCurrentFrame();
+        (uint256 refSlot,) = IConsensusContract(consensusContract).getCurrentFrame();
         return refSlot;
     }
 
@@ -332,7 +316,7 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
         emit ConsensusHashContractSet(addr, prevAddr);
     }
 
-    function _getTime() internal virtual view returns (uint256) {
+    function _getTime() internal view virtual returns (uint256) {
         return block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
@@ -346,6 +330,10 @@ abstract contract BaseOracle is IReportAsyncProcessor, AccessControlEnumerable, 
 
     function _storageConsensusReport() internal pure returns (StorageConsensusReport storage r) {
         bytes32 position = CONSENSUS_REPORT_POSITION;
-        assembly { r.slot := position }
+        assembly {
+            r.slot := position
+        }
     }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 }

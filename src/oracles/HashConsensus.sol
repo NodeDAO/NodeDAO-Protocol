@@ -5,7 +5,7 @@ import {SafeCast} from "openzeppelin-contracts/utils/math/SafeCast.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "src/library/Math.sol";
-import "src/abstract/Dao.sol";
+import "src/utils/Dao.sol";
 
 /**
  * todo:
@@ -199,6 +199,9 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         public
         initializer
     {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+
         if (_dao == address(0)) revert DaoCannotBeZero();
         if (reportProcessor == address(0)) revert ReportProcessorCannotBeZero();
 
@@ -209,7 +212,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     }
 
     // set dao vault address
-    function setDaoAddress(address _dao) external override {
+    function setDaoAddress(address _dao) external override onlyOwner {
         require(_dao != address(0), "Dao address invalid");
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
@@ -977,6 +980,5 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         return IReportAsyncProcessor(_reportProcessor).getConsensusVersion();
     }
 
-    // for uups
     function _authorizeUpgrade(address) internal override onlyOwner {}
 }
