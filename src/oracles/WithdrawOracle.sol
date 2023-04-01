@@ -2,12 +2,14 @@
 pragma solidity 0.8.8;
 
 import "openzeppelin-contracts/utils/math/SafeCast.sol";
+import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
 
 contract WithdrawOracle is BaseOracle {
     using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
+    using EnumerableSet for EnumerableSet.UintSet;
 
     event WarnDataIncompleteProcessing(uint256 indexed refSlot, uint256 exitRequestLimit, uint256 reportExitedCount);
     event UpdateExitRequestLimit(uint256 exitRequestLimit);
@@ -20,6 +22,7 @@ contract WithdrawOracle is BaseOracle {
     error InvalidRequestsDataSortOrder();
     error ArgumentOutOfBounds();
     error ExitRequestLimitNotZero();
+    error ValidatorReportedExit(uint256 tokenId);
 
     struct WithdrawInfo {
         uint256 operatorId;
@@ -115,16 +118,14 @@ contract WithdrawOracle is BaseOracle {
     // todo 如果需要重新定义长度
     uint256 internal constant PACKED_REQUEST_LENGTH = 64;
 
-    /// @dev Storage slot: mapping(uint256 => RequestedValidator) lastRequestedValidatorIndices
-    /// A mapping from the (moduleId, nodeOpId) packed key to the last requested validator index.
-    bytes32 internal constant LAST_REQUESTED_VALIDATOR_INDICES_POSITION =
-        keccak256("WithdrawOracle.lastRequestedValidatorIndices");
-
     /// @dev Storage slot: DataProcessingState dataProcessingState
     bytes32 internal constant DATA_PROCESSING_STATE_POSITION = keccak256("WithdrawOracle.dataProcessingState");
 
     // Specifies the maximum number of validator exits reported each time
-    uint256 public exitRequestLimit = 100;
+    uint256 public exitRequestLimit = 1000;
+
+    // The exited validators
+    EnumerableSet.UintSet internal exitedTokenIds;
 
     constructor(uint256 secondsPerSlot, uint256 genesisTime) BaseOracle(secondsPerSlot, genesisTime) {}
 
@@ -207,12 +208,26 @@ contract WithdrawOracle is BaseOracle {
         }
 
         // Data format exception that does not match the number of bytes of each element in the array
-        if (data.data.length % PACKED_REQUEST_LENGTH != 0) {
+        //        if (data.data.length % PACKED_REQUEST_LENGTH != 0) {
+        //            revert InvalidRequestsDataLength();
+        //        }
+
+        if (
+            data.exitTokenIds.length != data.reportExitedCount || data.exitBlockNumbers.length != data.reportExitedCount
+        ) {
             revert InvalidRequestsDataLength();
         }
 
-        // todo 退出请求的数量检查
-        //        IOracleReportSanityChecker(LOCATOR.oracleReportSanityChecker()).checkExitBusOracleReport(data.requestsCount);
+        // Add to a list that has exited validator (de-weight)
+        uint256[] calldata _exitTokenIds = data.exitTokenIds;
+        for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
+            // Add the token ids of the validator to the list. If an error occurs, the Validator is added
+            if (exitedTokenIds.add(_exitTokenIds[i])) {
+                revert ValidatorReportedExit(_exitTokenIds[i]);
+            }
+        }
+
+        // todo 调用结算
 
         // 退出数量不一致 报错
         //        if (data.data.length / PACKED_REQUEST_LENGTH != data.requestsCount) {
