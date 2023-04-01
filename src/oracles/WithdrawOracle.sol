@@ -19,7 +19,6 @@ contract WithdrawOracle is BaseOracle {
     error InvalidRequestsData();
     error InvalidRequestsDataLength();
     error UnexpectedRequestsDataLength();
-    error InvalidRequestsDataSortOrder();
     error ArgumentOutOfBounds();
     error ExitRequestLimitNotZero();
     error ValidatorReportedExit(uint256 tokenId);
@@ -127,15 +126,15 @@ contract WithdrawOracle is BaseOracle {
     // The exited validators
     EnumerableSet.UintSet internal exitedTokenIds;
 
-    constructor(uint256 secondsPerSlot, uint256 genesisTime) BaseOracle(secondsPerSlot, genesisTime) {}
-
     function initialize(
+        uint256 secondsPerSlot,
+        uint256 genesisTime,
         address consensusContract,
         uint256 consensusVersion,
         uint256 lastProcessingRefSlot,
         address _dao
     ) public initializer {
-        __BaseOracle_init(consensusContract, consensusVersion, lastProcessingRefSlot, _dao);
+        __BaseOracle_init(secondsPerSlot, genesisTime, consensusContract, consensusVersion, lastProcessingRefSlot, _dao);
     }
 
     /// Set the number limit for the validator to report

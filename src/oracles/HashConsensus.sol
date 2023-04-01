@@ -147,9 +147,9 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     }
 
     /// Chain specification
-    uint64 internal immutable SLOTS_PER_EPOCH;
-    uint64 internal immutable SECONDS_PER_SLOT;
-    uint64 internal immutable GENESIS_TIME;
+    uint64 internal SLOTS_PER_EPOCH;
+    uint64 internal SECONDS_PER_SLOT;
+    uint64 internal GENESIS_TIME;
 
     /// @dev A quorum value that effectively disables the oracle.
     uint256 internal constant UNREACHABLE_QUORUM = type(uint256).max;
@@ -188,22 +188,24 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     /// Initialization
     ///
 
-    // todo 确认 uups 可升级合约是否可以使用 constructor 初始化 immutable 的数据
-    constructor(uint256 slotsPerEpoch, uint256 secondsPerSlot, uint256 genesisTime) {
-        SLOTS_PER_EPOCH = slotsPerEpoch.toUint64();
-        SECONDS_PER_SLOT = secondsPerSlot.toUint64();
-        GENESIS_TIME = genesisTime.toUint64();
-    }
-
-    function initialize(uint256 epochsPerFrame, uint256 fastLaneLengthSlots, address _dao, address reportProcessor)
-        public
-        initializer
-    {
+    function initialize(
+        uint256 slotsPerEpoch,
+        uint256 secondsPerSlot,
+        uint256 genesisTime,
+        uint256 epochsPerFrame,
+        uint256 fastLaneLengthSlots,
+        address _dao,
+        address reportProcessor
+    ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
         if (_dao == address(0)) revert DaoCannotBeZero();
         if (reportProcessor == address(0)) revert ReportProcessorCannotBeZero();
+
+        SLOTS_PER_EPOCH = slotsPerEpoch.toUint64();
+        SECONDS_PER_SLOT = secondsPerSlot.toUint64();
+        GENESIS_TIME = genesisTime.toUint64();
 
         dao = _dao;
         uint256 farFutureEpoch = _computeEpochAtTimestamp(type(uint64).max);

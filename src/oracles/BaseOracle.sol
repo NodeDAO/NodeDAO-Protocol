@@ -66,17 +66,8 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     /// @dev Storage slot: ConsensusReport consensusReport
     bytes32 internal constant CONSENSUS_REPORT_POSITION = keccak256("lido.BaseOracle.consensusReport");
 
-    uint256 public immutable SECONDS_PER_SLOT;
-    uint256 public immutable GENESIS_TIME;
-
-    ///
-    /// Initialization & admin functions
-    ///
-
-    constructor(uint256 secondsPerSlot, uint256 genesisTime) {
-        SECONDS_PER_SLOT = secondsPerSlot;
-        GENESIS_TIME = genesisTime;
-    }
+    uint256 public SECONDS_PER_SLOT;
+    uint256 public GENESIS_TIME;
 
     ///
     /// Descendant contract interface
@@ -86,6 +77,8 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     /// contract as part of its initialization.
     ///
     function __BaseOracle_init(
+        uint256 secondsPerSlot,
+        uint256 genesisTime,
         address consensusContract,
         uint256 consensusVersion,
         uint256 lastProcessingRefSlot,
@@ -96,6 +89,8 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
 
         if (_dao == address(0)) revert DaoCannotBeZero();
         dao = _dao;
+        SECONDS_PER_SLOT = secondsPerSlot;
+        GENESIS_TIME = genesisTime;
 
         _initializeContractVersionTo(1);
         _setConsensusContract(consensusContract, lastProcessingRefSlot);
