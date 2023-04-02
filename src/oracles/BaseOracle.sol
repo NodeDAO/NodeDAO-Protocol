@@ -55,16 +55,16 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     }
 
     /// @dev Storage slot: address consensusContract
-    bytes32 internal constant CONSENSUS_CONTRACT_POSITION = keccak256("lido.BaseOracle.consensusContract");
+    bytes32 internal constant CONSENSUS_CONTRACT_POSITION = keccak256("BaseOracle.consensusContract");
 
     /// @dev Storage slot: uint256 consensusVersion
-    bytes32 internal constant CONSENSUS_VERSION_POSITION = keccak256("lido.BaseOracle.consensusVersion");
+    bytes32 internal constant CONSENSUS_VERSION_POSITION = keccak256("BaseOracle.consensusVersion");
 
     /// @dev Storage slot: uint256 lastProcessingRefSlot
-    bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION = keccak256("lido.BaseOracle.lastProcessingRefSlot");
+    bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION = keccak256("BaseOracle.lastProcessingRefSlot");
 
     /// @dev Storage slot: ConsensusReport consensusReport
-    bytes32 internal constant CONSENSUS_REPORT_POSITION = keccak256("lido.BaseOracle.consensusReport");
+    bytes32 internal constant CONSENSUS_REPORT_POSITION = keccak256("BaseOracle.consensusReport");
 
     uint256 public SECONDS_PER_SLOT;
     uint256 public GENESIS_TIME;

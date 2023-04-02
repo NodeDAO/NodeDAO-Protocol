@@ -25,7 +25,7 @@ contract Versioned {
 
     constructor() {
         // lock version in the implementation's storage to prevent initialization
-        CONTRACT_VERSION_POSITION.setStorageUint256(PETRIFIED_VERSION_MARK);
+        CONTRACT_VERSION_POSITION.setStorageUint256(0);
     }
 
     /// @notice Returns the current contract version.

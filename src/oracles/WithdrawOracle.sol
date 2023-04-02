@@ -6,6 +6,16 @@ import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
 
+struct WithdrawInfo {
+    uint256 operatorId;
+    // The income that should be issued by this operatorId in this settlement
+    uint128 clRewards;
+    // For this settlement, whether operatorId has exit node, if no exit node is 0;
+    // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
+    // If the value is less than 32, the corresponding amount will be punished
+    uint128 clCapital;
+}
+
 contract WithdrawOracle is BaseOracle {
     using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
@@ -22,16 +32,6 @@ contract WithdrawOracle is BaseOracle {
     error ArgumentOutOfBounds();
     error ExitRequestLimitNotZero();
     error ValidatorReportedExit(uint256 tokenId);
-
-    struct WithdrawInfo {
-        uint256 operatorId;
-        // The income that should be issued by this operatorId in this settlement
-        uint128 clRewards;
-        // For this settlement, whether operatorId has exit node, if no exit node is 0;
-        // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
-        // If the value is less than 32, the corresponding amount will be punished
-        uint128 clCapital;
-    }
 
     struct DataProcessingState {
         uint64 refSlot;
@@ -70,7 +70,7 @@ contract WithdrawOracle is BaseOracle {
         /// by the oracle can be obtained by calling getConsensusVersion().
         uint256 consensusVersion;
         /// @dev Reference slot for which the report was calculated. If the slot
-        /// contains a block, the state being reported should include all state
+        /// contains a block, the exitBlockNumbers being reported should include all state
         /// changes resulting from that block. The epoch containing the slot
         /// should be finalized prior to calculating the report.
         // beacon slot for reference
@@ -221,7 +221,7 @@ contract WithdrawOracle is BaseOracle {
         uint256[] calldata _exitTokenIds = data.exitTokenIds;
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
             // Add the token ids of the validator to the list. If an error occurs, the Validator is added
-            if (exitedTokenIds.add(_exitTokenIds[i])) {
+            if (!exitedTokenIds.add(_exitTokenIds[i])) {
                 revert ValidatorReportedExit(_exitTokenIds[i]);
             }
         }

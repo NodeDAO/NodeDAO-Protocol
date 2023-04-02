@@ -3,11 +3,11 @@ pragma solidity 0.8.8;
 
 import "forge-std/Test.sol";
 import "test/helpers/oracles/HashConsensusWithTimer.sol";
-import "test/helpers/oracles/MockHashConsensusWithTimerProvider.sol";
+import "test/helpers/oracles/MockOracleProvider.sol";
 import "test/helpers/oracles/MockReportProcessor.sol";
 
 // forge test --match-path  test/oracles/HashConsensusTest.sol
-contract HashConsensusTest is Test, MockHashConsensusWithTimerProvider {
+contract HashConsensusTest is Test, MockOracleProvider {
     HashConsensusWithTimer consensus;
     MockReportProcessor reportProcessor;
     MockReportProcessor reportProcessor2;
@@ -421,7 +421,7 @@ contract HashConsensusTest is Test, MockHashConsensusWithTimerProvider {
         // to simulate situation when processing still in progress
 
         MockReportProcessor.SubmitReportLastCall memory submitReportLastCall2 =
-        reportProcessor2.getLastCall_submitReport();
+            reportProcessor2.getLastCall_submitReport();
         assertEq(submitReportLastCall2.callCount, 1);
     }
 }
