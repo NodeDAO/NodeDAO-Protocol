@@ -26,27 +26,27 @@ contract MockHashConsensusWithTimerProvider is CommonConstantProvider {
     address public constant MEMBER_4 = address(14);
     address public constant MEMBER_5 = address(15);
 
-    function computeTimestampAtEpoch(uint256 _epoch) public view returns (uint256) {
+    function computeTimestampAtEpoch(uint256 _epoch) public pure returns (uint256) {
         return GENESIS_TIME + _epoch * SECONDS_PER_EPOCH;
     }
 
-    function computeTimestampAtSlot(uint256 _slot) public view returns (uint256) {
+    function computeTimestampAtSlot(uint256 _slot) public pure returns (uint256) {
         return GENESIS_TIME + _slot * SECONDS_PER_SLOT;
     }
 
-    function computeEpochFirstSlot(uint256 _epoch) public view returns (uint256) {
+    function computeEpochFirstSlot(uint256 _epoch) public pure returns (uint256) {
         return _epoch * SLOTS_PER_EPOCH;
     }
 
-    function computeEpochFirstSlotAt(uint256 _time) public view returns (uint256) {
+    function computeEpochFirstSlotAt(uint256 _time) public pure returns (uint256) {
         return computeEpochFirstSlot(computeEpochAt(_time));
     }
 
-    function computeSlotAt(uint256 _time) public view returns (uint256) {
+    function computeSlotAt(uint256 _time) public pure returns (uint256) {
         return (_time - GENESIS_TIME) / SECONDS_PER_SLOT;
     }
 
-    function computeEpochAt(uint256 _time) public view returns (uint256) {
+    function computeEpochAt(uint256 _time) public pure returns (uint256) {
         return computeSlotAt(_time) / SLOTS_PER_EPOCH;
     }
 

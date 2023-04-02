@@ -10,9 +10,11 @@ import "test/helpers/oracles/MockReportProcessor.sol";
 contract HashConsensusTest is Test, MockHashConsensusWithTimerProvider {
     HashConsensusWithTimer consensus;
     MockReportProcessor reportProcessor;
+    MockReportProcessor reportProcessor2;
 
     function setUp() public {
         (consensus, reportProcessor) = deployHashConsensusMock();
+        reportProcessor2 = new MockReportProcessor(CONSENSUS_VERSION);
 
         vm.startPrank(DAO);
         consensus.updateInitialEpoch(INITIAL_EPOCH);
@@ -210,5 +212,216 @@ contract HashConsensusTest is Test, MockHashConsensusWithTimerProvider {
         (uint256 refSlot, uint256 reportProcessingDeadlineSlot) = consensus.getCurrentFrame();
         assertEq(refSlot, computeEpochFirstSlot(6) - 1);
         assertEq(reportProcessingDeadlineSlot, computeEpochFirstSlot(11) - 1);
+
+        consensus.setTime(computeTimestampAtEpoch(11));
+        (uint256 refSlot1, uint256 reportProcessingDeadlineSlot1) = consensus.getCurrentFrame();
+        assertEq(refSlot1, computeEpochFirstSlot(11) - 1);
+        assertEq(reportProcessingDeadlineSlot1, computeEpochFirstSlot(16) - 1);
+    }
+
+    // forge test -vvvv --match-test testInOrDecreaseFrameCase
+    function testInOrDecreaseFrameCase() public {
+        assertEq(consensus.getTime(), computeTimestampAtEpoch(INITIAL_EPOCH));
+
+        vm.prank(DAO);
+        consensus.setFrameConfig(5, 0);
+        (uint256 initialEpoch,,) = consensus.getFrameConfig();
+        assertEq(initialEpoch, INITIAL_EPOCH);
+
+        /// we're at the last slot of the frame 1 spanning epochs 6-10
+        ///
+        ///        epochs  00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+        /// frames before    |-------------r|-------------^|--------------|--------------|
+        ///  frames after    |-------------r|-------------^------|--------------------|---
+        ///                  |
+        /// NOT like this    |-------------------r|-------^-------------|-----------------
+        consensus.setTime(computeTimestampAtEpoch(11) - SECONDS_PER_SLOT);
+
+        (uint256 refSlot, uint256 reportProcessingDeadlineSlot) = consensus.getCurrentFrame();
+        assertEq(refSlot, computeEpochFirstSlot(6) - 1);
+        assertEq(reportProcessingDeadlineSlot, computeEpochFirstSlot(11) - 1);
+
+        /// When frame is set from 5 to 7, the starting slot remains the same and the next reported slot changes
+        vm.prank(DAO);
+        consensus.setFrameConfig(7, 0);
+        (uint256 refSlot1, uint256 reportProcessingDeadlineSlot1) = consensus.getCurrentFrame();
+        assertEq(refSlot1, computeEpochFirstSlot(6) - 1);
+        assertEq(reportProcessingDeadlineSlot1, computeEpochFirstSlot(13) - 1);
+
+        /// ----------------------------Omit the test----------------------------------------
+        /// decreasing the frame size cannot decrease the current reference slot
+        ///
+        // The same goes for reducing the frame, say from 5 to 4
+        /// we're in the first half of the frame 1 spanning epochs 6-10
+        ///
+        ///        epochs  00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+        /// frames before    |-------------r|---^----------|--------------|--------------|
+        ///  frames after    |-------------r|---^-------|-----------|-----------|--------|
+        ///                  |
+        /// NOT like this    |----------r|------^----|-----------|-----------|-----------|
+        ///
+        /// assertEq(refSlot1, computeEpochFirstSlot(6) - 1);
+        //  assertEq(reportProcessingDeadlineSlot1, computeEpochFirstSlot(10) - 1);
+        ///---------------------------------------------------------------------------------
+        /// we're at the end of the frame 1 spanning epochs 6-10
+        ///
+        ///        epochs  00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+        /// frames before    |-------------r|------------^-|--------------|--------------|
+        ///  frames after    |--------------|----------r|^----------|-----------|---------
+        ///                  |
+        /// NOT like this    |-----------|----------r|---^-------|-----------|-----------|
+        ///
+        /// assertEq(refSlot1, computeEpochFirstSlot(10) - 1);
+        //  assertEq(reportProcessingDeadlineSlot1, computeEpochFirstSlot(14) - 1);
+    }
+
+    /// -------------------------------Report Test-------------------------------------------------
+
+    // forge test -vvvv --match-test testReportingChangeFrame
+    // reporting frame changes as more time passes
+    function testReportingChangeFrame() public {
+        (uint256 refSlot, uint256 reportProcessingDeadlineSlot) = consensus.getCurrentFrame();
+
+        uint256 time = consensus.getTime();
+        uint256 expectedRefSlot = computeEpochFirstSlotAt(time) - 1;
+        uint256 expectedDeadlineSlot = expectedRefSlot + EPOCHS_PER_FRAME * SLOTS_PER_EPOCH;
+
+        assertEq(refSlot, expectedRefSlot);
+        assertEq(reportProcessingDeadlineSlot, expectedDeadlineSlot);
+
+        // Add a frame
+        consensus.advanceTimeBy(SECONDS_PER_FRAME);
+        (uint256 refSlot1, uint256 reportProcessingDeadlineSlot1) = consensus.getCurrentFrame();
+        assertEq(refSlot1, expectedRefSlot + SLOTS_PER_FRAME);
+        assertEq(reportProcessingDeadlineSlot1, expectedDeadlineSlot + SLOTS_PER_FRAME);
+    }
+
+    // forge test -vvvv --match-test testFirstMemberVoteHash3
+    // first member votes for hash 3
+    function testFirstMemberVoteHash3() public {
+        vm.prank(DAO);
+        consensus.addMember(MEMBER_1, 1);
+
+        HashConsensusWithTimer.MemberConsensusState memory result = consensus.getConsensusStateForMember(MEMBER_1);
+        assertTrue(result.canReport);
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        vm.prank(MEMBER_1);
+        consensus.submitReport(refSlot, HASH_3, CONSENSUS_VERSION);
+    }
+
+    // forge test -vvvv --match-test testReportNotReached
+    // consensus is not reached
+    function testReportNotReached() public {
+        (, bytes32 consensusReport, bool isReportProcessing) = consensus.getConsensusState();
+        assertEq(consensusReport, ZERO_HASH);
+        assertFalse(isReportProcessing);
+
+        MockReportProcessor.SubmitReportLastCall memory submitReportLastCall =
+            reportProcessor.getLastCall_submitReport();
+        assertEq(submitReportLastCall.callCount, 0);
+
+        HashConsensusWithTimer.MemberConsensusState memory memberInfo = consensus.getConsensusStateForMember(MEMBER_1);
+        assertEq(memberInfo.currentFrameConsensusReport, ZERO_HASH);
+    }
+
+    // forge test -vvvv --match-test testReportReached
+    // consensus is reached
+    function testReportReached() public {
+        vm.startPrank(DAO);
+        consensus.addMember(MEMBER_1, 1);
+        consensus.addMember(MEMBER_2, 2);
+        vm.stopPrank();
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+        vm.prank(MEMBER_1);
+        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        vm.prank(MEMBER_2);
+        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+
+        (, bytes32 reportState1,) = consensus.getConsensusState();
+        assertEq(reportState1, HASH_1);
+
+        MockReportProcessor.SubmitReportLastCall memory submitReportLastCall =
+            reportProcessor.getLastCall_submitReport();
+        assertEq(submitReportLastCall.callCount, 1);
+
+        // ------------Second report-----------
+        // add a frame for next report
+        consensus.advanceTimeBy(SECONDS_PER_FRAME);
+
+        (uint256 refSlot2,) = consensus.getCurrentFrame();
+        vm.prank(MEMBER_1);
+        consensus.submitReport(refSlot2, HASH_1, CONSENSUS_VERSION);
+        vm.prank(MEMBER_2);
+        consensus.submitReport(refSlot2, HASH_1, CONSENSUS_VERSION);
+
+        MockReportProcessor.SubmitReportLastCall memory submitReportLastCall2 =
+            reportProcessor.getLastCall_submitReport();
+        assertEq(submitReportLastCall2.callCount, 2);
+    }
+
+    // forge test -vvvv --match-test testConsensusReportAlreadyProcessing
+    // reverts with ConsensusReportAlreadyProcessing
+    function testConsensusReportAlreadyProcessing() public {
+        vm.prank(DAO);
+        consensus.addMember(MEMBER_1, 1);
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+        vm.prank(MEMBER_1);
+        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+
+        reportProcessor.startReportProcessing();
+
+        vm.prank(MEMBER_1);
+        vm.expectRevert(abi.encodeWithSignature("ConsensusReportAlreadyProcessing()"));
+        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+    }
+
+    // forge test -vvvv --match-test testDuplicateReport
+    // reverts with DuplicateReport
+    function testDuplicateReport() public {
+        vm.prank(DAO);
+        consensus.addMember(MEMBER_1, 1);
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+        vm.prank(MEMBER_1);
+        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+
+        vm.prank(MEMBER_1);
+        vm.expectRevert(abi.encodeWithSignature("DuplicateReport()"));
+        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+    }
+
+    ///-----------------------Test Two ReportProcessor-----------------------------------------
+
+    // forge test -vvvv --match-test testTwoReportProcessor
+    // consensus is reached
+    function testTwoReportProcessor() public {
+        // test properly set initial report processor
+        assertEq(consensus.getReportProcessor(), address(reportProcessor));
+
+        // checks next processor is not the same as previous
+        vm.expectRevert(abi.encodeWithSignature("NewProcessorCannotBeTheSame()"));
+        consensus.setReportProcessor(address(reportProcessor));
+
+        // test ReportProcessorSet
+        consensus.setReportProcessor(address(reportProcessor2));
+
+        //------test callCount ------
+        vm.prank(DAO);
+        consensus.addMember(MEMBER_1, 1);
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+        vm.prank(MEMBER_1);
+        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+
+        // There is no `processor.startReportProcessing()`
+        // to simulate situation when processing still in progress
+
+        MockReportProcessor.SubmitReportLastCall memory submitReportLastCall2 =
+        reportProcessor2.getLastCall_submitReport();
+        assertEq(submitReportLastCall2.callCount, 1);
     }
 }
