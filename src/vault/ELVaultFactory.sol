@@ -32,11 +32,10 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
      * @param _liquidStakingAddress liquidStaking contract address
      * @param _dao Dao Address
      */
-    function initialize(
-        address _ELVaultImplementationAddress,
-        address _liquidStakingAddress,
-        address _dao
-    ) public initializer {
+    function initialize(address _ELVaultImplementationAddress, address _liquidStakingAddress, address _dao)
+        public
+        initializer
+    {
         __Ownable_init();
         __UUPSUpgradeable_init();
 

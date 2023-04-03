@@ -186,7 +186,7 @@ abstract contract BaseContract {
 
         // initialize ELVaultFactory
         ELVaultFactory(vaultFactoryContractProxy).initialize(
-            address(vaultContract), address(vnftProxy), address(liquidStakingProxy), _daoEOA
+            address(vaultContract), address(liquidStakingProxy), _daoEOA
         );
 
         // initialize NodeOperatorRegistry
