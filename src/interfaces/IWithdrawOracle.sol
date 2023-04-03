@@ -8,7 +8,7 @@ interface IWithdrawOracle {
     function getClBalances() external view returns (uint256);
 
     /**
-     * @return {uint256} The total balance of the consensus layer
+     * @return {uint256} Consensus Vault contract balance
      */
     function getClVaultBalances() external view returns (uint256);
 

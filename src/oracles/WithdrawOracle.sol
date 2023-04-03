@@ -102,8 +102,10 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     // current pending balance
     uint256 public pendingBalances;
 
+    /// Consensus layer NodeDao's validators balance
     uint256 public clBalances;
 
+    /// Consensus Vault contract balance
     uint256 public clVaultBalance;
 
     address public liquidStakingContractAddress;
