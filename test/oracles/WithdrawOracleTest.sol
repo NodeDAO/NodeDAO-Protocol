@@ -183,10 +183,16 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     function testMockWithdrawOracleReportDataCount() public {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
-        // 45000 gas:2143760750
-        uint256 count = 45000;
+        // exitCount：200 opsCount：0  gas:9071357
+        // exitCount：0 opsCount：200  gas:125373
+        // exitCount：0 opsCount：1000  gas:429757
+        // exitCount：0 opsCount：10000  gas:5404472
+        // exitCount：10 opsCount：10000  gas:5859629
+        // exitCount：100 opsCount：10000  gas:9938114
+        uint256 exitCount = 100;
+        uint256 opsCount = 10000;
 
-        bytes32 hash = mockWithdrawOracleReportData_countHash(refSlot, count);
+        bytes32 hash = mockWithdrawOracleReportData_countHash(refSlot, exitCount, opsCount);
 
         vm.prank(MEMBER_1);
         consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
@@ -196,6 +202,6 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
 
         vm.prank(MEMBER_1);
-        oracle.submitReportData(mockWithdrawOracleReportData_count(refSlot, count), CONSENSUS_VERSION);
+        oracle.submitReportData(mockWithdrawOracleReportData_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION);
     }
 }

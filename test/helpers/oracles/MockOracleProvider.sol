@@ -277,44 +277,44 @@ contract MockOracleProvider is CommonConstantProvider {
         return hash1 == hash2;
     }
 
-    function mockWithdrawOracleReportData_count(uint256 refSlot, uint256 count)
+    function mockWithdrawOracleReportData_count(uint256 refSlot, uint256 exitCount, uint256 opsCount)
         public
         pure
         returns (WithdrawOracleWithTimer.ReportData memory reportData)
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.reportExitedCount = count;
+        reportData.reportExitedCount = exitCount;
         reportData.dataFormat = DATA_FORMAT_LIST;
         reportData.data = ZERO_BYTES;
 
-        uint256[] memory exitTokenIds = new uint256[](count);
-        for (uint256 i = 0; i < count; ++i) {
+        uint256[] memory exitTokenIds = new uint256[](exitCount);
+        for (uint256 i = 0; i < exitCount; ++i) {
             exitTokenIds[i] = i;
         }
 
         reportData.exitTokenIds = exitTokenIds;
 
-        uint256[] memory exitBlockNumbers = new uint256[](count);
-        for (uint256 i = 0; i < count; ++i) {
+        uint256[] memory exitBlockNumbers = new uint256[](exitCount);
+        for (uint256 i = 0; i < exitCount; ++i) {
             exitBlockNumbers[i] = 1001;
         }
         reportData.exitBlockNumbers = exitBlockNumbers;
 
-        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](count);
+        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](opsCount);
         WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
-        for (uint256 i = 0; i < count; ++i) {
+        for (uint256 i = 0; i < opsCount; ++i) {
             withdrawInfos[i] = withdrawInfo1;
         }
 
         reportData.withdrawInfos = withdrawInfos;
     }
 
-    function mockWithdrawOracleReportData_countHash(uint256 refSlot, uint256 count)
+    function mockWithdrawOracleReportData_countHash(uint256 refSlot, uint256 exitCount, uint256 opsCount)
         public
         pure
         returns (bytes32 hash)
     {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportData_count(refSlot, count)));
+        hash = keccak256(abi.encode(mockWithdrawOracleReportData_count(refSlot, exitCount, opsCount)));
     }
 }

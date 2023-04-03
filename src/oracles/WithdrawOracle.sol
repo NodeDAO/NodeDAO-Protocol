@@ -31,7 +31,7 @@ contract WithdrawOracle is BaseOracle {
     error UnexpectedRequestsDataLength();
     error ArgumentOutOfBounds();
     error ExitRequestLimitNotZero();
-    error ValidatorReportedExit(uint256 tokenId);
+    error ValidatorReportedExited(uint256 tokenId);
 
     struct DataProcessingState {
         uint64 refSlot;
@@ -222,7 +222,7 @@ contract WithdrawOracle is BaseOracle {
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
             // Add the token ids of the validator to the list. If an error occurs, the Validator is added
             if (!exitedTokenIds.add(_exitTokenIds[i])) {
-                revert ValidatorReportedExit(_exitTokenIds[i]);
+                revert ValidatorReportedExited(_exitTokenIds[i]);
             }
         }
 
