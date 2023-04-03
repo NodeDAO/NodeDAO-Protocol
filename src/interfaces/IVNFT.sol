@@ -68,7 +68,12 @@ interface IVNFT is IERC721AUpgradeable {
      * @param _to - The recipient of the nft
      * @param _operatorId - The operator repsonsible for operating the physical node
      */
-    function whiteListMint(bytes calldata _pubkey, bytes calldata _withdrawalCredentials, address _to, uint256 _operatorId) external returns (uint256);
+    function whiteListMint(
+        bytes calldata _pubkey,
+        bytes calldata _withdrawalCredentials,
+        address _to,
+        uint256 _operatorId
+    ) external returns (uint256);
 
     /**
      * @notice Burns a Validator nft (vNFT)

@@ -52,7 +52,7 @@ contract VNFT is
     mapping(uint256 => uint256) internal operatorExitButNoBurnNftCounts;
     // key is tokenId, value is gasHeight
     mapping(uint256 => uint256) internal userNftGasHeights;
-     // key is operatorId, value is nft counts
+    // key is operatorId, value is nft counts
     mapping(uint256 => uint256) internal userActiceNftCounts;
 
     event NFTMinted(uint256 _tokenId, bytes withdrawalCredentials);
@@ -95,7 +95,6 @@ contract VNFT is
             if (userNftWithdrawalCredentials[i].length != 0) {
                 continue;
             }
-
 
             activeCounts += 1;
         }
@@ -293,11 +292,12 @@ contract VNFT is
      * @param _to - The recipient of the nft
      * @param _operatorId - The operator repsonsible for operating the physical node
      */
-    function whiteListMint(bytes calldata _pubkey, bytes calldata _withdrawalCredentials, address _to, uint256 _operatorId)
-        external
-        onlyLiquidStaking
-        returns (uint256)
-    {
+    function whiteListMint(
+        bytes calldata _pubkey,
+        bytes calldata _withdrawalCredentials,
+        address _to,
+        uint256 _operatorId
+    ) external onlyLiquidStaking returns (uint256) {
         require(totalSupply() + 1 <= MAX_SUPPLY, "Exceed MAX_SUPPLY");
 
         uint256 nextTokenId = _nextTokenId();
@@ -308,7 +308,7 @@ contract VNFT is
 
             require(_withdrawalCredentials.length != 0, "withdrawalCredentials can not be empty");
             // todo If the user fills in the wrong address, this is an invalid address. How to deal with it and how to protect it?
-            userNftWithdrawalCredentials[nextTokenId] = _withdrawalCredentials; 
+            userNftWithdrawalCredentials[nextTokenId] = _withdrawalCredentials;
         } else {
             require(validatorRecords[_pubkey] == 0, "Pub key already in used");
             validatorRecords[_pubkey] = _operatorId;
@@ -316,7 +316,8 @@ contract VNFT is
             uint256[] memory emptyNfts = operatorEmptyNfts[_operatorId];
             for (uint256 i = operatorEmptyNftIndex[_operatorId]; i < emptyNfts.length; ++i) {
                 uint256 tokenId = emptyNfts[i];
-                if (_ownershipAt(tokenId).burned) { // When the nft has not been filled, it is unstaked by the user
+                if (_ownershipAt(tokenId).burned) {
+                    // When the nft has not been filled, it is unstaked by the user
                     continue;
                 }
 
@@ -357,7 +358,7 @@ contract VNFT is
             emptyNftCounts -= 1;
         }
 
-        if (userNftExitBlockNumbers[_tokenId] != 0){
+        if (userNftExitBlockNumbers[_tokenId] != 0) {
             operatorExitButNoBurnNftCounts[validators[_tokenId].operatorId] -= 1;
         }
     }
@@ -391,10 +392,10 @@ contract VNFT is
             require(number <= block.number, "invalid block height");
             userNftExitBlockNumbers[tokenId] = number;
             operatorExitButNoBurnNftCounts[validators[tokenId].operatorId] += 1;
-            
+
             if (userNftWithdrawalCredentials[tokenId].length != 0) {
                 // The user's nft has exited, but there is no claim, userActiceNftCounts needs to be updated
-                userActiceNftCounts[validators[tokenId].operatorId] -= 1; 
+                userActiceNftCounts[validators[tokenId].operatorId] -= 1;
             }
         }
     }

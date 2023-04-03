@@ -118,7 +118,7 @@ interface INodeOperatorsRegistry {
      */
     function getPledgeBalanceOfOperator(uint256 _operatorId) external view returns (uint256, uint256);
 
-    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns(uint256[] memory);
+    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory);
     /**
      * @notice Get operator owner address
      * @param _id operator id

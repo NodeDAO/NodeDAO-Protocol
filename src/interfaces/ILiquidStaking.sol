@@ -19,7 +19,6 @@ interface ILiquidStaking {
      */
     function receiveRewards(uint256 _rewards) external payable;
 
- 
     function slashReceive(uint256[] memory _operatorIds, uint256[] memory _amounts) external payable;
 
     function nftExitHandle(uint256[] memory tokenIds, uint256[] memory exitBlockNumbers) external;
@@ -27,10 +26,14 @@ interface ILiquidStaking {
     function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
     function slashOperator(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
     function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable;
-    function claimRewardsOfUser(uint256 _operatorId, uint256[] memory _tokenIds, uint256[] memory _amounts, uint256 _gasHeight) external;
+    function claimRewardsOfUser(
+        uint256 _operatorId,
+        uint256[] memory _tokenIds,
+        uint256[] memory _amounts,
+        uint256 _gasHeight
+    ) external;
     function claimRewardsOfOperator(uint256 _operatorId, uint256 _reward) external;
     function claimRewardsOfDao(uint256[] memory _operatorIds, uint256[] memory _rewards) external;
-
 
     event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _totalAmount);
     event EthStake(address indexed _from, uint256 _amount, uint256 _amountOut);

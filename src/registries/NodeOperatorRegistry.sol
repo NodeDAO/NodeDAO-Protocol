@@ -88,7 +88,7 @@ contract NodeOperatorRegistry is
     mapping(uint256 => uint256) internal operatorComissionRate;
     uint256 public constant DEFAULT_COMISSION = 700;
 
-    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns(uint256[] memory){
+    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
         uint256[] memory comissions = new uint256[] (_operatorIds.length);
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             if (operatorComissionRate[i] == 0) {
@@ -222,7 +222,7 @@ contract NodeOperatorRegistry is
         require(operator.owner == msg.sender, "PERMISSION_DENIED");
 
         uint256 requireVault = calcRequirePledgeBalance(_operatorId);
-        
+
         // After the withdrawal is completed, the pledge funds requirements must also be met
         require(
             operatorPledgeVaultBalances[_operatorId] >= requireVault + _withdrawAmount, "Insufficient pledge balance"
@@ -233,7 +233,7 @@ contract NodeOperatorRegistry is
         emit OperatorWithdraw(_operatorId, _withdrawAmount, _to);
     }
 
-    function calcRequirePledgeBalance(uint256 _operatorId) internal view returns(uint256) {
+    function calcRequirePledgeBalance(uint256 _operatorId) internal view returns (uint256) {
         uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(_operatorId);
         // Pledge the required funds based on the number of validators
         uint256 requireVault = 0;

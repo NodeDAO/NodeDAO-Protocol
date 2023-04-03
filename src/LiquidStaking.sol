@@ -93,11 +93,11 @@ contract LiquidStaking is
     // key is operatorId, value is operatorUnstakeNftLists
     mapping(uint256 => uint256[]) internal operatorUnstakeNftLists;
 
-    function getOperatorWillExitNfsList(uint256 _operatorId)external view returns (uint256[] memory) {
+    function getOperatorWillExitNfsList(uint256 _operatorId) external view returns (uint256[] memory) {
         // operatorUnstakeNftLists & userNftExitBlockNumbers != 0
     }
 
-      function getOperatorLoadBlockNumber(uint256 _operatorId) external view returns (uint256) {
+    function getOperatorLoadBlockNumber(uint256 _operatorId) external view returns (uint256) {
         return operatorLoadBlockNumbers[_operatorId];
     }
 
@@ -233,7 +233,7 @@ contract LiquidStaking is
 
         emit EthStake(msg.sender, msg.value, amountOut);
     }
-    
+
     function _updateStakeFundLedger(uint256 _operatorId, uint256 _amount) internal {
         uint256 loanAmounts = operatorLoanRecords[_operatorId];
         if (loanAmounts > 0) {
@@ -277,7 +277,7 @@ contract LiquidStaking is
 
         emit EthUnstake(_operatorId, targetOperatorId, msg.sender, _amounts, amountOut);
     }
-    
+
     function _unstake(uint256 _operatorId, address _from, uint256 _amount) internal {
         StakeInfo[] memory records = stakeRecords[_from];
         require(records.length != 0, "No unstake quota");
@@ -296,9 +296,14 @@ contract LiquidStaking is
      * @notice Stake 32 multiples of eth to get the corresponding number of vNFTs
      * @param _operatorId operator id
      */
-    function stakeNFT(uint256 _operatorId, address withdrawalCredentialsAddress) external payable nonReentrant whenNotPaused {
+    function stakeNFT(uint256 _operatorId, address withdrawalCredentialsAddress)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+    {
         require(withdrawalCredentialsAddress != address(0), "withdrawalCredentialsAddress is an invalid address");
-        
+
         // operatorId must be a trusted operator
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
         require(msg.value % DEPOSIT_SIZE == 0, "Incorrect Ether amount");
@@ -352,9 +357,9 @@ contract LiquidStaking is
 
             emit NftUnstake(tokenId, operatorId);
         }
-    } 
+    }
 
-    function _updateUnstakeFundLedger(uint256 _ethOutAmount, uint256 _operatorId) internal returns (uint256) {  
+    function _updateUnstakeFundLedger(uint256 _ethOutAmount, uint256 _operatorId) internal returns (uint256) {
         uint256 targetOperatorId = _operatorId;
         bool isQuit = nodeOperatorRegistryContract.isQuitOperator(_operatorId);
         if (isQuit) {
@@ -426,15 +431,12 @@ contract LiquidStaking is
         bytes calldata _signature,
         bytes32 _depositDataRoot
     ) internal {
-
         bytes memory nextValidatorWithdrawalCredential = vNFTContract.getNextValidatorWithdrawalCredential(_operatorId);
         bytes memory _withdrawalCredential = (nextValidatorWithdrawalCredential.length != 0)
             ? nextValidatorWithdrawalCredential
             : liquidStakingWithdrawalCredentials;
 
-        depositContract.deposit{value: 32 ether}(
-            _pubkey, _withdrawalCredential, _signature, _depositDataRoot
-        );
+        depositContract.deposit{value: 32 ether}(_pubkey, _withdrawalCredential, _signature, _depositDataRoot);
 
         uint256 tokenId = vNFTContract.whiteListMint(_pubkey, _withdrawalCredential, address(this), _operatorId);
 
@@ -464,7 +466,7 @@ contract LiquidStaking is
 
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
             IELVault(vaultContractAddress).reinvestment(_amount);
-            
+
             _updateStakeFundLedger(operatorId, _amount);
             emit OperatorReinvestElRewards(operatorId, _amount);
         }
@@ -508,8 +510,13 @@ contract LiquidStaking is
 
         emit ArrearsReceiveOfSlash(_operatorId, _amount);
     }
-    
-    function claimRewardsOfUser(uint256 _operatorId, uint256[] memory _tokenIds, uint256[] memory _amounts, uint256 _gasHeight) external nonReentrant whenNotPaused onlyVaultManager {
+
+    function claimRewardsOfUser(
+        uint256 _operatorId,
+        uint256[] memory _tokenIds,
+        uint256[] memory _amounts,
+        uint256 _gasHeight
+    ) external nonReentrant whenNotPaused onlyVaultManager {
         require(_tokenIds.length == _tokenIds.length && _amounts.length != 0, "parameter invalid length");
         require(_gasHeight <= block.number, "_gasHeight invalid");
 
@@ -518,7 +525,7 @@ contract LiquidStaking is
         address owner = vNFTContract.ownerOf(_tokenIds[0]);
 
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
-            uint256 tokenId = _tokenIds[i]; 
+            uint256 tokenId = _tokenIds[i];
             require(owner == vNFTContract.ownerOf(tokenId), "different owners cannot batch");
             totalNftRewards += _amounts[i];
 
@@ -535,8 +542,12 @@ contract LiquidStaking is
         emit UserClaimRewards(_operatorId, _tokenIds, totalNftRewards);
     }
 
-
-    function claimRewardsOfOperator(uint256 _operatorId, uint256 _reward) external nonReentrant whenNotPaused onlyVaultManager {
+    function claimRewardsOfOperator(uint256 _operatorId, uint256 _reward)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyVaultManager
+    {
         require(operatorLoanRecords[_operatorId] == 0, "The operator is in arrears");
 
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
@@ -571,7 +582,12 @@ contract LiquidStaking is
         emit OperatorClaimRewards(_operatorId, _reward);
     }
 
-    function claimRewardsOfDao(uint256[] memory _operatorIds, uint256[] memory _rewards) external nonReentrant whenNotPaused onlyVaultManager {
+    function claimRewardsOfDao(uint256[] memory _operatorIds, uint256[] memory _rewards)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyVaultManager
+    {
         require(_operatorIds.length == _rewards.length && _rewards.length != 0, "parameter invalid length");
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 _operatorId = _operatorIds[i];

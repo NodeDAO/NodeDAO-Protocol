@@ -13,7 +13,7 @@ contract ELVault is ReentrancyGuard, Initializable {
     address public liquidStakingContractAddress;
     address public dao;
     uint256 public operatorId;
-    
+
     event DaoAddressChanged(address _oldDao, address _dao);
     event LiquidStakingChanged(address _from, address _to);
     event Transferred(address _to, uint256 _amount);
@@ -62,7 +62,7 @@ contract ELVault is ReentrancyGuard, Initializable {
      * @notice transfer ETH
      * @param _amount transfer amount
      */
-    function reinvestment(uint256 _amount)external nonReentrant onlyLiquidStaking {
+    function reinvestment(uint256 _amount) external nonReentrant onlyLiquidStaking {
         ILiquidStaking(liquidStakingContractAddress).receiveRewards{value: _amount}(_amount);
         emit RewardReinvestment(liquidStakingContractAddress, _amount);
     }
