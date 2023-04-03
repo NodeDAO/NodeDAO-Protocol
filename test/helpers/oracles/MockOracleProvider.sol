@@ -112,10 +112,10 @@ contract MockOracleProvider is CommonConstantProvider {
         return (consensus, oracle);
     }
 
-    function mockWithdrawOracleReportData_1(uint256 refSlot)
+    function mockWithdrawOracleReportDataMock1_1(uint256 refSlot)
         public
         pure
-        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+        returns (WithdrawOracleWithTimer.ReportDataMock1 memory reportData)
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
@@ -146,14 +146,14 @@ contract MockOracleProvider is CommonConstantProvider {
         reportData.withdrawInfos = withdrawInfos;
     }
 
-    function mockWithdrawOracleReportDataHash_1(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportData_1(refSlot)));
+    function mockWithdrawOracleReportDataMock1Hash_1(uint256 refSlot) public pure returns (bytes32 hash) {
+        hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_1(refSlot)));
     }
 
-    function mockWithdrawOracleReportData_2(uint256 refSlot)
+    function mockWithdrawOracleReportDataMock1_2(uint256 refSlot)
         public
         pure
-        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+        returns (WithdrawOracleWithTimer.ReportDataMock1 memory reportData)
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
@@ -182,14 +182,14 @@ contract MockOracleProvider is CommonConstantProvider {
         reportData.withdrawInfos = withdrawInfos;
     }
 
-    function mockWithdrawOracleReportDataHash_2(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportData_2(refSlot)));
+    function mockWithdrawOracleReportDataMock1Hash_2(uint256 refSlot) public pure returns (bytes32 hash) {
+        hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_2(refSlot)));
     }
 
-    function mockWithdrawOracleReportData_3(uint256 refSlot)
+    function mockWithdrawOracleReportDataMock1_3(uint256 refSlot)
         public
         pure
-        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+        returns (WithdrawOracleWithTimer.ReportDataMock1 memory reportData)
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
@@ -220,8 +220,8 @@ contract MockOracleProvider is CommonConstantProvider {
         reportData.withdrawInfos = withdrawInfos;
     }
 
-    function mockWithdrawOracleReportDataHash_3(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportData_3(refSlot)));
+    function mockWithdrawOracleReportDataMock1Hash_3(uint256 refSlot) public pure returns (bytes32 hash) {
+        hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_3(refSlot)));
     }
 
     function mockDifferentStructHashIsSame() public pure returns (bool) {
@@ -277,10 +277,10 @@ contract MockOracleProvider is CommonConstantProvider {
         return hash1 == hash2;
     }
 
-    function mockWithdrawOracleReportData_count(uint256 refSlot, uint256 exitCount, uint256 opsCount)
+    function mockWithdrawOracleReportDataMock1_count(uint256 refSlot, uint256 exitCount, uint256 opsCount)
         public
         pure
-        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+        returns (WithdrawOracleWithTimer.ReportDataMock1 memory reportData)
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
@@ -310,11 +310,11 @@ contract MockOracleProvider is CommonConstantProvider {
         reportData.withdrawInfos = withdrawInfos;
     }
 
-    function mockWithdrawOracleReportData_countHash(uint256 refSlot, uint256 exitCount, uint256 opsCount)
+    function mockWithdrawOracleReportDataMock1_countHash(uint256 refSlot, uint256 exitCount, uint256 opsCount)
         public
         pure
         returns (bytes32 hash)
     {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportData_count(refSlot, exitCount, opsCount)));
+        hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount)));
     }
 }

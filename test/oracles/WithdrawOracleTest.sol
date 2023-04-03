@@ -28,7 +28,7 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     function triggerConsensusOnHash() public {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
-        bytes32 hash = mockWithdrawOracleReportDataHash_1(refSlot);
+        bytes32 hash = mockWithdrawOracleReportDataMock1Hash_1(refSlot);
 
         vm.prank(MEMBER_1);
         consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
@@ -86,11 +86,11 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
 
         // Two structures array and array + Property hash
         console.log("-------struct hash 1 compare 2----------");
-        assertFalse(mockWithdrawOracleReportDataHash_1(refSlot) == mockWithdrawOracleReportDataHash_2(refSlot));
+        assertFalse(mockWithdrawOracleReportDataMock1Hash_1(refSlot) == mockWithdrawOracleReportDataMock1Hash_2(refSlot));
         console.log("-------struct hash 1 compare 3----------");
-        assertFalse(mockWithdrawOracleReportDataHash_1(refSlot) == mockWithdrawOracleReportDataHash_3(refSlot));
+        assertFalse(mockWithdrawOracleReportDataMock1Hash_1(refSlot) == mockWithdrawOracleReportDataMock1Hash_3(refSlot));
         console.log("-------struct hash 2 compare 3----------");
-        assertFalse(mockWithdrawOracleReportDataHash_2(refSlot) == mockWithdrawOracleReportDataHash_3(refSlot));
+        assertFalse(mockWithdrawOracleReportDataMock1Hash_2(refSlot) == mockWithdrawOracleReportDataMock1Hash_3(refSlot));
     }
 
     // forge test -vvvv --match-test testWithdrawOracleConfig
@@ -110,9 +110,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         assertEq(oracle.SECONDS_PER_SLOT(), SECONDS_PER_SLOT);
     }
 
-    // forge test -vvvv --match-test testInitReportDataState
+    // forge test -vvvv --match-test testInitReportDataMock1State
     // initially, consensus report is empty and is not being processed
-    function testInitReportDataState() public {
+    function testInitReportDataMock1State() public {
         (bytes32 initHash, uint256 initRefSlot, uint256 initProcessingDeadlineTime, bool initProcessingStarted) =
             oracle.getConsensusReport();
         assertEq(initHash, ZERO_HASH);
@@ -137,50 +137,50 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         triggerConsensusOnHash();
     }
 
-    // forge test -vvvv --match-test testReportDataFailForDataNotMatch
-    function testReportDataFailForDataNotMatch() public {
+    // forge test -vvvv --match-test testReportDataMock1FailForDataNotMatch
+    function testReportDataMock1FailForDataNotMatch() public {
         triggerConsensusOnHash();
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
-        console.log("-------mockWithdrawOracleReportData_2----------");
+        console.log("-------mockWithdrawOracleReportDataMock1_2----------");
 
         vm.prank(MEMBER_1);
         vm.expectRevert(
             abi.encodeWithSignature(
                 "UnexpectedDataHash(bytes32,bytes32)",
-                mockWithdrawOracleReportDataHash_1(refSlot),
-                mockWithdrawOracleReportDataHash_2(refSlot)
+                mockWithdrawOracleReportDataMock1Hash_1(refSlot),
+                mockWithdrawOracleReportDataMock1Hash_2(refSlot)
             )
         );
-        oracle.submitReportData(mockWithdrawOracleReportData_2(refSlot), CONSENSUS_VERSION);
+        oracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_2(refSlot), CONSENSUS_VERSION);
 
-        console.log("-------mockWithdrawOracleReportData_3----------");
+        console.log("-------mockWithdrawOracleReportDataMock1_3----------");
         vm.prank(MEMBER_1);
         vm.expectRevert(
             abi.encodeWithSignature(
                 "UnexpectedDataHash(bytes32,bytes32)",
-                mockWithdrawOracleReportDataHash_1(refSlot),
-                mockWithdrawOracleReportDataHash_3(refSlot)
+                mockWithdrawOracleReportDataMock1Hash_1(refSlot),
+                mockWithdrawOracleReportDataMock1Hash_3(refSlot)
             )
         );
-        oracle.submitReportData(mockWithdrawOracleReportData_3(refSlot), CONSENSUS_VERSION);
+        oracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_3(refSlot), CONSENSUS_VERSION);
     }
 
-    // forge test -vvvv --match-test testReportDataSuccess
-    function testReportDataSuccess() public {
+    // forge test -vvvv --match-test testReportDataMock1Success
+    function testReportDataMock1Success() public {
         // consensus 已达到上报状态
         triggerConsensusOnHash();
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
         vm.prank(MEMBER_1);
-        oracle.submitReportData(mockWithdrawOracleReportData_1(refSlot), CONSENSUS_VERSION);
+        oracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_1(refSlot), CONSENSUS_VERSION);
     }
 
-    // forge test -vvvv --match-test testMockWithdrawOracleReportDataCount
+    // forge test -vvvv --match-test testMockWithdrawOracleReportDataMock1Count
     // Pressure survey Report for gas
-    function testMockWithdrawOracleReportDataCount() public {
+    function testMockWithdrawOracleReportDataMock1Count() public {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
         // exitCount：200 opsCount：0  gas:9071357
@@ -192,7 +192,7 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         uint256 exitCount = 100;
         uint256 opsCount = 10000;
 
-        bytes32 hash = mockWithdrawOracleReportData_countHash(refSlot, exitCount, opsCount);
+        bytes32 hash = mockWithdrawOracleReportDataMock1_countHash(refSlot, exitCount, opsCount);
 
         vm.prank(MEMBER_1);
         consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
@@ -202,6 +202,6 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
 
         vm.prank(MEMBER_1);
-        oracle.submitReportData(mockWithdrawOracleReportData_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION);
+        oracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION);
     }
 }

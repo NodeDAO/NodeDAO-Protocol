@@ -6,16 +6,6 @@ import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
 
-struct WithdrawInfo {
-    uint256 operatorId;
-    // The income that should be issued by this operatorId in this settlement
-    uint128 clRewards;
-    // For this settlement, whether operatorId has exit node, if no exit node is 0;
-    // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
-    // If the value is less than 32, the corresponding amount will be punished
-    uint128 clCapital;
-}
-
 contract WithdrawOracle is BaseOracle {
     using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
@@ -80,7 +70,7 @@ contract WithdrawOracle is BaseOracle {
         ///
         /// Report core data
         ///
-        WithdrawInfo[] withdrawInfos;
+//        WithdrawInfo[] withdrawInfos;
         // Example Exit the token Id of the validator. No exit is an empty array.
         uint256[] exitTokenIds;
         // Height of exit block
@@ -124,7 +114,7 @@ contract WithdrawOracle is BaseOracle {
     uint256 public exitRequestLimit = 1000;
 
     // The exited validators
-    EnumerableSet.UintSet internal exitedTokenIds;
+    EnumerableSet.UintSet private exitedTokenIds;
 
     function initialize(
         uint256 secondsPerSlot,
