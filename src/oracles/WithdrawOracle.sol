@@ -104,6 +104,8 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     uint256 public clBalances;
 
+    uint256 public clVaultBalance;
+
     address public liquidStakingContractAddress;
 
     modifier onlyLiquidStaking() {
@@ -134,6 +136,10 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
      */
     function getClBalances() external view returns (uint256) {
         return clBalances;
+    }
+
+    function getClVaultBalances() external view returns (uint256) {
+        return clVaultBalance;
     }
 
     /**
