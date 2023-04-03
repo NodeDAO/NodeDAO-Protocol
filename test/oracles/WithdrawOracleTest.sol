@@ -67,6 +67,32 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         assertEq(procState.reportExitedCount, 0);
     }
 
+    // forge test -vvvv --match-test testStructHash
+    // result: The array hash is different; The structure is different, the hash is the same
+    function testStructHash() public {
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        // Two structures hash
+        console.log("-------Two different struct hash is same----------");
+        assertFalse(mockDifferentStructHashIsSame());
+        console.log("-------Two same struct hash is same----------");
+        assertTrue(mockSameStructHashIsSame());
+
+        // Two structures array hash
+        console.log("-------Two different struct array hash is same----------");
+        assertFalse(mockDifferentStructArrayHashIsSame());
+        console.log("-------Two same struct array hash is same----------");
+        assertTrue(mockSameStructArrayHashIsSame());
+
+        // Two structures array and array + Property hash
+        console.log("-------struct hash 1 compare 2----------");
+        assertFalse(mockWithdrawOracleReportDataHash_1(refSlot) == mockWithdrawOracleReportDataHash_2(refSlot));
+        console.log("-------struct hash 1 compare 3----------");
+        assertFalse(mockWithdrawOracleReportDataHash_1(refSlot) == mockWithdrawOracleReportDataHash_3(refSlot));
+        console.log("-------struct hash 2 compare 3----------");
+        assertFalse(mockWithdrawOracleReportDataHash_2(refSlot) == mockWithdrawOracleReportDataHash_3(refSlot));
+    }
+
     // forge test -vvvv --match-test testWithdrawOracleConfig
     function testWithdrawOracleConfig() public {
         //-------time-------
@@ -112,7 +138,6 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     }
 
     // forge test -vvvv --match-test testReportDataFailForDataNotMatch
-    // todo 结构体的值数据不一样 会成功
     function testReportDataFailForDataNotMatch() public {
         triggerConsensusOnHash();
 
@@ -132,13 +157,13 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
 
         console.log("-------mockWithdrawOracleReportData_3----------");
         vm.prank(MEMBER_1);
-//        vm.expectRevert(
-//            abi.encodeWithSignature(
-//                "UnexpectedDataHash(bytes32,bytes32)",
-//                mockWithdrawOracleReportDataHash_1(refSlot),
-//                mockWithdrawOracleReportDataHash_3(refSlot)
-//            )
-//        );
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "UnexpectedDataHash(bytes32,bytes32)",
+                mockWithdrawOracleReportDataHash_1(refSlot),
+                mockWithdrawOracleReportDataHash_3(refSlot)
+            )
+        );
         oracle.submitReportData(mockWithdrawOracleReportData_3(refSlot), CONSENSUS_VERSION);
     }
 
@@ -151,5 +176,26 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
 
         vm.prank(MEMBER_1);
         oracle.submitReportData(mockWithdrawOracleReportData_1(refSlot), CONSENSUS_VERSION);
+    }
+
+    // forge test -vvvv --match-test testMockWithdrawOracleReportDataCount
+    // Pressure survey Report for gas
+    function testMockWithdrawOracleReportDataCount() public {
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        // 45000 gas:2143760750
+        uint256 count = 45000;
+
+        bytes32 hash = mockWithdrawOracleReportData_countHash(refSlot, count);
+
+        vm.prank(MEMBER_1);
+        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        vm.prank(MEMBER_2);
+        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        vm.prank(MEMBER_3);
+        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+
+        vm.prank(MEMBER_1);
+        oracle.submitReportData(mockWithdrawOracleReportData_count(refSlot, count), CONSENSUS_VERSION);
     }
 }
