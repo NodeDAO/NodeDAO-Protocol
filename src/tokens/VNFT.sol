@@ -43,7 +43,19 @@ contract VNFT is
     // Record the last owner when nft burned
     mapping(uint256 => address) public lastOwners;
 
-    event NFTMinted(uint256 _tokenId);
+    // v2 storage
+    // key is tokenId, value is withdrawalCredentials
+    mapping(uint256 => bytes) internal userNftWithdrawalCredentials;
+    // key is tokenId, value is blockNumber
+    mapping(uint256 => uint256) internal userNftExitBlockNumbers;
+    // key is operatorId, value is nft ExitButNoBurn counts
+    mapping(uint256 => uint256) internal operatorExitButNoBurnNftCounts;
+    // key is tokenId, value is gasHeight
+    mapping(uint256 => uint256) internal userNftGasHeights;
+     // key is operatorId, value is nft counts
+    mapping(uint256 => uint256) internal userActiceNftCounts;
+
+    event NFTMinted(uint256 _tokenId, bytes withdrawalCredentials);
     event NFTBurned(uint256 _tokenId);
     event BaseURIChanged(string _before, string _after);
     event LiquidStakingChanged(address _before, address _after);
@@ -65,7 +77,7 @@ contract VNFT is
     /**
      * @notice Returns the validators that are active (may contain validator that are yet active on beacon chain)
      */
-    function activeValidators() external view returns (bytes[] memory) {
+    function activeValidatorsOfStakingPool() external view returns (bytes[] memory) {
         uint256 total = _nextTokenId();
         uint256 activeCounts = 0;
         TokenOwnership memory ownership;
@@ -79,6 +91,11 @@ contract VNFT is
             if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
                 continue;
             }
+
+            if (userNftWithdrawalCredentials[i].length != 0) {
+                continue;
+            }
+
 
             activeCounts += 1;
         }
@@ -95,6 +112,10 @@ contract VNFT is
                 continue;
             }
 
+            if (userNftWithdrawalCredentials[i].length != 0) {
+                continue;
+            }
+
             _validators[tokenIdsIdx++] = validators[i].pubkey;
         }
 
@@ -104,7 +125,7 @@ contract VNFT is
     /**
      * @notice Returns the tokenId that are active (may contain validator that are yet active on beacon chain)
      */
-    function activeNfts() external view returns (uint256[] memory) {
+    function activeNftsOfStakingPool() external view returns (uint256[] memory) {
         uint256 total = _nextTokenId();
         uint256 activeCounts = 0;
         TokenOwnership memory ownership;
@@ -116,6 +137,10 @@ contract VNFT is
             }
 
             if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
+                continue;
+            }
+
+            if (userNftWithdrawalCredentials[i].length != 0) {
                 continue;
             }
 
@@ -131,6 +156,10 @@ contract VNFT is
             }
 
             if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
+                continue;
+            }
+
+            if (userNftWithdrawalCredentials[i].length != 0) {
                 continue;
             }
 
@@ -264,7 +293,7 @@ contract VNFT is
      * @param _to - The recipient of the nft
      * @param _operatorId - The operator repsonsible for operating the physical node
      */
-    function whiteListMint(bytes calldata _pubkey, address _to, uint256 _operatorId)
+    function whiteListMint(bytes calldata _pubkey, bytes calldata _withdrawalCredentials, address _to, uint256 _operatorId)
         external
         onlyLiquidStaking
         returns (uint256)
@@ -274,16 +303,33 @@ contract VNFT is
         uint256 nextTokenId = _nextTokenId();
         if (_pubkey.length == 0) {
             emptyNftCounts += 1;
+            userActiceNftCounts[_operatorId] += 1;
             operatorEmptyNfts[_operatorId].push(nextTokenId);
+
+            require(_withdrawalCredentials.length != 0, "withdrawalCredentials can not be empty");
+            // todo If the user fills in the wrong address, this is an invalid address. How to deal with it and how to protect it?
+            userNftWithdrawalCredentials[nextTokenId] = _withdrawalCredentials; 
         } else {
             require(validatorRecords[_pubkey] == 0, "Pub key already in used");
             validatorRecords[_pubkey] = _operatorId;
 
-            if (operatorEmptyNfts[_operatorId].length != operatorEmptyNftIndex[_operatorId]) {
-                uint256 tokenId = operatorEmptyNfts[_operatorId][operatorEmptyNftIndex[_operatorId]];
-                operatorEmptyNftIndex[_operatorId] += 1;
+            uint256[] memory emptyNfts = operatorEmptyNfts[_operatorId];
+            for (uint256 i = operatorEmptyNftIndex[_operatorId]; i < emptyNfts.length; ++i) {
+                uint256 tokenId = emptyNfts[i];
+                if (_ownershipAt(tokenId).burned) { // When the nft has not been filled, it is unstaked by the user
+                    continue;
+                }
+
+                // check withdrawal credentials before filling
+                require(
+                    keccak256(userNftWithdrawalCredentials[nextTokenId]) == keccak256(_withdrawalCredentials),
+                    "withdrawalCredentials mismatch"
+                );
+
+                operatorEmptyNftIndex[_operatorId] = i + 1;
                 validators[tokenId].pubkey = _pubkey;
                 emptyNftCounts -= 1;
+                userNftGasHeights[tokenId] = block.number;
                 return tokenId;
             }
         }
@@ -292,7 +338,7 @@ contract VNFT is
         operatorRecords[_operatorId] += 1;
 
         _safeMint(_to, 1);
-        emit NFTMinted(nextTokenId);
+        emit NFTMinted(nextTokenId, _withdrawalCredentials);
 
         return nextTokenId;
     }
@@ -306,6 +352,75 @@ contract VNFT is
         _burn(_tokenId);
         emit NFTBurned(_tokenId);
         operatorRecords[validators[_tokenId].operatorId] -= 1;
+
+        if (keccak256(validators[_tokenId].pubkey) == keccak256(bytes(""))) {
+            emptyNftCounts -= 1;
+        }
+
+        if (userNftExitBlockNumbers[_tokenId] != 0){
+            operatorExitButNoBurnNftCounts[validators[_tokenId].operatorId] -= 1;
+        }
+    }
+
+    function getUserNftWithdrawalCredentialOfTokenId(uint256 tokenId) external view returns (bytes memory) {
+        return userNftWithdrawalCredentials[tokenId];
+    }
+
+    function getNextValidatorWithdrawalCredential(uint256 _operatorId) external view returns (bytes memory) {
+        uint256[] memory emptyNfts = operatorEmptyNfts[_operatorId];
+        for (uint256 i = operatorEmptyNftIndex[_operatorId]; i < emptyNfts.length; ++i) {
+            uint256 tokenId = emptyNfts[i];
+            if (_ownershipAt(tokenId).burned) {
+                continue;
+            }
+
+            return userNftWithdrawalCredentials[tokenId];
+        }
+
+        return bytes("");
+    }
+
+    function setNftExitBlockNumbers(uint256[] memory tokenIds, uint256[] memory exitBlockNumbers)
+        external
+        onlyLiquidStaking
+    {
+        for (uint256 i = 0; i < tokenIds.length; ++i) {
+            uint256 tokenId = tokenIds[i];
+            require(userNftExitBlockNumbers[tokenId] == 0, "The tokenId already report");
+            uint256 number = exitBlockNumbers[i];
+            require(number <= block.number, "invalid block height");
+            userNftExitBlockNumbers[tokenId] = number;
+            operatorExitButNoBurnNftCounts[validators[tokenId].operatorId] += 1;
+            
+            if (userNftWithdrawalCredentials[tokenId].length != 0) {
+                // The user's nft has exited, but there is no claim, userActiceNftCounts needs to be updated
+                userActiceNftCounts[validators[tokenId].operatorId] -= 1; 
+            }
+        }
+    }
+
+    function getNftExitBlockNumbers(uint256[] memory _tokenIds) external view returns (uint256[] memory) {
+        uint256[] memory numbers = new uint256[] (_tokenIds.length);
+        for (uint256 i = 0; i < _tokenIds.length; ++i) {
+            uint256 tokenId = _tokenIds[i];
+            numbers[i] = userNftExitBlockNumbers[tokenId];
+        }
+
+        return numbers;
+    }
+
+    function setUserNftGasHeight(uint256 _tokenId, uint256 _number) external onlyLiquidStaking {
+        require(userNftGasHeights[_tokenId] != 0, "This vNFT is not the user's vNFT");
+        userNftGasHeights[_tokenId] = _number;
+    }
+
+    function getUsernftGasHeight(uint256[] memory _tokenIds) external view returns (uint256[] memory) {
+        uint256[] memory gasHeights = new uint256[] (_tokenIds.length);
+        for (uint256 i = 0; i < _tokenIds.length; ++i) {
+            gasHeights[i] = userNftGasHeights[i];
+        }
+
+        return gasHeights;
     }
 
     /**
@@ -313,7 +428,11 @@ contract VNFT is
      * @param _operatorId - operator id
      */
     function getNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
-        return operatorRecords[_operatorId];
+        return operatorRecords[_operatorId] - operatorExitButNoBurnNftCounts[_operatorId];
+    }
+
+    function getUserActiveNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
+        return userActiceNftCounts[_operatorId];
     }
 
     // // metadata URI

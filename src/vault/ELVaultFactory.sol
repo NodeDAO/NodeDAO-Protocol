@@ -17,7 +17,6 @@ import "src/interfaces/IELVaultFactory.sol";
  */
 contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public dao;
-    address public vNFTContract;
     address public liquidStakingAddress;
     address public beacon;
     address public nodeOperatorRegistryAddress;
@@ -30,13 +29,11 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
     /**
      * @notice initialize ELVaultFactory Contract
      * @param _ELVaultImplementationAddress vault contract implementation address
-     * @param _nVNFTContractAddress vNFT contract address
      * @param _liquidStakingAddress liquidStaking contract address
      * @param _dao Dao Address
      */
     function initialize(
         address _ELVaultImplementationAddress,
-        address _nVNFTContractAddress,
         address _liquidStakingAddress,
         address _dao
     ) public initializer {
@@ -49,7 +46,6 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
 
         _beacon.transferOwnership(_dao);
         beacon = address(_beacon);
-        vNFTContract = _nVNFTContractAddress;
         dao = _dao;
         liquidStakingAddress = _liquidStakingAddress;
     }
@@ -62,7 +58,7 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
      */
     function create(uint256 _operatorId) external onlyNodeOperatorRegistry returns (address) {
         address proxyAddress = address(
-            new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, vNFTContract, dao, _operatorId, liquidStakingAddress, nodeOperatorRegistryAddress))
+            new BeaconProxy(beacon, abi.encodeWithSelector(ELVault.initialize.selector, dao, liquidStakingAddress, _operatorId))
         );
         emit ELVaultProxyDeployed(proxyAddress);
         return proxyAddress;
