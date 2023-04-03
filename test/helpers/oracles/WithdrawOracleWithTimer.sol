@@ -100,7 +100,6 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
             revert InvalidRequestsDataLength();
         }
 
-
         // todo 调用结算
 
         // 退出数量不一致 报错

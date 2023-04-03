@@ -6,6 +6,16 @@ import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
 
+struct WithdrawInfo {
+    uint256 operatorId;
+    // The income that should be issued by this operatorId in this settlement
+    uint128 clRewards;
+    // For this settlement, whether operatorId has exit node, if no exit node is 0;
+    // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
+    // If the value is less than 32, the corresponding amount will be punished
+    uint128 clCapital;
+}
+
 contract WithdrawOracle is BaseOracle {
     using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
@@ -26,7 +36,6 @@ contract WithdrawOracle is BaseOracle {
     struct DataProcessingState {
         uint64 refSlot;
         uint64 reportExitedCount;
-        uint16 dataFormat;
     }
 
     struct ProcessingState {
@@ -41,8 +50,6 @@ contract WithdrawOracle is BaseOracle {
         /// @notice Whether any report data for the for the current reporting frame has been
         /// already submitted.
         bool dataSubmitted;
-        /// @notice Format of the report data for the current reporting frame.
-        uint256 dataFormat;
         /// @notice Number of exits reported for the current reporting frame.
         uint256 reportExitedCount;
     }
@@ -70,42 +77,15 @@ contract WithdrawOracle is BaseOracle {
         ///
         /// Report core data
         ///
-        //        WithdrawInfo[] withdrawInfos;
+        WithdrawInfo[] withdrawInfos;
         // Example Exit the token Id of the validator. No exit is an empty array.
         uint256[] exitTokenIds;
         // Height of exit block
         uint256[] exitBlockNumbers;
-        /// @dev Format of the validator exit requests data. Currently, only the
-        /// DATA_FORMAT_LIST=1 is supported.
-        // See: Defined data format types
-        uint256 dataFormat;
-        /// @dev Validator exit requests data. Can differ based on the data format,
-        /// see the constant defining a specific data format below for more info.
-        // See the data format constant DATA_FORMAT_LIST
-        bytes data;
     }
 
-    /// @notice The list format of the validator exit requests data. Used when all
-    /// requests fit into a single transaction.
-    ///
-    /// Each validator exit request is described by the following 64-byte array:
-    /// todo 如果需要包装，重新设计字节占用
-    /// MSB <------------------------------------------------------- LSB
-    /// |  3 bytes   |  5 bytes   |     8 bytes      |    48 bytes     |
-    /// |  moduleId  |  nodeOpId  |  validatorIndex  | validatorPubkey |
-    ///
-    /// All requests are tightly packed into a byte array where requests follow
-    /// one another without any separator or padding, and passed to the `data`
-    /// field of the report structure.
-    ///
-    /// Requests must be sorted in the ascending order by the following compound
-    /// key: (moduleId, nodeOpId, validatorIndex).
-    /// Wrap the transaction extra content as an array
-    uint256 public constant DATA_FORMAT_LIST = 1;
-
     /// Length in bytes of packed request
-    // todo 如果需要重新定义长度
-    uint256 internal constant PACKED_REQUEST_LENGTH = 64;
+//    uint256 internal constant PACKED_REQUEST_LENGTH = 64;
 
     /// @dev Storage slot: DataProcessingState dataProcessingState
     bytes32 internal constant DATA_PROCESSING_STATE_POSITION = keccak256("WithdrawOracle.dataProcessingState");
@@ -179,7 +159,6 @@ contract WithdrawOracle is BaseOracle {
             return result;
         }
 
-        result.dataFormat = procState.dataFormat;
         result.reportExitedCount = procState.reportExitedCount;
     }
 
@@ -192,15 +171,6 @@ contract WithdrawOracle is BaseOracle {
 
     // todo
     function _handleConsensusReportData(ReportData calldata data) internal {
-        if (data.dataFormat != DATA_FORMAT_LIST) {
-            revert UnsupportedRequestsDataFormat(data.dataFormat);
-        }
-
-        // Data format exception that does not match the number of bytes of each element in the array
-        //        if (data.data.length % PACKED_REQUEST_LENGTH != 0) {
-        //            revert InvalidRequestsDataLength();
-        //        }
-
         if (
             data.exitTokenIds.length != data.reportExitedCount || data.exitBlockNumbers.length != data.reportExitedCount
         ) {
@@ -218,18 +188,11 @@ contract WithdrawOracle is BaseOracle {
 
         // todo 调用结算
 
-        // 退出数量不一致 报错
-        //        if (data.data.length / PACKED_REQUEST_LENGTH != data.requestsCount) {
-        //            revert UnexpectedRequestsDataLength();
-        //        }
-
-        // todo 退出请求列表处理 如果数据需要包装 那么 再做实现
-        //        _processExitRequestsList(data.data);
 
         _storageDataProcessingState().value = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
-            reportExitedCount: data.reportExitedCount.toUint64(),
-            dataFormat: uint16(DATA_FORMAT_LIST)
+            reportExitedCount: data.reportExitedCount.toUint64()
+
         });
     }
 
