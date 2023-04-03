@@ -85,10 +85,6 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
     }
 
     function _handleConsensusReportDataMock1(ReportDataMock1 calldata data) internal {
-        if (data.dataFormat != DATA_FORMAT_LIST) {
-            revert UnsupportedRequestsDataFormat(data.dataFormat);
-        }
-
         // Data format exception that does not match the number of bytes of each element in the array
         //        if (data.data.length % PACKED_REQUEST_LENGTH != 0) {
         //            revert InvalidRequestsDataLength();
@@ -112,8 +108,7 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
 
         _storageDataProcessingState().value = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
-            reportExitedCount: data.reportExitedCount.toUint64(),
-            dataFormat: uint16(DATA_FORMAT_LIST)
+            reportExitedCount: data.reportExitedCount.toUint64()
         });
     }
 }

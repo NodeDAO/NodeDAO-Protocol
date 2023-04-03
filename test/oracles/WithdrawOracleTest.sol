@@ -63,7 +63,6 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         assertEq(procState.dataHash, reportHash);
         assertEq(procState.processingDeadlineTime, computeTimestampAtSlot(reportProcessingDeadlineSlot));
         assertFalse(procState.dataSubmitted);
-        assertEq(procState.dataFormat, 0);
         assertEq(procState.reportExitedCount, 0);
     }
 
@@ -133,7 +132,6 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         assertEq(procState.dataHash, ZERO_HASH);
         assertEq(procState.processingDeadlineTime, 0);
         assertFalse(procState.dataSubmitted);
-        assertEq(procState.dataFormat, 0);
         assertEq(procState.reportExitedCount, 0);
     }
 

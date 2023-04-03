@@ -4,36 +4,23 @@ pragma solidity 0.8.8;
 import "openzeppelin-contracts/utils/math/SafeCast.sol";
 import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
+import "src/interfaces/IBalanceOracle.sol";
 
-struct WithdrawInfo {
-    uint256 operatorId;
-    // The income that should be issued by this operatorId in this settlement
-    uint128 clRewards;
-    // For this settlement, whether operatorId has exit node, if no exit node is 0;
-    // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
-    // If the value is less than 32, the corresponding amount will be punished
-    uint128 clCapital;
-}
-
-contract WithdrawOracle is BaseOracle {
+contract BalanceOracle is IBalanceOracle, BaseOracle {
     using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
 
-    event WarnDataIncompleteProcessing(uint256 indexed refSlot, uint256 exitRequestLimit, uint256 reportExitedCount);
-    event UpdateExitRequestLimit(uint256 exitRequestLimit);
+    event WarnDataIncompleteProcessing(uint256 indexed refSlot);
+    event PendingBalancesAdd(uint256 _addBalance, uint256 _totalBalance);
+    event PendingBalancesReset(uint256 _totalBalance);
+    event LiquidStakingChanged(address _before, address _after);
+    event BalanceOracleReport(uint256 indexed refSlot, uint256 clBalances, uint256 clVaultBalance);
 
     error SenderNotAllowed();
-    error UnsupportedRequestsDataFormat(uint256 format);
     error InvalidRequestsData();
-    error InvalidRequestsDataLength();
-    error UnexpectedRequestsDataLength();
-    error ArgumentOutOfBounds();
-    error ExitRequestLimitNotZero();
-    error ValidatorReportedExited(uint256 tokenId);
 
     struct DataProcessingState {
         uint64 refSlot;
-        uint64 reportExitedCount;
     }
 
     struct ProcessingState {
@@ -48,19 +35,12 @@ contract WithdrawOracle is BaseOracle {
         /// @notice Whether any report data for the for the current reporting frame has been
         /// already submitted.
         bool dataSubmitted;
-        /// @notice Number of exits reported for the current reporting frame.
-        uint256 reportExitedCount;
     }
 
     ///
     /// Data provider interface
     ///
-
     struct ReportData {
-        ///
-        /// Oracle consensus info
-        ///
-
         /// @dev Version of the oracle consensus rules. Current version expected
         /// by the oracle can be obtained by calling getConsensusVersion().
         uint256 consensusVersion;
@@ -70,26 +50,26 @@ contract WithdrawOracle is BaseOracle {
         /// should be finalized prior to calculating the report.
         // beacon slot for reference
         uint256 refSlot;
-        /// Number of exits reported
-        uint256 reportExitedCount;
-        ///
-        /// Report core data
-        ///
-        WithdrawInfo[] withdrawInfos;
-        // Example Exit the token Id of the validator. No exit is an empty array.
-        uint256[] exitTokenIds;
-        // Height of exit block
-        uint256[] exitBlockNumbers;
+        /// Consensus layer NodeDao's validators balance
+        uint256 clBalance;
+        // Consensus Vault contract balance
+        uint256 clVaultBalance;
     }
 
-    /// Length in bytes of packed request
-    //    uint256 internal constant PACKED_REQUEST_LENGTH = 64;
-
     /// @dev Storage slot: DataProcessingState dataProcessingState
-    bytes32 internal constant DATA_PROCESSING_STATE_POSITION = keccak256("WithdrawOracle.dataProcessingState");
+    bytes32 internal constant DATA_PROCESSING_STATE_POSITION = keccak256("BalanceOracle.dataProcessingState");
 
-    // Specifies the maximum number of validator exits reported each time
-    uint256 public exitRequestLimit = 1000;
+    // current pending balance
+    uint256 public pendingBalances;
+
+    uint256 public clBalances;
+
+    address public liquidStakingContractAddress;
+
+    modifier onlyLiquidStaking() {
+        require(liquidStakingContractAddress == msg.sender, "Not allowed onlyLiquidStaking");
+        _;
+    }
 
     function initialize(
         uint256 secondsPerSlot,
@@ -102,11 +82,36 @@ contract WithdrawOracle is BaseOracle {
         __BaseOracle_init(secondsPerSlot, genesisTime, consensusContract, consensusVersion, lastProcessingRefSlot, _dao);
     }
 
-    /// Set the number limit for the validator to report
-    function setExitRequestLimit(uint256 _exitRequestLimit) external onlyDao {
-        if (_exitRequestLimit == 0) revert ExitRequestLimitNotZero();
-        exitRequestLimit = _exitRequestLimit;
-        emit UpdateExitRequestLimit(_exitRequestLimit);
+    /**
+     * @return The total balance of the consensus layer
+     */
+    function getClBalances() external view returns (uint256) {
+        return clBalances;
+    }
+
+    /**
+     * @return The total balance of the pending validators
+     */
+    function getPendingBalances() external view returns (uint256) {
+        return pendingBalances;
+    }
+
+    /**
+     * @notice add pending validator value
+     */
+    function addPendingBalances(uint256 _pendingBalance) external onlyLiquidStaking {
+        pendingBalances += _pendingBalance;
+        emit PendingBalancesAdd(_pendingBalance, pendingBalances);
+    }
+
+    /**
+     * @notice set LiquidStaking contract address
+     * @param _liquidStakingContractAddress - contract address
+     */
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
+        liquidStakingContractAddress = _liquidStakingContractAddress;
     }
 
     /// @notice Submits report data for processing.
@@ -153,8 +158,6 @@ contract WithdrawOracle is BaseOracle {
         if (!result.dataSubmitted) {
             return result;
         }
-
-        result.reportExitedCount = procState.reportExitedCount;
     }
 
     function _checkMsgSenderIsAllowedToSubmitData() internal view {
@@ -166,18 +169,12 @@ contract WithdrawOracle is BaseOracle {
 
     // todo
     function _handleConsensusReportData(ReportData calldata data) internal {
-        if (
-            data.exitTokenIds.length != data.reportExitedCount || data.exitBlockNumbers.length != data.reportExitedCount
-        ) {
-            revert InvalidRequestsDataLength();
-        }
-
         // todo 调用结算
 
-        _storageDataProcessingState().value = DataProcessingState({
-            refSlot: data.refSlot.toUint64(),
-            reportExitedCount: data.reportExitedCount.toUint64()
-        });
+        pendingBalances = 0;
+        emit PendingBalancesReset(0);
+        _storageDataProcessingState().value = DataProcessingState({refSlot: data.refSlot.toUint64()});
+        emit BalanceOracleReport(data.refSlot, data.clBalance, data.clVaultBalance);
     }
 
     // use for submitConsensusReport
@@ -187,8 +184,8 @@ contract WithdrawOracle is BaseOracle {
         uint256 prevProcessingRefSlot
     ) internal override {
         DataProcessingState memory state = _storageDataProcessingState().value;
-        if (state.refSlot == prevProcessingRefSlot && state.reportExitedCount <= exitRequestLimit) {
-            emit WarnDataIncompleteProcessing(prevProcessingRefSlot, exitRequestLimit, state.reportExitedCount);
+        if (state.refSlot == prevProcessingRefSlot) {
+            emit WarnDataIncompleteProcessing(prevProcessingRefSlot);
         }
     }
 
