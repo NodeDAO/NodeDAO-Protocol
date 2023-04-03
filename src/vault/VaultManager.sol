@@ -8,6 +8,7 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
 import "src/interfaces/IVNFT.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
+import {WithdrawInfo} from "src/oracles/WithdrawOracle.sol";
 
 contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     ILiquidStaking public liquidStakingContract;

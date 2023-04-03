@@ -25,6 +25,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     event PendingBalancesAdd(uint256 _addBalance, uint256 _totalBalance);
     event PendingBalancesReset(uint256 _totalBalance);
     event LiquidStakingChanged(address _before, address _after);
+    event VaultManagerChanged(address _before, address _after);
 
     error SenderNotAllowed();
     error UnsupportedRequestsDataFormat(uint256 format);
@@ -110,6 +111,8 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     address public liquidStakingContractAddress;
 
+    address public vaultManagerContractAddress;
+
     modifier onlyLiquidStaking() {
         require(liquidStakingContractAddress == msg.sender, "Not allowed onlyLiquidStaking");
         _;
@@ -167,6 +170,12 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
         emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
         liquidStakingContractAddress = _liquidStakingContractAddress;
+    }
+
+    function setVaultManager(address _vaultManagerContractAddress) external onlyDao {
+        require(_vaultManagerContractAddress != address(0), "VaultManager address invalid");
+        emit VaultManagerChanged(vaultManagerContractAddress, _vaultManagerContractAddress);
+        vaultManagerContractAddress = _vaultManagerContractAddress;
     }
 
     /// @notice Submits report data for processing.
@@ -234,13 +243,21 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
         // todo 调用结算
 
-        pendingBalances = 0;
-        emit PendingBalancesReset(0);
+        // todo emit
 
+        _dealReportOracleData(data.refSlot, data.clBalance, data.clVaultBalance);
         _storageDataProcessingState().value = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
             reportExitedCount: data.reportExitedCount.toUint64()
         });
+    }
+
+    function _dealReportOracleData(uint256 refSlot, uint256 _clBalances, uint256 _clVaultBalance) internal {
+        pendingBalances = 0;
+        emit PendingBalancesReset(0);
+
+        clBalances = _clBalances;
+        clVaultBalance = _clVaultBalance;
     }
 
     // use for submitConsensusReport
