@@ -10,7 +10,9 @@ interface IVNFT is IERC721AUpgradeable {
     /**
      * @notice Returns the validators that are active (may contain validator that are yet active on beacon chain)
      */
-    function activeValidators() external view returns (bytes[] memory);
+    function activeValidatorsOfStakingPool() external view returns (bytes[] memory);
+
+    function activeNftsOfStakingPool() external view returns (uint256[] memory);
 
     /**
      * @notice get empty nft counts
@@ -46,7 +48,7 @@ interface IVNFT is IERC721AUpgradeable {
      * @param _operatorId - operator id
      */
     function getNftCountsOfOperator(uint256 _operatorId) external view returns (uint256);
-
+    function getUserActiveNftCountsOfOperator(uint256 _operatorId) external view returns (uint256);
     /**
      * @notice Finds the tokenId of a validator
      * @dev Returns MAX_SUPPLY if not found
@@ -66,11 +68,18 @@ interface IVNFT is IERC721AUpgradeable {
      * @param _to - The recipient of the nft
      * @param _operatorId - The operator repsonsible for operating the physical node
      */
-    function whiteListMint(bytes calldata _pubkey, address _to, uint256 _operatorId) external returns (uint256);
+    function whiteListMint(bytes calldata _pubkey, bytes calldata _withdrawalCredentials, address _to, uint256 _operatorId) external returns (uint256);
 
     /**
      * @notice Burns a Validator nft (vNFT)
      * @param _tokenId - tokenId of the validator nft
      */
     function whiteListBurn(uint256 _tokenId) external;
+
+    function getUserNftWithdrawalCredentialOfTokenId(uint256 tokenId) external view returns (bytes memory);
+    function getNextValidatorWithdrawalCredential(uint256 _operatorId) external view returns (bytes memory);
+    function setNftExitBlockNumbers(uint256[] memory tokenIds, uint256[] memory exitBlockNumbers) external;
+    function getNftExitBlockNumbers(uint256[] memory _tokenIds) external view returns (uint256[] memory);
+    function setUserNftGasHeight(uint256 _tokenId, uint256 _number) external;
+    function getUsernftGasHeight(uint256[] memory _tokenIds) external view returns (uint256[] memory);
 }
