@@ -10,15 +10,15 @@ interface ITimeProvider {
     function getTime() external view returns (uint256);
 }
 
-    struct WithdrawInfo {
-        uint256 operatorId;
-        // The income that should be issued by this operatorId in this settlement
-        uint128 clRewards;
-        // For this settlement, whether operatorId has exit node, if no exit node is 0;
-        // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
-        // If the value is less than 32, the corresponding amount will be punished
-        uint128 clCapital;
-    }
+struct MockWithdrawInfo {
+    uint256 operatorId;
+    // The income that should be issued by this operatorId in this settlement
+    uint128 clRewards;
+    // For this settlement, whether operatorId has exit node, if no exit node is 0;
+    // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
+    // If the value is less than 32, the corresponding amount will be punished
+    uint128 clCapital;
+}
 
 contract WithdrawOracleWithTimer is WithdrawOracle {
     using UnstructuredStorage for bytes32;
@@ -26,6 +26,7 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
     using EnumerableSet for EnumerableSet.UintSet;
 
     EnumerableSet.UintSet private exitedTokenIds;
+    mapping(uint256 => bool) private exitedTokenIdMap;
 
     function getTime() external view returns (uint256) {
         return _getTime();
@@ -59,7 +60,7 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
         ///
         /// Report core data
         ///
-        WithdrawInfo[] withdrawInfos;
+        MockWithdrawInfo[] withdrawInfos;
         // Example Exit the token Id of the validator. No exit is an empty array.
         uint256[] exitTokenIds;
         // Height of exit block
@@ -99,14 +100,6 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
             revert InvalidRequestsDataLength();
         }
 
-        // Add to a list that has exited validator (de-weight)
-        uint256[] calldata _exitTokenIds = data.exitTokenIds;
-        for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
-            // Add the token ids of the validator to the list. If an error occurs, the Validator is added
-            if (!exitedTokenIds.add(_exitTokenIds[i])) {
-                revert ValidatorReportedExited(_exitTokenIds[i]);
-            }
-        }
 
         // todo 调用结算
 
@@ -119,10 +112,9 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
         //        _processExitRequestsList(data.data);
 
         _storageDataProcessingState().value = DataProcessingState({
-        refSlot: data.refSlot.toUint64(),
-        reportExitedCount: data.reportExitedCount.toUint64(),
-        dataFormat: uint16(DATA_FORMAT_LIST)
+            refSlot: data.refSlot.toUint64(),
+            reportExitedCount: data.reportExitedCount.toUint64(),
+            dataFormat: uint16(DATA_FORMAT_LIST)
         });
     }
-
 }

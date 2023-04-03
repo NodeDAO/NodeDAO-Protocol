@@ -86,11 +86,17 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
 
         // Two structures array and array + Property hash
         console.log("-------struct hash 1 compare 2----------");
-        assertFalse(mockWithdrawOracleReportDataMock1Hash_1(refSlot) == mockWithdrawOracleReportDataMock1Hash_2(refSlot));
+        assertFalse(
+            mockWithdrawOracleReportDataMock1Hash_1(refSlot) == mockWithdrawOracleReportDataMock1Hash_2(refSlot)
+        );
         console.log("-------struct hash 1 compare 3----------");
-        assertFalse(mockWithdrawOracleReportDataMock1Hash_1(refSlot) == mockWithdrawOracleReportDataMock1Hash_3(refSlot));
+        assertFalse(
+            mockWithdrawOracleReportDataMock1Hash_1(refSlot) == mockWithdrawOracleReportDataMock1Hash_3(refSlot)
+        );
         console.log("-------struct hash 2 compare 3----------");
-        assertFalse(mockWithdrawOracleReportDataMock1Hash_2(refSlot) == mockWithdrawOracleReportDataMock1Hash_3(refSlot));
+        assertFalse(
+            mockWithdrawOracleReportDataMock1Hash_2(refSlot) == mockWithdrawOracleReportDataMock1Hash_3(refSlot)
+        );
     }
 
     // forge test -vvvv --match-test testWithdrawOracleConfig
@@ -178,9 +184,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         oracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_1(refSlot), CONSENSUS_VERSION);
     }
 
-    // forge test -vvvv --match-test testMockWithdrawOracleReportDataMock1Count
+    // forge test -vvvv --match-test testMockWithdrawOracleReportDataMock1Count_ForGas
     // Pressure survey Report for gas
-    function testMockWithdrawOracleReportDataMock1Count() public {
+    function testMockWithdrawOracleReportDataMock1Count_ForGas() public {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
         // exitCount：200 opsCount：0  gas:9071357
@@ -189,8 +195,31 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         // exitCount：0 opsCount：10000  gas:5404472
         // exitCount：10 opsCount：10000  gas:5859629
         // exitCount：100 opsCount：10000  gas:9938114
-        uint256 exitCount = 100;
-        uint256 opsCount = 10000;
+        // exitCount：1000 opsCount：0  gas: 45143795
+
+        // Remove the exitValidator to remove the weight
+        /// EnumerableSet.UintSet private exitedTokenIds;
+        /// if (!exitedTokenIds.add(_exitTokenIds[i]))
+        //     revert ValidatorReportedExited(_exitTokenIds[i]);
+        // exitCount：100 opsCount：0  gas:66429
+        // exitCount：1000 opsCount：0  gas:196795
+        // exitCount：1000 opsCount：1000  gas:196795
+        // exitCount：10000 opsCount：0  gas:2196553
+
+        // exitCount：1000 opsCount：1000  gas:484942
+        // exitCount：10000 opsCount：1000  gas:1687638
+
+        // EnumerableSet.UintSet => mapping
+        // mapping(uint256 => bool) private exitedTokenIdMap;
+        //  if (exitedTokenIdMap[i]) {
+        //     revert ValidatorReportedExited(_exitTokenIds[i]);
+        //  } else {
+        //     exitedTokenIdMap[i] = true;
+        //  }
+        // exitCount：10000 opsCount：10000  gas:233711982
+        // exitCount：10000 opsCount：0  gas:226016553
+        uint256 exitCount = 10000;
+        uint256 opsCount = 1000;
 
         bytes32 hash = mockWithdrawOracleReportDataMock1_countHash(refSlot, exitCount, opsCount);
 
@@ -202,6 +231,8 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
 
         vm.prank(MEMBER_1);
-        oracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION);
+        oracle.submitReportDataMock1(
+            mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION
+        );
     }
 }

@@ -70,7 +70,7 @@ contract WithdrawOracle is BaseOracle {
         ///
         /// Report core data
         ///
-//        WithdrawInfo[] withdrawInfos;
+        //        WithdrawInfo[] withdrawInfos;
         // Example Exit the token Id of the validator. No exit is an empty array.
         uint256[] exitTokenIds;
         // Height of exit block

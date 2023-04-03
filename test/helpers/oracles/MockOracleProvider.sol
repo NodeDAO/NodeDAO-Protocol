@@ -3,21 +3,11 @@ pragma solidity 0.8.8;
 
 import "test/helpers/oracles/HashConsensusWithTimer.sol";
 import "test/helpers/oracles/MockReportProcessor.sol";
-import {WithdrawInfo, WithdrawOracleWithTimer} from "test/helpers/oracles/WithdrawOracleWithTimer.sol";
+import {MockWithdrawInfo, WithdrawOracleWithTimer} from "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import "test/helpers/CommonConstantProvider.sol";
 
 // Provide baseline data for the Hash Consensus contract test
 contract MockOracleProvider is CommonConstantProvider {
-    //    struct WithdrawInfo {
-    //        uint256 operatorId;
-    //        // The income that should be issued by this operatorId in this settlement
-    //        uint128 clRewards;
-    //        // For this settlement, whether operatorId has exit node, if no exit node is 0;
-    //        // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
-    //        // If the value is less than 32, the corresponding amount will be punished
-    //        uint128 clCapital;
-    //    }
-
     uint256 public constant SLOTS_PER_EPOCH = 32;
     uint256 public constant SECONDS_PER_SLOT = 12;
     uint256 public constant GENESIS_TIME = 100;
@@ -135,10 +125,10 @@ contract MockOracleProvider is CommonConstantProvider {
         exitBlockNumbers[2] = 1010;
         reportData.exitBlockNumbers = exitBlockNumbers;
 
-        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](2);
+        MockWithdrawInfo[] memory withdrawInfos = new MockWithdrawInfo[](2);
 
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clRewards: 1e17, clCapital: 64 ether});
-        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 2, clRewards: 1e16, clCapital: 31 ether});
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 1, clRewards: 1e17, clCapital: 64 ether});
+        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 2, clRewards: 1e16, clCapital: 31 ether});
 
         withdrawInfos[0] = withdrawInfo1;
         withdrawInfos[1] = withdrawInfo2;
@@ -171,10 +161,10 @@ contract MockOracleProvider is CommonConstantProvider {
         exitBlockNumbers[1] = 1005;
         reportData.exitBlockNumbers = exitBlockNumbers;
 
-        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](2);
+        MockWithdrawInfo[] memory withdrawInfos = new MockWithdrawInfo[](2);
 
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
-        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 2, clRewards: 1e17, clCapital: 64 ether});
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
+        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 2, clRewards: 1e17, clCapital: 64 ether});
 
         withdrawInfos[0] = withdrawInfo1;
         withdrawInfos[1] = withdrawInfo2;
@@ -209,10 +199,10 @@ contract MockOracleProvider is CommonConstantProvider {
         exitBlockNumbers[2] = 1010;
         reportData.exitBlockNumbers = exitBlockNumbers;
 
-        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](2);
+        MockWithdrawInfo[] memory withdrawInfos = new MockWithdrawInfo[](2);
 
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
-        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 4, clRewards: 1e16, clCapital: 31 ether});
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
+        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 4, clRewards: 1e16, clCapital: 31 ether});
 
         withdrawInfos[0] = withdrawInfo1;
         withdrawInfos[1] = withdrawInfo2;
@@ -225,16 +215,16 @@ contract MockOracleProvider is CommonConstantProvider {
     }
 
     function mockDifferentStructHashIsSame() public pure returns (bool) {
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
-        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 4, clRewards: 1e16, clCapital: 31 ether});
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
+        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 4, clRewards: 1e16, clCapital: 31 ether});
         bytes32 hash1 = keccak256(abi.encode(withdrawInfo1));
         bytes32 hash2 = keccak256(abi.encode(withdrawInfo2));
         return hash1 == hash2;
     }
 
     function mockSameStructHashIsSame() public pure returns (bool) {
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
-        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
+        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
 
         bytes32 hash1 = keccak256(abi.encode(withdrawInfo1));
         bytes32 hash2 = keccak256(abi.encode(withdrawInfo2));
@@ -242,15 +232,15 @@ contract MockOracleProvider is CommonConstantProvider {
     }
 
     function mockDifferentStructArrayHashIsSame() public pure returns (bool) {
-        WithdrawInfo[] memory withdrawInfos1 = new WithdrawInfo[](2);
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
-        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 2, clRewards: 1e17, clCapital: 64 ether});
+        MockWithdrawInfo[] memory withdrawInfos1 = new MockWithdrawInfo[](2);
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
+        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 2, clRewards: 1e17, clCapital: 64 ether});
         withdrawInfos1[0] = withdrawInfo1;
         withdrawInfos1[1] = withdrawInfo2;
 
-        WithdrawInfo[] memory withdrawInfos2 = new WithdrawInfo[](2);
-        WithdrawInfo memory withdrawInfo3 = WithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
-        WithdrawInfo memory withdrawInfo4 = WithdrawInfo({operatorId: 4, clRewards: 1e16, clCapital: 31 ether});
+        MockWithdrawInfo[] memory withdrawInfos2 = new MockWithdrawInfo[](2);
+        MockWithdrawInfo memory withdrawInfo3 = MockWithdrawInfo({operatorId: 3, clRewards: 1e17, clCapital: 60 ether});
+        MockWithdrawInfo memory withdrawInfo4 = MockWithdrawInfo({operatorId: 4, clRewards: 1e16, clCapital: 31 ether});
         withdrawInfos2[0] = withdrawInfo3;
         withdrawInfos2[1] = withdrawInfo4;
 
@@ -260,15 +250,15 @@ contract MockOracleProvider is CommonConstantProvider {
     }
 
     function mockSameStructArrayHashIsSame() public pure returns (bool) {
-        WithdrawInfo[] memory withdrawInfos1 = new WithdrawInfo[](2);
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
-        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 2, clRewards: 1e17, clCapital: 64 ether});
+        MockWithdrawInfo[] memory withdrawInfos1 = new MockWithdrawInfo[](2);
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
+        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 2, clRewards: 1e17, clCapital: 64 ether});
         withdrawInfos1[0] = withdrawInfo1;
         withdrawInfos1[1] = withdrawInfo2;
 
-        WithdrawInfo[] memory withdrawInfos2 = new WithdrawInfo[](2);
-        WithdrawInfo memory withdrawInfo3 = WithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
-        WithdrawInfo memory withdrawInfo4 = WithdrawInfo({operatorId: 2, clRewards: 1e17, clCapital: 64 ether});
+        MockWithdrawInfo[] memory withdrawInfos2 = new MockWithdrawInfo[](2);
+        MockWithdrawInfo memory withdrawInfo3 = MockWithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
+        MockWithdrawInfo memory withdrawInfo4 = MockWithdrawInfo({operatorId: 2, clRewards: 1e17, clCapital: 64 ether});
         withdrawInfos2[0] = withdrawInfo3;
         withdrawInfos2[1] = withdrawInfo4;
 
@@ -301,8 +291,8 @@ contract MockOracleProvider is CommonConstantProvider {
         }
         reportData.exitBlockNumbers = exitBlockNumbers;
 
-        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](opsCount);
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
+        MockWithdrawInfo[] memory withdrawInfos = new MockWithdrawInfo[](opsCount);
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 1, clRewards: 1e15, clCapital: 31 ether});
         for (uint256 i = 0; i < opsCount; ++i) {
             withdrawInfos[i] = withdrawInfo1;
         }
