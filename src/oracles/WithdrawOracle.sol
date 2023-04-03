@@ -4,6 +4,7 @@ pragma solidity 0.8.8;
 import "openzeppelin-contracts/utils/math/SafeCast.sol";
 import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
+import "src/interfaces/IWithdrawOracle.sol";
 
 struct WithdrawInfo {
     uint256 operatorId;
@@ -15,12 +16,15 @@ struct WithdrawInfo {
     uint128 clCapital;
 }
 
-contract WithdrawOracle is BaseOracle {
+contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
 
     event WarnDataIncompleteProcessing(uint256 indexed refSlot, uint256 exitRequestLimit, uint256 reportExitedCount);
     event UpdateExitRequestLimit(uint256 exitRequestLimit);
+    event PendingBalancesAdd(uint256 _addBalance, uint256 _totalBalance);
+    event PendingBalancesReset(uint256 _totalBalance);
+    event LiquidStakingChanged(address _before, address _after);
 
     error SenderNotAllowed();
     error UnsupportedRequestsDataFormat(uint256 format);
@@ -70,6 +74,10 @@ contract WithdrawOracle is BaseOracle {
         /// should be finalized prior to calculating the report.
         // beacon slot for reference
         uint256 refSlot;
+        /// Consensus layer NodeDao's validators balance
+        uint256 clBalance;
+        /// Consensus Vault contract balance
+        uint256 clVaultBalance;
         /// Number of exits reported
         uint256 reportExitedCount;
         ///
@@ -91,6 +99,18 @@ contract WithdrawOracle is BaseOracle {
     // Specifies the maximum number of validator exits reported each time
     uint256 public exitRequestLimit = 1000;
 
+    // current pending balance
+    uint256 public pendingBalances;
+
+    uint256 public clBalances;
+
+    address public liquidStakingContractAddress;
+
+    modifier onlyLiquidStaking() {
+        require(liquidStakingContractAddress == msg.sender, "Not allowed onlyLiquidStaking");
+        _;
+    }
+
     function initialize(
         uint256 secondsPerSlot,
         uint256 genesisTime,
@@ -107,6 +127,38 @@ contract WithdrawOracle is BaseOracle {
         if (_exitRequestLimit == 0) revert ExitRequestLimitNotZero();
         exitRequestLimit = _exitRequestLimit;
         emit UpdateExitRequestLimit(_exitRequestLimit);
+    }
+
+    /**
+     * @return The total balance of the consensus layer
+     */
+    function getClBalances() external view returns (uint256) {
+        return clBalances;
+    }
+
+    /**
+     * @return The total balance of the pending validators
+     */
+    function getPendingBalances() external view returns (uint256) {
+        return pendingBalances;
+    }
+
+    /**
+     * @notice add pending validator value
+     */
+    function addPendingBalances(uint256 _pendingBalance) external onlyLiquidStaking {
+        pendingBalances += _pendingBalance;
+        emit PendingBalancesAdd(_pendingBalance, pendingBalances);
+    }
+
+    /**
+     * @notice set LiquidStaking contract address
+     * @param _liquidStakingContractAddress - contract address
+     */
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
+        liquidStakingContractAddress = _liquidStakingContractAddress;
     }
 
     /// @notice Submits report data for processing.
@@ -173,6 +225,9 @@ contract WithdrawOracle is BaseOracle {
         }
 
         // todo 调用结算
+
+        pendingBalances = 0;
+        emit PendingBalancesReset(0);
 
         _storageDataProcessingState().value = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
