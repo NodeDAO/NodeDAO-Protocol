@@ -5,16 +5,7 @@ import "openzeppelin-contracts/utils/math/SafeCast.sol";
 import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
 import "src/interfaces/IWithdrawOracle.sol";
-
-struct WithdrawInfo {
-    uint256 operatorId;
-    // The income that should be issued by this operatorId in this settlement
-    uint128 clRewards;
-    // For this settlement, whether operatorId has exit node, if no exit node is 0;
-    // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
-    // If the value is less than 32, the corresponding amount will be punished
-    uint128 clCapital;
-}
+import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 
 contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     using UnstructuredStorage for bytes32;
@@ -85,10 +76,8 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         /// Report core data
         ///
         WithdrawInfo[] withdrawInfos;
-        // Example Exit the token Id of the validator. No exit is an empty array.
-        uint256[] exitTokenIds;
-        // Height of exit block
-        uint256[] exitBlockNumbers;
+        ExitValidatorInfo[] exitValidatorInfos;
+        uint256[] delayedExitTokenIds;
     }
 
     /// Length in bytes of packed request
@@ -235,9 +224,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     // todo
     function _handleConsensusReportData(ReportData calldata data) internal {
-        if (
-            data.exitTokenIds.length != data.reportExitedCount || data.exitBlockNumbers.length != data.reportExitedCount
-        ) {
+        if (data.exitValidatorInfos.length != data.reportExitedCount) {
             revert InvalidRequestsDataLength();
         }
 
