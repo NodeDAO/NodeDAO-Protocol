@@ -89,7 +89,7 @@ contract LiquidStaking is
     // key is operatorId, value is loan blockNumber
     mapping(uint256 => uint256) public operatorLoadBlockNumbers;
     // key is tokenId, value is nft unstake blocknumber
-    mapping(uint256 => uint256) public nftUnstakeBlockBumbers;
+    mapping(uint256 => uint256) public nftUnstakeBlockNumbers;
     // key is operatorId, value is operatorUnstakeNftLists
     mapping(uint256 => uint256[]) internal operatorUnstakeNftLists;
     // key is tokenId, value is nft compensated
@@ -342,7 +342,7 @@ contract LiquidStaking is
         uint256[] memory operatorIds = new uint256[] (1);
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
-            require(nftUnstakeBlockBumbers[tokenId] == 0, "The tokenId already unstake");
+            require(nftUnstakeBlockNumbers[tokenId] == 0, "The tokenId already unstake");
             require(msg.sender == vNFTContract.ownerOf(tokenId), "The sender must be the nft owner");
 
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
@@ -356,7 +356,7 @@ contract LiquidStaking is
                 emit Transferred(msg.sender, DEPOSIT_SIZE);
                 vNFTContract.whiteListBurn(tokenId);
             } else {
-                nftUnstakeBlockBumbers[tokenId] = block.number;
+                nftUnstakeBlockNumbers[tokenId] = block.number;
                 operatorUnstakeNftLists[operatorId].push(tokenId);
             }
 
