@@ -594,14 +594,15 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
-     * @param _operatorIds operator id
+     * @param _exitTokenIds tokenid id
      * @param _amounts slash amount
      */
-    function slash(uint256[] memory _operatorIds, uint256[] memory _amounts) external nonReentrant onlyLiquidStaking {
+    function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyLiquidStaking {
         uint256 totalSlashAmounts = 0;
-        uint256[] memory slashAmounts = new uint256[] (_operatorIds.length);
-        for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            uint256 operatorId = _operatorIds[i];
+        uint256[] memory slashAmounts = new uint256[] (_exitTokenIds.length);
+        for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
+            uint256 tokenId = _exitTokenIds[i];
+            uint256 operatorId = vNFTContract.operatorOf(tokenId);
             uint256 amount = _amounts[i];
             uint256 pledgeAmounts = operatorPledgeVaultBalances[operatorId];
 
@@ -626,7 +627,7 @@ contract NodeOperatorRegistry is
             }
         }
 
-        liquidStakingContract.slashReceive{value: totalSlashAmounts}(_operatorIds, slashAmounts);
+        liquidStakingContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
     }
 
     /**

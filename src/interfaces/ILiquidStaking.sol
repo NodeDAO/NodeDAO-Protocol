@@ -19,12 +19,16 @@ interface ILiquidStaking {
      */
     function receiveRewards(uint256 _rewards) external payable;
 
-    function slashReceive(uint256[] memory _operatorIds, uint256[] memory _amounts) external payable;
+    function slashReceive(
+        uint256[] memory _exitTokenIds,
+        uint256[] memory _slashAmount,
+        uint256[] memory _requirAmounts
+    ) external payable;
 
     function nftExitHandle(uint256[] memory tokenIds, uint256[] memory exitBlockNumbers) external;
     function reinvestElRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
     function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
-    function slashOperator(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
+    function slashOperator(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external;
     function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable;
     function claimRewardsOfUser(
         uint256 _operatorId,
@@ -36,6 +40,7 @@ interface ILiquidStaking {
     function claimRewardsOfDao(uint256[] memory _operatorIds, uint256[] memory _rewards) external;
 
     event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _totalAmount);
+    // todo 增加operator ID
     event EthStake(address indexed _from, uint256 _amount, uint256 _amountOut);
     event EthUnstake(uint256 _operatorId, uint256 targetOperatorId, address ender, uint256 _amounts, uint256 amountOut);
     event NftUnstake(uint256 tokenId, uint256 operatorId);
@@ -49,7 +54,7 @@ interface ILiquidStaking {
     event OperatorReinvestElRewards(uint256 _operatorId, uint256 _rewards);
     event RewardsReceive(uint256 _rewards);
     event ArrearsReceiveOfSlash(uint256 _operatorId, uint256 _amount);
-    event SlashReceive(uint256 _operatorId, uint256 _amount);
+    event SlashReceive(uint256 _operatorId, uint256 tokenId, uint256 _slashAmount, uint256 _requirAmounts);
     event LiquidStakingWithdrawalCredentialsSet(
         bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
     );

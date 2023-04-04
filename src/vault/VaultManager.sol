@@ -62,54 +62,51 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     }
 
     function reportConsensusData(
-        uint256[] memory _operatorIds,
-        uint256[] memory _clRewards,
-        uint256[] memory _exitClCapitals,
-        uint256[] memory _exitTokenIds,
-        uint256[] memory _exitBlockNumbers,
+        WithdrawInfo[] memory _withdrawInfo,
+        ExitValidatorInfo[] memory _exitValidatorInfo,
+        uint256[] memory _delayedExitTokenIds,
         uint256 _thisTotalWithdrawAmount
     ) external onlyWithdrawOracle {
-        require(
-            _operatorIds.length == _clRewards.length && _operatorIds.length == _exitClCapitals.length
-                && _operatorIds.length != 0,
-            "_operatorIds _clRewards _exitClCapital must have the same length"
-        );
-
-        uint256[] memory amouts = new uint256[](_operatorIds.length);
-        uint256 slashNumber = 0;
+        uint256[] memory operatorIds = new uint256[](_withdrawInfo.length);
+        uint256[] memory amouts = new uint256[](_withdrawInfo.length);
         uint256 totalAmount = 0;
         uint256 totalExitCapital = 0;
-        for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            uint256 exitClCapital = _exitClCapitals[i];
-            uint256 _amount = _clRewards[i] + exitClCapital;
+        for (uint256 i = 0; i < _withdrawInfo.length; ++i) {
+            WithdrawInfo memory wInfo = _withdrawInfo[i];
+            operatorIds[i] = wInfo.operatorId;
+            uint256 exitClCapital = wInfo.clCapital;
+            uint256 _amount = wInfo.clReward + exitClCapital;
             amouts[i] = _amount;
             totalAmount += _amount;
             totalExitCapital += exitClCapital;
-            if (exitClCapital != 0 && 32 ether > exitClCapital) {
-                slashNumber += 1;
-            }
         }
 
         require(totalAmount == _thisTotalWithdrawAmount, "_thisTotalWithdrawAmount check failed");
-        require(_exitTokenIds.length * 32 ether >= totalExitCapital, "totalExitCapital check failed");
+        require(_exitValidatorInfo.length * 32 ether >= totalExitCapital, "totalExitCapital check failed");
 
-        uint256[] memory slashOperators = new uint256[] (slashNumber);
-        uint256[] memory slashAmounts = new uint256[] (slashNumber);
-        uint256 slashIndex = 0;
-        for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            uint256 exitClCapital = _exitClCapitals[i];
-            if (exitClCapital != 0 && 32 ether > exitClCapital) {
-                slashOperators[slashIndex] = i;
-                slashAmounts[slashIndex] = 32 ether - exitClCapital;
-                slashIndex += 1;
-            }
+        uint256[] memory exitTokenIds = new uint256[] (_exitValidatorInfo.length);
+        uint256[] memory slashAmounts = new uint256[] (_exitValidatorInfo.length);
+        uint256[] memory exitBlockNumbers = new uint256[] (_exitValidatorInfo.length);
+        uint256 totalSlashAmounts = 0;
+        for (uint256 i = 0; i < _exitValidatorInfo.length; ++i) {
+            ExitValidatorInfo memory vInfo = _exitValidatorInfo[i];
+            exitTokenIds[i] = vInfo.exitTokenId;
+            slashAmounts[i] = vInfo.slashAmount;
+            exitBlockNumbers[i] = vInfo.exitBlockNumber;
+            totalSlashAmounts += vInfo.slashAmount;
         }
 
-        liquidStakingContract.reinvestClRewards(_operatorIds, amouts);
-        liquidStakingContract.slashOperator(slashOperators, slashAmounts);
+        require(
+            _exitValidatorInfo.length * 32 ether == totalExitCapital + totalSlashAmounts,
+            "totalSlashAmounts check failed"
+        );
+
+        liquidStakingContract.reinvestClRewards(operatorIds, amouts);
+
+        liquidStakingContract.slashOperator(exitTokenIds, slashAmounts);
 
         // nft exit
-        liquidStakingContract.nftExitHandle(_exitTokenIds, _exitBlockNumbers);
+        liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
     }
 
     function settleAndReinvestElReward(uint256[] memory _operatorIds) external {

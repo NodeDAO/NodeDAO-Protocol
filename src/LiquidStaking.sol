@@ -92,6 +92,11 @@ contract LiquidStaking is
     mapping(uint256 => uint256) public nftUnstakeBlockBumbers;
     // key is operatorId, value is operatorUnstakeNftLists
     mapping(uint256 => uint256[]) internal operatorUnstakeNftLists;
+    // key is tokenId, value is nft compensated
+    mapping(uint256 => uint256) public nftWillCompensated;
+    mapping(uint256 => uint256) public nftHasCompensated;
+    mapping(uint256 => uint256[]) public operatorSlashArrears;
+    uint256 public operatorCompensatedIndex;
 
     function getOperatorWillExitNfsList(uint256 _operatorId) external view returns (uint256[] memory) {
         // operatorUnstakeNftLists & userNftExitBlockNumbers != 0
@@ -490,25 +495,68 @@ contract LiquidStaking is
         consensusVaultContract.reinvestment(totalReinvestRewards);
     }
 
-    function slashOperator(uint256[] memory _operatorIds, uint256[] memory _amounts) external onlyVaultManager {
-        require(_operatorIds.length == _amounts.length && _amounts.length != 0, "parameter invalid length");
-        nodeOperatorRegistryContract.slash(_operatorIds, _amounts);
+    function slashOperator(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external onlyVaultManager {
+        require(_exitTokenIds.length == _amounts.length && _amounts.length != 0, "parameter invalid length");
+        nodeOperatorRegistryContract.slash(_exitTokenIds, _amounts);
     }
 
-    function slashReceive(uint256[] memory _operatorIds, uint256[] memory _amounts) external payable {
+    function slashReceive(
+        uint256[] memory _exitTokenIds,
+        uint256[] memory _slashAmount,
+        uint256[] memory _requirAmounts
+    ) external payable {
         require(msg.sender == address(nodeOperatorRegistryContract), "PERMISSION_DENIED");
-        for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            _updateStakeFundLedger(_operatorIds[i], _amounts[i]);
-            emit SlashReceive(_operatorIds[i], _amounts[i]);
+        for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
+            uint256 tokenId = _exitTokenIds[i];
+            uint256 operatorId = vNFTContract.operatorOf(tokenId);
+            if (vNFTContract.ownerOf(tokenId) == address(this)) {
+                _updateStakeFundLedger(operatorId, _slashAmount[i]);
+            } else {
+                uint256 requirAmount = _requirAmounts[i];
+                uint256 slashAmount = _slashAmount[i];
+                require(requirAmount >= slashAmount, "Abnormal slash amount");
+                if (requirAmount != slashAmount) {
+                    nftWillCompensated[tokenId] += requirAmount - slashAmount;
+                    operatorSlashArrears[operatorId].push(tokenId);
+                }
+                nftHasCompensated[tokenId] += slashAmount;
+            }
+
+            emit SlashReceive(operatorId, tokenId, _slashAmount[i], _requirAmounts[i]);
         }
     }
 
     function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable {
-        require(msg.sender == address(nodeOperatorRegistryContract), "PERMISSION_DENIED");
-
-        _updateStakeFundLedger(_amount, _operatorId);
-
         emit ArrearsReceiveOfSlash(_operatorId, _amount);
+
+        require(msg.sender == address(nodeOperatorRegistryContract), "PERMISSION_DENIED");
+        uint256 compensatedIndex = operatorCompensatedIndex;
+        while (
+            operatorSlashArrears[_operatorId].length != 0
+                && operatorSlashArrears[_operatorId].length - 1 != compensatedIndex
+        ) {
+            uint256 tokenId = operatorSlashArrears[_operatorId][compensatedIndex];
+            uint256 arrears = nftWillCompensated[tokenId];
+            if (_amount >= arrears) {
+                nftWillCompensated[tokenId] = 0;
+                nftHasCompensated[tokenId] += _amount;
+                compensatedIndex += 1;
+                _amount -= arrears;
+            } else {
+                nftWillCompensated[tokenId] -= _amount;
+                nftHasCompensated[tokenId] += _amount;
+                _amount = 0;
+            }
+
+            if (_amount == 0) {
+                operatorCompensatedIndex = compensatedIndex;
+                break;
+            }
+        }
+
+        if (_amount != 0) {
+            _updateStakeFundLedger(_operatorId, _amount);
+        }
     }
 
     function claimRewardsOfUser(
