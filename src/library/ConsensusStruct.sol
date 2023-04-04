@@ -8,12 +8,12 @@ struct WithdrawInfo {
     // For this settlement, whether operatorId has exit node, if no exit node is 0;
     // The value of one node exiting is 32 eth(or 32.9 ETH), and the value of two nodes exiting is 64eth (or 63 ETH).
     // If the value is less than 32, the corresponding amount will be punished
-    uint96 clCapital;
+    uint96 clCapitals;
 }
 
 struct ExitValidatorInfo {
     // Example Exit the token Id of the validator. No exit is an empty array.
-    uint64 exitTokenIds;
+    uint64 exitTokenId;
     // Height of exit block
     uint96 exitBlockNumbers;
     // Amount of slash
