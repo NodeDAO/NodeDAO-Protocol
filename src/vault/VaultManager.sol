@@ -64,7 +64,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     function reportConsensusData(
         WithdrawInfo[] memory _withdrawInfo,
         ExitValidatorInfo[] memory _exitValidatorInfo,
-        uint256[] memory _delayedExitTokenIds,
+        uint256[] memory _nftExitDelayedTokenIds, // user nft
+        uint256[] memory _largeExitDelayedRequestIds, // large unstake request id
         uint256 _thisTotalWithdrawAmount
     ) external onlyWithdrawOracle {
         uint256[] memory operatorIds = new uint256[](_withdrawInfo.length);
@@ -107,6 +108,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         // nft exit
         liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
+
+        if (_nftExitDelayedTokenIds.length != 0 || _largeExitDelayedRequestIds.length != 0) {
+            liquidStakingContract.slashOfExitDelayed(_nftExitDelayedTokenIds, _largeExitDelayedRequestIds);
+        }
     }
 
     function settleAndReinvestElReward(uint256[] memory _operatorIds) external {

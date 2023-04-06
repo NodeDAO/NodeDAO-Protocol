@@ -29,6 +29,8 @@ interface ILiquidStaking {
     function reinvestElRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
     function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
     function slashOperator(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external;
+    function slashOfExitDelayed(uint256[] memory _nftExitDelayedTokenIds, uint256[] memory _largeExitDelayedRequestIds)
+        external;
     function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable;
     function claimRewardsOfUser(
         uint256 _operatorId,
@@ -68,4 +70,5 @@ interface ILiquidStaking {
     event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
     event NftExitBlockNumberSet(uint256[] tokenIds, uint256[] exitBlockNumbers);
+    event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
 }
