@@ -131,7 +131,7 @@ interface INodeOperatorsRegistry {
      * @param _amounts slash amount
      */
     function slash(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
-
+    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external;
     /**
      * @notice deposit pledge fund for operator
      * @param _operatorId operator Id

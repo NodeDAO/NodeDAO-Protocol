@@ -592,11 +592,39 @@ contract NodeOperatorRegistry is
         emit PledgeDeposited(msg.value, _operatorId);
     }
 
+    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyLiquidStaking {
+        uint256 slashAmount = _slash(_operatorId, _amount);
+        if (slashAmount > 0) {
+            liquidStakingContract.slashArrearsReceive{value: slashAmount}(slashAmount, _operatorId);
+        }
+    }
+
+    function _slash(uint256 _operatorId, uint256 _amount) internal returns (uint256) {
+        uint256 pledgeAmounts = operatorPledgeVaultBalances[_operatorId];
+
+        if (pledgeAmounts == 0) {
+            emit OperatorArrearsIncrease(_operatorId, _amount);
+            operatorSlashAmountOwed[_operatorId] += _amount;
+            return 0;
+        }
+
+        if (pledgeAmounts >= _amount) {
+            operatorPledgeVaultBalances[_operatorId] -= _amount;
+            emit Slashed(_operatorId, _amount);
+            return _amount;
+        } else {
+            operatorSlashAmountOwed[_operatorId] += _amount - pledgeAmounts;
+            operatorPledgeVaultBalances[_operatorId] = 0;
+            emit Slashed(_operatorId, pledgeAmounts);
+            return pledgeAmounts;
+        }
+    }
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
      * @param _exitTokenIds tokenid id
      * @param _amounts slash amount
      */
+
     function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyLiquidStaking {
         uint256 totalSlashAmounts = 0;
         uint256[] memory slashAmounts = new uint256[] (_exitTokenIds.length);
@@ -604,27 +632,9 @@ contract NodeOperatorRegistry is
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
             uint256 amount = _amounts[i];
-            uint256 pledgeAmounts = operatorPledgeVaultBalances[operatorId];
 
-            if (pledgeAmounts == 0) {
-                emit OperatorArrearsIncrease(operatorId, amount);
-                operatorSlashAmountOwed[operatorId] += amount;
-                slashAmounts[i] = 0;
-                continue;
-            }
-
-            if (pledgeAmounts >= amount) {
-                operatorPledgeVaultBalances[operatorId] -= amount;
-                slashAmounts[i] = amount;
-                totalSlashAmounts += amount;
-                emit Slashed(operatorId, amount);
-            } else {
-                operatorSlashAmountOwed[operatorId] += amount - pledgeAmounts;
-                operatorPledgeVaultBalances[operatorId] = 0;
-                slashAmounts[i] = pledgeAmounts;
-                totalSlashAmounts += pledgeAmounts;
-                emit Slashed(operatorId, pledgeAmounts);
-            }
+            uint256 slashAmount = _slash(operatorId, amount);
+            slashAmounts[i] = slashAmount;
         }
 
         liquidStakingContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
