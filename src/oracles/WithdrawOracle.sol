@@ -143,7 +143,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     }
 
     function setClVaultMinSettleLimit(uint256 _clVaultMinSettleLimit) external onlyDao {
-        if (_exitRequestLimit == 0) revert ClVaultMinSettleLimitNotZero();
+        if (_clVaultMinSettleLimit == 0) revert ClVaultMinSettleLimitNotZero();
         clVaultMinSettleLimit = _clVaultMinSettleLimit;
 
         emit UpdateClVaultMinSettleLimit(_clVaultMinSettleLimit);
