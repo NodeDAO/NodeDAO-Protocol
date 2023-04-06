@@ -87,4 +87,5 @@ interface IVNFT is IERC721AUpgradeable {
     function getNftExitBlockNumbers(uint256[] memory _tokenIds) external view returns (uint256[] memory);
     function setUserNftGasHeight(uint256 _tokenId, uint256 _number) external;
     function getUsernftGasHeight(uint256[] memory _tokenIds) external view returns (uint256[] memory);
+    function getTotalActiveNftCounts() external view returns (uint256);
 }

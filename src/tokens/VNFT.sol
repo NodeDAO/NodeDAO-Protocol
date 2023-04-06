@@ -55,6 +55,8 @@ contract VNFT is
     // key is operatorId, value is nft counts
     mapping(uint256 => uint256) internal userActiceNftCounts;
 
+    uint256 public totalExitButNoBurnNftCounts;
+
     event NFTMinted(uint256 _tokenId, bytes withdrawalCredentials);
     event NFTBurned(uint256 _tokenId);
     event BaseURIChanged(string _before, string _after);
@@ -166,6 +168,10 @@ contract VNFT is
         }
 
         return _nfts;
+    }
+
+    function getTotalActiveNftCounts() external view returns (uint256) {
+        return totalSupply() - totalExitButNoBurnNftCounts - emptyNftCounts;
     }
 
     /**
@@ -360,6 +366,7 @@ contract VNFT is
 
         if (userNftExitBlockNumbers[_tokenId] != 0) {
             operatorExitButNoBurnNftCounts[validators[_tokenId].operatorId] -= 1;
+            totalExitButNoBurnNftCounts -= 1;
         }
     }
 
@@ -392,6 +399,7 @@ contract VNFT is
             require(number <= block.number, "invalid block height");
             userNftExitBlockNumbers[tokenId] = number;
             operatorExitButNoBurnNftCounts[validators[tokenId].operatorId] += 1;
+            totalExitButNoBurnNftCounts += 1;
 
             if (userNftWithdrawalCredentials[tokenId].length != 0) {
                 // The user's nft has exited, but there is no claim, userActiceNftCounts needs to be updated
@@ -429,7 +437,8 @@ contract VNFT is
      * @param _operatorId - operator id
      */
     function getNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
-        return operatorRecords[_operatorId] - operatorExitButNoBurnNftCounts[_operatorId];
+        return operatorRecords[_operatorId] - operatorExitButNoBurnNftCounts[_operatorId]
+            - (operatorEmptyNfts[_operatorId].length - 1 - operatorEmptyNftIndex[_operatorId]);
     }
 
     function getUserActiveNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
