@@ -29,6 +29,8 @@ contract MockOracleProvider is CommonConstantProvider {
 
     uint256 public constant DATA_FORMAT_LIST = 1;
     uint256 public constant LAST_PROCESSING_REF_SLOT = 1;
+    uint256 public constant EXIT_REQUEST_LIMIT = 1000;
+    uint256 public constant CL_VAULT_MIN_SETTLE_LIMIT = 1e19;
 
     function computeTimestampAtEpoch(uint256 _epoch) public pure returns (uint256) {
         return GENESIS_TIME + _epoch * SECONDS_PER_EPOCH;
@@ -97,7 +99,16 @@ contract MockOracleProvider is CommonConstantProvider {
             address(oracle)
         );
 
-        oracle.initialize(SECONDS_PER_SLOT, GENESIS_TIME, address(consensus), CONSENSUS_VERSION, 0, DAO);
+        oracle.initialize(
+            SECONDS_PER_SLOT,
+            GENESIS_TIME,
+            address(consensus),
+            CONSENSUS_VERSION,
+            0,
+            DAO,
+            EXIT_REQUEST_LIMIT,
+            CL_VAULT_MIN_SETTLE_LIMIT
+        );
 
         return (consensus, oracle);
     }

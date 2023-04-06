@@ -5,6 +5,7 @@ import "openzeppelin-contracts/utils/math/SafeCast.sol";
 import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
 import "src/interfaces/IWithdrawOracle.sol";
+import "src/interfaces/IVaultManager.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 
 contract WithdrawOracle is IWithdrawOracle, BaseOracle {
@@ -13,10 +14,14 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     event WarnDataIncompleteProcessing(uint256 indexed refSlot, uint256 exitRequestLimit, uint256 reportExitedCount);
     event UpdateExitRequestLimit(uint256 exitRequestLimit);
+    event UpdateClVaultMinSettleLimit(uint256 clVaultMinSettleLimit);
     event PendingBalancesAdd(uint256 _addBalance, uint256 _totalBalance);
     event PendingBalancesReset(uint256 _totalBalance);
     event LiquidStakingChanged(address _before, address _after);
     event VaultManagerChanged(address _before, address _after);
+    event ReportDataSuccess(
+        uint256 indexed refSlot, uint256 reportExitedCount, uint256 clBalance, uint256 clVaultBalance
+    );
 
     error SenderNotAllowed();
     error UnsupportedRequestsDataFormat(uint256 format);
@@ -25,7 +30,9 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     error UnexpectedRequestsDataLength();
     error ArgumentOutOfBounds();
     error ExitRequestLimitNotZero();
+    error ClVaultMinSettleLimitNotZero();
     error ValidatorReportedExited(uint256 tokenId);
+    error ClVaultBalanceNotMinSettleLimit();
 
     struct DataProcessingState {
         uint64 refSlot;
@@ -76,7 +83,9 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         /// Report core data
         ///
         WithdrawInfo[] withdrawInfos;
+        // To exit the validator's info
         ExitValidatorInfo[] exitValidatorInfos;
+        // The validator does not exit in time. Procedure
         uint256[] delayedExitTokenIds;
     }
 
@@ -87,7 +96,10 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     bytes32 internal constant DATA_PROCESSING_STATE_POSITION = keccak256("WithdrawOracle.dataProcessingState");
 
     // Specifies the maximum number of validator exits reported each time
-    uint256 public exitRequestLimit = 1000;
+    uint256 public exitRequestLimit;
+
+    // Minimum value limit for oracle Clearing clvault (unit: wei, default: 10 ether)
+    uint256 public clVaultMinSettleLimit;
 
     // current pending balance
     uint256 public pendingBalances;
@@ -100,7 +112,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     address public liquidStakingContractAddress;
 
-    address public vaultManagerContractAddress;
+    address public vaultManager;
 
     modifier onlyLiquidStaking() {
         require(liquidStakingContractAddress == msg.sender, "Not allowed onlyLiquidStaking");
@@ -113,9 +125,14 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         address consensusContract,
         uint256 consensusVersion,
         uint256 lastProcessingRefSlot,
-        address _dao
+        address _dao,
+        uint256 _exitRequestLimit,
+        uint256 _clVaultMinSettleLimit
     ) public initializer {
         __BaseOracle_init(secondsPerSlot, genesisTime, consensusContract, consensusVersion, lastProcessingRefSlot, _dao);
+
+        exitRequestLimit = _exitRequestLimit;
+        clVaultMinSettleLimit = _clVaultMinSettleLimit;
     }
 
     /// Set the number limit for the validator to report
@@ -123,6 +140,13 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         if (_exitRequestLimit == 0) revert ExitRequestLimitNotZero();
         exitRequestLimit = _exitRequestLimit;
         emit UpdateExitRequestLimit(_exitRequestLimit);
+    }
+
+    function setClVaultMinSettleLimit(uint256 _clVaultMinSettleLimit) external onlyDao {
+        if (_clVaultMinSettleLimit == 0) revert ClVaultMinSettleLimitNotZero();
+        clVaultMinSettleLimit = _clVaultMinSettleLimit;
+
+        emit UpdateClVaultMinSettleLimit(_clVaultMinSettleLimit);
     }
 
     /**
@@ -163,8 +187,8 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     function setVaultManager(address _vaultManagerContractAddress) external onlyDao {
         require(_vaultManagerContractAddress != address(0), "VaultManager address invalid");
-        emit VaultManagerChanged(vaultManagerContractAddress, _vaultManagerContractAddress);
-        vaultManagerContractAddress = _vaultManagerContractAddress;
+        emit VaultManagerChanged(vaultManager, _vaultManagerContractAddress);
+        vaultManager = _vaultManagerContractAddress;
     }
 
     /// @notice Submits report data for processing.
@@ -224,19 +248,22 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     // todo
     function _handleConsensusReportData(ReportData calldata data) internal {
-        if (data.exitValidatorInfos.length != data.reportExitedCount) {
-            revert InvalidRequestsDataLength();
-        }
+        if (data.exitValidatorInfos.length != data.reportExitedCount) revert InvalidRequestsDataLength();
+        if (data.clVaultBalance < exitRequestLimit) revert ClVaultBalanceNotMinSettleLimit();
 
-        // todo 调用结算
+        // Invoke vault Manager to process the reported data
+        IVaultManager(vaultManager).reportConsensusData(
+            data.withdrawInfos, data.exitValidatorInfos, data.delayedExitTokenIds, data.clBalance + data.clVaultBalance
+        );
 
-        // todo emit
-
+        // oracle maintains the necessary data
         _dealReportOracleData(data.refSlot, data.clBalance, data.clVaultBalance);
+
         _storageDataProcessingState().value = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
             reportExitedCount: data.reportExitedCount.toUint64()
         });
+        emit ReportDataSuccess(data.refSlot, data.reportExitedCount, data.clBalance, data.clVaultBalance);
     }
 
     function _dealReportOracleData(uint256 refSlot, uint256 _clBalances, uint256 _clVaultBalance) internal {
