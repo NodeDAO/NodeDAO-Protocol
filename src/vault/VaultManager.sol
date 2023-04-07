@@ -112,10 +112,14 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         liquidStakingContract.reinvestClRewards(operatorIds, amouts);
 
-        liquidStakingContract.slashOperator(exitTokenIds, slashAmounts);
+        if (exitTokenIds.length != 0 || slashAmounts.length != 0) {
+            liquidStakingContract.slashOperator(exitTokenIds, slashAmounts);
+        }
 
         // nft exit
-        liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
+        if (exitTokenIds.length != 0 || exitBlockNumbers.length != 0) {
+            liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
+        }
 
         if (_nftExitDelayedTokenIds.length != 0 || _largeExitDelayedRequestIds.length != 0) {
             liquidStakingContract.slashOfExitDelayed(_nftExitDelayedTokenIds, _largeExitDelayedRequestIds);
@@ -196,6 +200,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         return reinvestRewards;
     }
 
+    /**
+     * @notice Users claim vNFT rewards, supports multiple nft, but must be under one operator
+     * @param _tokenIds vNFT tokenIds
+     */
     function claimRewardsOfUser(uint256[] memory _tokenIds) external {
         uint256 operatorId = vNFTContract.operatorOf(_tokenIds[0]);
         uint256[] memory gasHeights = vNFTContract.getUsernftGasHeight(_tokenIds);
@@ -205,7 +213,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
             require(operatorId == vNFTContract.operatorOf(tokenId), "Must be the tokenId of the same operator");
-            uint256 nftRewards = _rewards(operatorId, tokenId, gasHeights[0], exitBlockNumbers[i]);
+            uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
             amounts[i] = nftRewards;
             totalNftRewards += nftRewards;
         }
@@ -216,6 +224,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         emit RewardClaimed(vNFTContract.ownerOf(_tokenIds[0]), totalNftRewards);
     }
 
+    /**
+     * @notice Computes the reward a nft has
+     * @param _tokenIds - tokenId of the validator nft
+     */
     function rewards(uint256[] memory _tokenIds) external view returns (uint256) {
         uint256 operatorId = vNFTContract.operatorOf(_tokenIds[0]);
         uint256[] memory gasHeights = vNFTContract.getUsernftGasHeight(_tokenIds);
@@ -224,14 +236,14 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
             require(operatorId == vNFTContract.operatorOf(tokenId), "Must be the tokenId of the same operator");
-            uint256 nftRewards = _rewards(operatorId, tokenId, gasHeights[0], exitBlockNumbers[i]);
+            uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
             totalNftRewards += nftRewards;
         }
 
         return totalNftRewards;
     }
 
-    function _rewards(uint256 _operatorId, uint256 _tokenId, uint256 gasHeight, uint256 exitBlockNumber)
+    function _rewards(uint256 _operatorId, uint256 gasHeight, uint256 exitBlockNumber)
         internal
         view
         returns (uint256)
@@ -251,8 +263,6 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             }
         }
 
-        uint256 lowIndex = low - 1;
-
         uint256 highIndex = cumArr.length - 1;
         if (exitBlockNumber != 0) {
             low = 0;
@@ -266,13 +276,17 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
                     low = mid + 1;
                 }
             }
-            uint256 highIndex = high - 1;
+            highIndex = high - 1;
         }
 
         // At this point `low` is the exclusive upper bound. We will use it.
         return cumArr[highIndex].value - cumArr[low - 1].value;
     }
 
+    /**
+     * @notice The operator claims the operation reward
+     * @param _operatorId operator Id
+     */
     function claimRewardsOfOperator(uint256 _operatorId) external {
         uint256 operatorRewards = operatorRewardsMap[_operatorId];
         operatorRewardsMap[_operatorId] = 0;
@@ -280,16 +294,20 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         emit OperatorClaimRewards(_operatorId, operatorRewards);
     }
 
+    /**
+     * @notice The dao claims to belong to the dao reward
+     * @param _operatorIds operators Id
+     */
     function claimRewardsOfDao(uint256[] memory _operatorIds) external {
-        uint256[] memory _rewards = new uint256[](_operatorIds.length);
+        uint256[] memory daoRewards = new uint256[](_operatorIds.length);
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 _operatorId = _operatorIds[i];
             uint256 _daoRewards = daoRewardsMap[_operatorId];
-            _rewards[i] = _daoRewards;
+            daoRewards[i] = _daoRewards;
             daoRewardsMap[_operatorId] = 0;
             emit DaoClaimRewards(_operatorId, _daoRewards);
         }
 
-        liquidStakingContract.claimRewardsOfDao(_operatorIds, _rewards);
+        liquidStakingContract.claimRewardsOfDao(_operatorIds, daoRewards);
     }
 }
