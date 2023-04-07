@@ -76,13 +76,17 @@ contract LiquidStaking is
     address public vaultManagerContractAddress;
     IConsensusVault public consensusVaultContract;
 
+    // operator's internal nft stake pool, key is operator_id
+    mapping(uint256 => uint256) public operatorNftPoolBalances;
+
     struct StakeInfo {
         uint256 operatorId;
         uint256 quota;
     }
 
     // key is user address, value is StakeInfo
-    mapping(address => StakeInfo[]) public stakeRecords;
+    mapping(address => StakeInfo[]) internal stakeRecords;
+
     // key is quit operatorId, value is asign operatorId
     mapping(uint256 => uint256) public reAssignRecords;
     // key is operatorId, value is loan amounts
@@ -91,7 +95,10 @@ contract LiquidStaking is
     mapping(uint256 => uint256) public operatorLoadBlockNumbers;
     // key is tokenId, value is nft unstake blocknumber
     mapping(uint256 => uint256) public nftUnstakeBlockNumbers;
+
+    function getNftUnstakeBlockNumber(uint256 tokenId) public view returns (uint256) {}
     // key is operatorId, value is operator unstake tokenid lists
+
     mapping(uint256 => uint256[]) internal operatorUnstakeNftLists;
 
     // When nft is punished by the network,
@@ -386,16 +393,7 @@ contract LiquidStaking is
             uint256 tokenId = vNFTContract.whiteListMint(bytes(""), userWithdrawalCredentials, msg.sender, _operatorId);
         }
 
-        uint256 loanAmounts = operatorLoanRecords[_operatorId];
-        if (loanAmounts > 0) {
-            operatorLoanRecords[_operatorId] = 0;
-            operatorLoadBlockNumbers[_operatorId] = 0;
-            operatorPoolBalances[_operatorId] += (msg.value - loanAmounts);
-        } else {
-            operatorPoolBalances[_operatorId] += msg.value;
-        }
-
-        operatorPoolBalancesSum += msg.value;
+        operatorNftPoolBalances[_operatorId] += msg.value;
 
         emit NftStake(msg.sender, mintNftsCount);
     }
@@ -512,7 +510,7 @@ contract LiquidStaking is
         emit LargeWithdrawalsRequest(_operatorId, msg.sender, totalRequestNethAmount);
     }
 
-    function claimLargeWitdrawals(uint256[] calldata requestIds) public nonReentrant whenNotPaused {
+    function claimLargeWithdrawals(uint256[] calldata requestIds) public nonReentrant whenNotPaused {
         uint256 totalRequestNethAmount = 0;
         uint256 totalPendingEthAmount = 0;
 
@@ -552,16 +550,27 @@ contract LiquidStaking is
         // must be a trusted operator
         uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
         require(operatorId != 0, "The sender must be controlAddress of the trusted operator");
-        require(operatorPoolBalances[operatorId] / DEPOSIT_SIZE >= _pubkeys.length, "Insufficient balance");
+        require(
+            (operatorPoolBalances[operatorId] + operatorNftPoolBalances[operatorId]) / DEPOSIT_SIZE >= _pubkeys.length,
+            "Insufficient balance"
+        );
 
+        uint256 userValidatorNumber = 0;
         for (uint256 i = 0; i < _pubkeys.length; ++i) {
-            _stakeAndMint(operatorId, _pubkeys[i], _signatures[i], _depositDataRoots[i]);
+            uint256 count = _stakeAndMint(operatorId, _pubkeys[i], _signatures[i], _depositDataRoots[i]);
+            userValidatorNumber += count;
         }
 
         uint256 stakeAmount = DEPOSIT_SIZE * _pubkeys.length;
-        operatorPoolBalances[operatorId] -= stakeAmount;
-        operatorPoolBalancesSum -= stakeAmount;
-        beaconOracleContract.addPendingBalances(stakeAmount);
+        uint256 userStakeAmount = DEPOSIT_SIZE * userValidatorNumber;
+        uint256 poolStakeAmount = stakeAmount - userStakeAmount;
+        operatorPoolBalances[operatorId] -= poolStakeAmount;
+        operatorPoolBalancesSum -= poolStakeAmount;
+        if (userStakeAmount != 0) {
+            operatorNftPoolBalances[operatorId] -= userStakeAmount;
+        }
+
+        beaconOracleContract.addPendingBalances(poolStakeAmount);
     }
 
     function _stakeAndMint(
@@ -569,7 +578,7 @@ contract LiquidStaking is
         bytes calldata _pubkey,
         bytes calldata _signature,
         bytes32 _depositDataRoot
-    ) internal {
+    ) internal returns (uint256) {
         bytes memory nextValidatorWithdrawalCredential = vNFTContract.getNextValidatorWithdrawalCredential(_operatorId);
         bytes memory _withdrawalCredential = (nextValidatorWithdrawalCredential.length != 0)
             ? nextValidatorWithdrawalCredential
@@ -580,6 +589,12 @@ contract LiquidStaking is
         uint256 tokenId = vNFTContract.whiteListMint(_pubkey, _withdrawalCredential, address(this), _operatorId);
 
         emit ValidatorRegistered(_operatorId, tokenId);
+
+        if (nextValidatorWithdrawalCredential.length != 0) {
+            return 1;
+        }
+
+        return 0;
     }
 
     /**
@@ -852,6 +867,46 @@ contract LiquidStaking is
     }
 
     /**
+     * @notice Obtain the available amount that the user can unstake
+     * @param _from user addresss
+     */
+    function getUnstakeQuota(address _from) public view returns (StakeInfo[] memory) {
+        return stakeRecords[_from];
+    }
+
+    /**
+     * @notice Obtain the unstake amount available for users under a certain operator
+     * @param _operatorId operator Id
+     */
+    function getOperatorNethUnstakePoolBalance(uint256 _operatorId) public view returns (uint256) {
+        uint256 targetOperatorId = _operatorId;
+        bool isQuit = nodeOperatorRegistryContract.isQuitOperator(_operatorId);
+        if (isQuit) {
+            uint256 reAssignOperatorId = reAssignRecords[_operatorId];
+            if (reAssignOperatorId != 0) {
+                targetOperatorId = reAssignOperatorId;
+            }
+        }
+
+        uint256 operatorBalances = operatorPoolBalances[targetOperatorId];
+        if (targetOperatorId == _operatorId) {
+            return operatorBalances;
+        }
+
+        uint256 operatorLoanAmounts = operatorLoanRecords[targetOperatorId];
+        uint256 operatorCanLoanAmounts = operatorPoolBalancesSum * 5 / 100;
+        if (operatorCanLoanAmounts > 32 ether) {
+            operatorCanLoanAmounts = 32 ether;
+        }
+
+        if (operatorLoanAmounts > operatorCanLoanAmounts) {
+            return operatorBalances;
+        }
+
+        return operatorBalances + operatorCanLoanAmounts - operatorLoanAmounts;
+    }
+
+    /**
      * @notice Users claim vNFT rewards
      * @dev There is no need to judge whether this nft belongs to the liquidStaking,
      *      because the liquidStaking cannot directly reward
@@ -968,8 +1023,8 @@ contract LiquidStaking is
      * @notice Get the total amount of ETH in the protocol
      */
     function getTotalEthValue() public view returns (uint256) {
-        return operatorPoolBalancesSum + beaconOracleContract.getClBalances()
-            + beaconOracleContract.getPendingBalances();
+        return
+            operatorPoolBalancesSum + beaconOracleContract.getClBalances() + beaconOracleContract.getPendingBalances();
     }
 
     /**
