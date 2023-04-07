@@ -81,7 +81,7 @@ contract LiquidStaking is
         uint256 quota;
     }
 
-    // key is user address, value is
+    // key is user address, value is StakeInfo
     mapping(address => StakeInfo[]) public stakeRecords;
     // key is quit operatorId, value is asign operatorId
     mapping(uint256 => uint256) public reAssignRecords;
@@ -91,17 +91,28 @@ contract LiquidStaking is
     mapping(uint256 => uint256) public operatorLoadBlockNumbers;
     // key is tokenId, value is nft unstake blocknumber
     mapping(uint256 => uint256) public nftUnstakeBlockNumbers;
-    // key is operatorId, value is operatorUnstakeNftLists
+    // key is operatorId, value is operator unstake tokenid lists
     mapping(uint256 => uint256[]) internal operatorUnstakeNftLists;
+
+    // When nft is punished by the network,
+    //   for the user's nft, the penalty amount should be given to the user
+    // When the operator margin is insufficient, how much compensation is owed will be recorded
     // key is tokenId, value is nft compensated
     mapping(uint256 => uint256) public nftWillCompensated;
+    // Compensation already paid
     mapping(uint256 => uint256) public nftHasCompensated;
+    // Record the set of tokenids that the operator will compensate
     mapping(uint256 => uint256[]) public operatorSlashArrears;
+    // The index of the compensation that has been completed is used for the distribution of compensation when replenishing the margin
     uint256 public operatorCompensatedIndex;
 
     // delay exit slash
+    // When the operator does not nft unstake or large withdrawals for more than 72 hours, the oracle will be punished
     uint256 public delayedExitSlashStandard;
+    // Penalty amount for each validator per block
     uint256 public slashAmountPerBlockPerValidator;
+
+    // Record the latest penalty information
     // key is tokenId, value is blockNumber
     mapping(uint256 => uint256) public nftExitDelayedSlashRecords;
     // key is requestId, value is blockNumber
@@ -111,8 +122,11 @@ contract LiquidStaking is
     uint256 public constant MIN_NETH_WITHDRAWAL_AMOUNT = 32 * 1e18;
     uint256 public constant MAX_NETH_WITHDRAWAL_AMOUNT = 1000 * 1e18;
 
+    // For large withdrawals, the withdrawn Neth will be locked in the liquid contract and wait for the user to claim to complete the burning
     uint256 public totalLockedNethBalance;
+    // The total amount of requests for large withdrawals by the operator
     mapping(uint256 => uint256) public operatorPendingEthRequestAmount;
+    // Repay the pool amount for large withdrawals
     mapping(uint256 => uint256) public operatorPendingEthPoolBalance;
 
     struct WithdrawalInfo {
@@ -125,54 +139,8 @@ contract LiquidStaking is
         bool isClaim;
     }
 
+    // For large withdrawal requests, it is allowed to claim out of queue order
     WithdrawalInfo[] public withdrawalQueues;
-
-    function getWithdrawalRequestIdOfOwner(address _owner) external view returns (uint256[] memory) {
-        uint256 counts = 0;
-        for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
-            if (withdrawalQueues[i].owner == _owner && !withdrawalQueues[i].isClaim) {
-                counts += 1;
-            }
-        }
-
-        uint256[] memory ids = new uint256[](counts);
-        uint256 index = 0;
-        for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
-            if (withdrawalQueues[i].owner == _owner && !withdrawalQueues[i].isClaim) {
-                ids[index++] = i;
-            }
-        }
-
-        return ids;
-    }
-
-    function getWithdrawalOfOperator(uint256 _operatorId) external view returns (WithdrawalInfo[] memory) {
-        uint256 counts = 0;
-
-        for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
-            if (withdrawalQueues[i].operatorId == _operatorId) {
-                counts += 1;
-            }
-        }
-
-        WithdrawalInfo[] memory wInfo = new WithdrawalInfo[](counts);
-        uint256 wIndex = 0;
-        for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
-            if (withdrawalQueues[i].operatorId == _operatorId) {
-                wInfo[wIndex++] = withdrawalQueues[i];
-            }
-        }
-
-        return wInfo;
-    }
-
-    function getOperatorWillExitNfsList(uint256 _operatorId) external view returns (uint256[] memory) {
-        // operatorUnstakeNftLists & userNftExitBlockNumbers != 0
-    }
-
-    function getOperatorLoadBlockNumber(uint256 _operatorId) external view returns (uint256) {
-        return operatorLoadBlockNumbers[_operatorId];
-    }
 
     modifier onlyDao() {
         require(msg.sender == dao, "PERMISSION_DENIED");
@@ -241,36 +209,54 @@ contract LiquidStaking is
      *
      * The Dao has the right to distribute the available balance on this operator to other active operators,
      * and the allocation share will be determined through proposals
-     * @param _assignOperatorId blacklist or quit operator id
-     * @param _operatorIds The operator id of the allocation share
-     * @param _amounts The size of the allocated share
+     * @param _assignOperatorId blacklist operator id
+     * @param _operatorId The operator id of the allocation share
      */
-    function assignBlacklistOrQuitOperator(
-        uint256 _assignOperatorId,
-        uint256[] calldata _operatorIds,
-        uint256[] calldata _amounts
-    ) external onlyOwner {
+    function assignBlacklistOperator(uint256 _assignOperatorId, uint256 _operatorId) external onlyOwner {
         // assignOperatorId must be a blacklist operator
-        require(
-            !nodeOperatorRegistryContract.isTrustedOperator(_assignOperatorId)
-                || nodeOperatorRegistryContract.isQuitOperator(_assignOperatorId),
-            "This operator is trusted"
-        );
-        require(_operatorIds.length == _amounts.length, "Invalid length");
+        require(!nodeOperatorRegistryContract.isBlacklistOperator(_assignOperatorId), "The assign operator is trusted");
+        require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
 
-        // Update operator available funds
-        uint256 totalAmount = 0;
-        for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            uint256 operatorId = _operatorIds[i];
-            require(nodeOperatorRegistryContract.isTrustedOperator(operatorId), "Operator must be trusted");
-            uint256 amount = _amounts[i];
-            totalAmount += amount;
-            operatorPoolBalances[operatorId] += amount;
+        uint256 assignOperatorBalances = _assignOperator(_assignOperatorId, _operatorId);
+
+        emit BlacklistOperatorAssigned(_assignOperatorId, _operatorId, assignOperatorBalances);
+    }
+
+    /**
+     * @notice for exiting operator
+     * The Dao has the right to distribute the available balance of this operator to other active operators,
+     * Allocation share will be determined by proposal
+     * @param _quitOperatorId quit operator id
+     * @param _operatorId The operator id of the allocation share
+     */
+    function assignQuitOperator(uint256 _quitOperatorId, uint256 _operatorId) external onlyOwner {
+        // _quitOperatorId must be a quit operator
+        require(nodeOperatorRegistryContract.isQuitOperator(_quitOperatorId), "The assign operator did not exit");
+        require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
+
+        uint256 assignOperatorBalances = _assignOperator(_quitOperatorId, _operatorId);
+        reAssignRecords[_quitOperatorId] = _operatorId;
+
+        emit QuitOperatorAssigned(_quitOperatorId, _operatorId, assignOperatorBalances);
+    }
+
+    function _assignOperator(uint256 _assignOperatorId, uint256 _operatorId) internal returns (uint256) {
+        uint256 assignOperatorBalances = operatorPoolBalances[_assignOperatorId];
+        uint256 loanAmounts = operatorLoanRecords[_assignOperatorId];
+        if (loanAmounts > 0) {
+            if (loanAmounts > assignOperatorBalances) {
+                operatorLoanRecords[_assignOperatorId] -= assignOperatorBalances;
+                assignOperatorBalances = 0;
+            } else {
+                operatorLoanRecords[_assignOperatorId] = 0;
+                assignOperatorBalances -= loanAmounts;
+            }
         }
 
-        require(operatorPoolBalances[_assignOperatorId] >= totalAmount, "Insufficient balance of blacklist operator");
-        operatorPoolBalances[_assignOperatorId] -= totalAmount;
-        emit BlacklistOperatorAssigned(_assignOperatorId, totalAmount);
+        operatorPoolBalances[_operatorId] += assignOperatorBalances;
+        operatorPoolBalances[_assignOperatorId] = 0;
+
+        return assignOperatorBalances;
     }
 
     /**
@@ -341,6 +327,11 @@ contract LiquidStaking is
         }
     }
 
+    /**
+     * @notice unstake neth to designated operator
+     * @param _operatorId operator id
+     * @param _amounts untake neth amount
+     */
     function unstakeETH(uint256 _operatorId, uint256 _amounts) public nonReentrant whenNotPaused {
         uint256 amountOut = getEthOut(_amounts);
 
@@ -352,69 +343,6 @@ contract LiquidStaking is
         payable(msg.sender).transfer(amountOut);
 
         emit EthUnstake(_operatorId, targetOperatorId, msg.sender, _amounts, amountOut);
-    }
-
-    function claimLargeWitdrawals(uint256[] calldata requestIds) public nonReentrant whenNotPaused {
-        uint256 totalRequestNethAmount = 0;
-        uint256 totalPendingEthAmount = 0;
-
-        for (uint256 i = 0; i < requestIds.length; ++i) {
-            uint256 id = requestIds[i];
-            WithdrawalInfo memory wInfo = withdrawalQueues[id];
-            require(wInfo.owner == msg.sender, "no permission");
-            require(!wInfo.isClaim, "requestId already claimed");
-            withdrawalQueues[id].isClaim = true;
-            totalRequestNethAmount += wInfo.withdrawNethAmount;
-            totalPendingEthAmount += wInfo.claimEthAmount;
-            operatorPendingEthRequestAmount[wInfo.operatorId] -= wInfo.claimEthAmount;
-            operatorPendingEthPoolBalance[wInfo.operatorId] -= wInfo.claimEthAmount;
-        }
-
-        nETHContract.whiteListBurn(totalRequestNethAmount, address(this));
-        totalLockedNethBalance -= totalRequestNethAmount;
-        payable(msg.sender).transfer(totalPendingEthAmount);
-    }
-
-    function requestLargeWithdrawals(uint256 _operatorId, uint256[] calldata _amounts)
-        public
-        nonReentrant
-        whenNotPaused
-    {
-        uint256 totalRequestNethAmount = 0;
-        uint256 totalPendingEthAmount = 0;
-
-        uint256 _exchange = getEthOut(1 ether);
-        for (uint256 i = 0; i < _amounts.length; ++i) {
-            uint256 _amount = _amounts[i];
-            require(
-                _amount >= MIN_NETH_WITHDRAWAL_AMOUNT && _amount <= MAX_NETH_WITHDRAWAL_AMOUNT, "invalid request amount"
-            );
-
-            uint256 amountOut = getEthOut(_amount);
-            withdrawalQueues.push(
-                WithdrawalInfo({
-                    operatorId: _operatorId,
-                    withdrawHeight: block.number,
-                    withdrawNethAmount: _amount,
-                    withdrawExchange: _exchange,
-                    claimEthAmount: amountOut,
-                    owner: msg.sender,
-                    isClaim: false
-                })
-            );
-
-            totalRequestNethAmount += _amount;
-            totalPendingEthAmount += amountOut;
-        }
-
-        bool success = nETHContract.transferFrom(msg.sender, address(this), totalRequestNethAmount);
-        require(success, "Failed to transfer neth");
-
-        _unstake(_operatorId, msg.sender, totalRequestNethAmount);
-        totalLockedNethBalance += totalRequestNethAmount;
-        operatorPendingEthRequestAmount[_operatorId] += totalPendingEthAmount;
-
-        emit LargeWithdrawalsRequest(_operatorId, msg.sender, totalRequestNethAmount);
     }
 
     function _unstake(uint256 _operatorId, address _from, uint256 _amount) internal {
@@ -472,6 +400,10 @@ contract LiquidStaking is
         emit NftStake(msg.sender, mintNftsCount);
     }
 
+    /**
+     * @notice Perform unstake operation on the held nft, an irreversible operation, and get back the pledged deth
+     * @param _tokenIds unstake token id
+     */
     function unstakeNFT(uint256[] calldata _tokenIds) external nonReentrant whenNotPaused {
         uint256[] memory operatorIds = new uint256[] (1);
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
@@ -534,6 +466,74 @@ contract LiquidStaking is
     }
 
     /**
+     * @notice Large withdrawal request, used for withdrawals over 32neth and less than 1000 neth.
+     * @param _operatorId operator id
+     * @param _amounts untake neth amount
+     */
+    function requestLargeWithdrawals(uint256 _operatorId, uint256[] calldata _amounts)
+        public
+        nonReentrant
+        whenNotPaused
+    {
+        uint256 totalRequestNethAmount = 0;
+        uint256 totalPendingEthAmount = 0;
+
+        uint256 _exchange = getEthOut(1 ether);
+        for (uint256 i = 0; i < _amounts.length; ++i) {
+            uint256 _amount = _amounts[i];
+            require(
+                _amount >= MIN_NETH_WITHDRAWAL_AMOUNT && _amount <= MAX_NETH_WITHDRAWAL_AMOUNT, "invalid request amount"
+            );
+
+            uint256 amountOut = getEthOut(_amount);
+            withdrawalQueues.push(
+                WithdrawalInfo({
+                    operatorId: _operatorId,
+                    withdrawHeight: block.number,
+                    withdrawNethAmount: _amount,
+                    withdrawExchange: _exchange,
+                    claimEthAmount: amountOut,
+                    owner: msg.sender,
+                    isClaim: false
+                })
+            );
+
+            totalRequestNethAmount += _amount;
+            totalPendingEthAmount += amountOut;
+        }
+
+        bool success = nETHContract.transferFrom(msg.sender, address(this), totalRequestNethAmount);
+        require(success, "Failed to transfer neth");
+
+        _unstake(_operatorId, msg.sender, totalRequestNethAmount);
+        totalLockedNethBalance += totalRequestNethAmount;
+        operatorPendingEthRequestAmount[_operatorId] += totalPendingEthAmount;
+
+        emit LargeWithdrawalsRequest(_operatorId, msg.sender, totalRequestNethAmount);
+    }
+
+    function claimLargeWitdrawals(uint256[] calldata requestIds) public nonReentrant whenNotPaused {
+        uint256 totalRequestNethAmount = 0;
+        uint256 totalPendingEthAmount = 0;
+
+        for (uint256 i = 0; i < requestIds.length; ++i) {
+            uint256 id = requestIds[i];
+            WithdrawalInfo memory wInfo = withdrawalQueues[id];
+            require(wInfo.owner == msg.sender, "no permission");
+            require(!wInfo.isClaim, "requestId already claimed");
+            withdrawalQueues[id].isClaim = true;
+            totalRequestNethAmount += wInfo.withdrawNethAmount;
+            totalPendingEthAmount += wInfo.claimEthAmount;
+            operatorPendingEthRequestAmount[wInfo.operatorId] -= wInfo.claimEthAmount;
+            operatorPendingEthPoolBalance[wInfo.operatorId] -= wInfo.claimEthAmount;
+        }
+
+        nETHContract.whiteListBurn(totalRequestNethAmount, address(this));
+        totalLockedNethBalance -= totalRequestNethAmount;
+        payable(msg.sender).transfer(totalPendingEthAmount);
+    }
+
+    /**
      * @notice registers validators
      * @param _pubkeys validator pubkeys
      * @param _signatures validator signatures
@@ -582,18 +582,28 @@ contract LiquidStaking is
         emit ValidatorRegistered(_operatorId, tokenId);
     }
 
-    function nftExitHandle(uint256[] memory tokenIds, uint256[] memory exitBlockNumbers) external onlyVaultManager {
-        for (uint256 i = 0; i < tokenIds.length; ++i) {
-            uint256 tokenId = tokenIds[i];
+    /**
+     * @notice Update the status of the corresponding nft according to the report result of the oracle machine
+     * @param _tokenIds token id
+     * @param _exitBlockNumbers exit block number
+     */
+    function nftExitHandle(uint256[] memory _tokenIds, uint256[] memory _exitBlockNumbers) external onlyVaultManager {
+        for (uint256 i = 0; i < _tokenIds.length; ++i) {
+            uint256 tokenId = _tokenIds[i];
             if (vNFTContract.ownerOf(tokenId) == address(this)) {
                 vNFTContract.whiteListBurn(tokenId);
             }
         }
 
-        vNFTContract.setNftExitBlockNumbers(tokenIds, exitBlockNumbers);
-        emit NftExitBlockNumberSet(tokenIds, exitBlockNumbers);
+        vNFTContract.setNftExitBlockNumbers(_tokenIds, _exitBlockNumbers);
+        emit NftExitBlockNumberSet(_tokenIds, _exitBlockNumbers);
     }
 
+    /**
+     * @notice According to the settlement results of the vaultManager, the income of the re-investment execution layer
+     * @param _operatorIds operator id
+     * @param _amounts reinvest amounts
+     */
     function reinvestElRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external onlyVaultManager {
         require(_operatorIds.length == _amounts.length, "invalid length");
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
@@ -611,6 +621,11 @@ contract LiquidStaking is
         }
     }
 
+    /**
+     * @notice According to the reported results of the oracle machine, the income of the consensus layer is re-invested
+     * @param _operatorIds operator id
+     * @param _amounts reinvest amounts
+     */
     function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external onlyVaultManager {
         require(_operatorIds.length == _amounts.length, "invalid length");
         uint256 totalReinvestRewards = 0;
@@ -642,11 +657,21 @@ contract LiquidStaking is
         consensusVaultContract.reinvestment(totalReinvestRewards);
     }
 
+    /**
+     * @notice According to the report results of the oracle machine, the operator who has reduced nft will be punished
+     * @param _exitTokenIds token id
+     * @param _amounts slash amounts
+     */
     function slashOperator(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external onlyVaultManager {
         require(_exitTokenIds.length == _amounts.length && _amounts.length != 0, "parameter invalid length");
         nodeOperatorRegistryContract.slash(_exitTokenIds, _amounts);
     }
 
+    /**
+     * @notice According to the report result of the oracle machine, punish the operator who fails to exit in time
+     * @param _nftExitDelayedTokenIds exit delayed tokenIds
+     * @param _largeExitDelayedRequestIds large exit delayed requestIds
+     */
     function slashOfExitDelayed(uint256[] memory _nftExitDelayedTokenIds, uint256[] memory _largeExitDelayedRequestIds)
         external
         onlyVaultManager
@@ -684,20 +709,26 @@ contract LiquidStaking is
         nodeOperatorRegistryContract.slashOfExitDelayed(_operatorId, _amount);
     }
 
+    /**
+     * @notice Receive slash fund, Because the operator may have insufficient margin, _slashAmounts may be less than or equal to _requireAmounts
+     * @param _exitTokenIds exit tokenIds
+     * @param _slashAmounts slash amount
+     * @param _requireAmounts require slas amount
+     */
     function slashReceive(
         uint256[] memory _exitTokenIds,
-        uint256[] memory _slashAmount,
-        uint256[] memory _requirAmounts
+        uint256[] memory _slashAmounts,
+        uint256[] memory _requireAmounts
     ) external payable {
         require(msg.sender == address(nodeOperatorRegistryContract), "PERMISSION_DENIED");
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
             if (vNFTContract.ownerOf(tokenId) == address(this)) {
-                _updateStakeFundLedger(operatorId, _slashAmount[i]);
+                _updateStakeFundLedger(operatorId, _slashAmounts[i]);
             } else {
-                uint256 requirAmount = _requirAmounts[i];
-                uint256 slashAmount = _slashAmount[i];
+                uint256 requirAmount = _requireAmounts[i];
+                uint256 slashAmount = _slashAmounts[i];
                 require(requirAmount >= slashAmount, "Abnormal slash amount");
                 if (requirAmount != slashAmount) {
                     nftWillCompensated[tokenId] += requirAmount - slashAmount;
@@ -706,10 +737,15 @@ contract LiquidStaking is
                 nftHasCompensated[tokenId] += slashAmount;
             }
 
-            emit SlashReceive(operatorId, tokenId, _slashAmount[i], _requirAmounts[i]);
+            emit SlashReceive(operatorId, tokenId, _slashAmounts[i], _requireAmounts[i]);
         }
     }
 
+    /**
+     * @notice The receiving function of the penalty, used for the automatic transfer after the operator recharges the margin
+     * @param _operatorId operator Id
+     * @param _amount slash amount
+     */
     function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable {
         emit ArrearsReceiveOfSlash(_operatorId, _amount);
 
@@ -743,6 +779,87 @@ contract LiquidStaking is
         }
     }
 
+    /**
+     * @notice Can get a large amount of active withdrawal requests from an address
+     * @param _owner _owner address
+     */
+    function getWithdrawalRequestIdOfOwner(address _owner) external view returns (uint256[] memory) {
+        uint256 counts = 0;
+        for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
+            if (withdrawalQueues[i].owner == _owner && !withdrawalQueues[i].isClaim) {
+                counts += 1;
+            }
+        }
+
+        uint256[] memory ids = new uint256[](counts);
+        uint256 index = 0;
+        for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
+            if (withdrawalQueues[i].owner == _owner && !withdrawalQueues[i].isClaim) {
+                ids[index++] = i;
+            }
+        }
+
+        return ids;
+    }
+
+    /**
+     * @notice Obtain all large withdrawal requests of an operator
+     * @param _operatorId operator Id
+     */
+    function getWithdrawalOfOperator(uint256 _operatorId) external view returns (WithdrawalInfo[] memory) {
+        uint256 counts = 0;
+
+        for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
+            if (withdrawalQueues[i].operatorId == _operatorId) {
+                counts += 1;
+            }
+        }
+
+        WithdrawalInfo[] memory wInfo = new WithdrawalInfo[](counts);
+        uint256 wIndex = 0;
+        for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
+            if (withdrawalQueues[i].operatorId == _operatorId) {
+                wInfo[wIndex++] = withdrawalQueues[i];
+            }
+        }
+
+        return wInfo;
+    }
+
+    /**
+     * @notice Get the tokenid set that the user initiates to exit but the operator has not yet operated
+     * @param _operatorId operator Id
+     */
+    function getUserUnstakeButOperatorNoExitNfs(uint256 _operatorId) external view returns (uint256[] memory) {
+        uint256 counts = 0;
+        uint256[] memory tokenIds = operatorUnstakeNftLists[_operatorId];
+        uint256[] memory exitBlockNumbers = vNFTContract.getNftExitBlockNumbers(tokenIds);
+        for (uint256 i = 0; i < tokenIds.length; ++i) {
+            if (exitBlockNumbers[i] == 0) {
+                counts += 1;
+            }
+        }
+
+        uint256[] memory noExitNfts = new uint256[] (counts);
+        uint256 j = 0;
+        for (uint256 i = 0; i < tokenIds.length; ++i) {
+            if (exitBlockNumbers[i] == 0) {
+                noExitNfts[j++] = i;
+            }
+        }
+
+        return noExitNfts;
+    }
+
+    /**
+     * @notice Users claim vNFT rewards
+     * @dev There is no need to judge whether this nft belongs to the liquidStaking,
+     *      because the liquidStaking cannot directly reward
+     * @param _operatorId operator id
+     * @param _tokenIds vNFT tokenIds
+     * @param _amounts reward
+     * @param _gasHeight update claim gasHeigt
+     */
     function claimRewardsOfUser(
         uint256 _operatorId,
         uint256[] memory _tokenIds,
@@ -755,7 +872,7 @@ contract LiquidStaking is
         uint256[] memory exitBlockNumbers = vNFTContract.getNftExitBlockNumbers(_tokenIds);
         uint256 totalNftRewards = 0;
         address owner = vNFTContract.ownerOf(_tokenIds[0]);
-
+        uint256 totalCompensated;
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
             require(owner == vNFTContract.ownerOf(tokenId), "different owners cannot batch");
@@ -766,14 +883,27 @@ contract LiquidStaking is
             } else {
                 vNFTContract.setUserNftGasHeight(tokenId, _gasHeight);
             }
+
+            if (nftHasCompensated[tokenId] != 0) {
+                totalCompensated += nftHasCompensated[tokenId];
+                nftHasCompensated[tokenId] = 0;
+            }
         }
 
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
         IELVault(vaultContractAddress).transfer(totalNftRewards, owner);
+        if (totalCompensated != 0) {
+            payable(owner).transfer(totalCompensated);
+        }
 
-        emit UserClaimRewards(_operatorId, _tokenIds, totalNftRewards);
+        emit UserClaimRewards(_operatorId, _tokenIds, totalNftRewards + totalCompensated);
     }
 
+    /**
+     * @notice The operator claims the operation reward
+     * @param _operatorId operator Id
+     * @param _reward operator reward
+     */
     function claimRewardsOfOperator(uint256 _operatorId, uint256 _reward)
         external
         nonReentrant
@@ -782,7 +912,6 @@ contract LiquidStaking is
     {
         require(operatorLoanRecords[_operatorId] == 0, "The operator is in arrears");
 
-        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
         uint256 pledgeBalance = 0;
         uint256 requirBalance = 0;
         (pledgeBalance, requirBalance) = nodeOperatorRegistryContract.getPledgeBalanceOfOperator(_operatorId);
@@ -792,6 +921,7 @@ contract LiquidStaking is
         uint256[] memory ratios;
         (rewardAddresses, ratios) = nodeOperatorRegistryContract.getNodeOperatorRewardSetting(_operatorId);
         require(rewardAddresses.length != 0, "Invalid rewardAddresses");
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
 
         uint256 totalAmount = 0;
         uint256 totalRatios = 0;
@@ -814,6 +944,11 @@ contract LiquidStaking is
         emit OperatorClaimRewards(_operatorId, _reward);
     }
 
+    /**
+     * @notice The dao claims to belong to the dao reward
+     * @param _operatorIds operators Id
+     * @param _rewards rewards
+     */
     function claimRewardsOfDao(uint256[] memory _operatorIds, uint256[] memory _rewards)
         external
         nonReentrant
@@ -863,7 +998,7 @@ contract LiquidStaking is
         }
         require(totalEth > 0, "totalEth is zero");
         return _ethAmountIn * (nethSupply) / (totalEth);
-    } // todo 百万/千万级别 测试
+    }
 
     /**
      * @notice nETH to ETH exchange rate

@@ -61,6 +61,14 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         daoElComissionRate = 300;
     }
 
+    /**
+     * @notice Receive the oracle machine consensus layer information, initiate re-investment consensus layer rewards, trigger and update the exited nft
+     * @param _withdrawInfo withdraw info
+     * @param _exitValidatorInfo exit validator info
+     * @param _nftExitDelayedTokenIds nft with delayed exit
+     * @param _largeExitDelayedRequestIds large Requests for Delayed Exit
+     * @param _thisTotalWithdrawAmount The total settlement amount reported this time
+     */
     function reportConsensusData(
         WithdrawInfo[] memory _withdrawInfo,
         ExitValidatorInfo[] memory _exitValidatorInfo,
@@ -114,6 +122,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         }
     }
 
+    /**
+     * @notice Settlement and reinvestment execution layer rewards
+     * @param _operatorIds operator id
+     */
     function settleAndReinvestElReward(uint256[] memory _operatorIds) external {
         uint256[] memory reinvestAmounts;
         bool isSettle;

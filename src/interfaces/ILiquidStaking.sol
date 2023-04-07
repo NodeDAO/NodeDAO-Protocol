@@ -41,7 +41,8 @@ interface ILiquidStaking {
     function claimRewardsOfOperator(uint256 _operatorId, uint256 _reward) external;
     function claimRewardsOfDao(uint256[] memory _operatorIds, uint256[] memory _rewards) external;
 
-    event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _totalAmount);
+    event BlacklistOperatorAssigned(uint256 _blacklistOperatorId, uint256 _operatorId, uint256 _totalAmount);
+    event QuitOperatorAssigned(uint256 _quitOperatorId, uint256 _operatorId, uint256 _totalAmount);
     // todo 增加operator ID
     event EthStake(address indexed _from, uint256 _amount, uint256 _amountOut);
     event EthUnstake(uint256 _operatorId, uint256 targetOperatorId, address ender, uint256 _amounts, uint256 amountOut);

@@ -13,7 +13,8 @@ interface IVaultManager {
     function reportConsensusData(
         WithdrawInfo[] memory _withdrawInfo,
         ExitValidatorInfo[] memory _exitValidatorInfo,
-        uint256[] memory _delayedExitTokenIds,
+        uint256[] memory _nftExitDelayedTokenIds, // user nft
+        uint256[] memory _largeExitDelayedRequestIds, // large unstake request id
         uint256 _thisTotalWithdrawAmount
     ) external;
 }
