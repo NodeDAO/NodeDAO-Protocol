@@ -145,6 +145,12 @@ interface INodeOperatorsRegistry {
     function isConformBasicPledge(uint256 _operatorId) external view returns (bool);
 
     /**
+     * @notice Returns whether an operator is Blacklist
+     * @param _operatorId operator id
+     */
+    function isBlacklistOperator(uint256 _operatorId) external view returns (bool);
+
+    /**
      * @notice Returns whether an operator is quit
      * @param _id operator id
      */

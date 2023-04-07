@@ -519,14 +519,14 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice Returns whether an operator is trusted
-     * @param _id operator id
+     * @param _operatorId operator id
      */
-    function isTrustedOperator(uint256 _id) external view operatorExists(_id) returns (bool) {
-        if (blacklistOperators[_id]) {
+    function isTrustedOperator(uint256 _operatorId) external view operatorExists(_operatorId) returns (bool) {
+        if (blacklistOperators[_operatorId]) {
             return false;
         }
 
-        if (operators[_id].isQuit) {
+        if (operators[_operatorId].isQuit) {
             return false;
         }
 
@@ -534,15 +534,27 @@ contract NodeOperatorRegistry is
             return true;
         }
 
-        return operators[_id].trusted;
+        return operators[_operatorId].trusted;
     }
 
     /**
      * @notice Returns whether an operator is quit
-     * @param _id operator id
+     * @param _operatorId operator id
      */
-    function isQuitOperator(uint256 _id) external view operatorExists(_id) returns (bool) {
-        return operators[_id].isQuit;
+    function isQuitOperator(uint256 _operatorId) external view operatorExists(_operatorId) returns (bool) {
+        return operators[_operatorId].isQuit;
+    }
+
+    /**
+     * @notice Returns whether an operator is Blacklist
+     * @param _operatorId operator id
+     */
+    function isBlacklistOperator(uint256 _operatorId) external view operatorExists(_operatorId) returns (bool) {
+        if (blacklistOperators[_operatorId]) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
