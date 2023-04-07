@@ -11,7 +11,7 @@ import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INETH.sol";
 import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IDepositContract.sol";
-import "src/interfaces/IBeaconOracle.sol";
+import "src/interfaces/IWithdrawOracle.sol";
 import "src/interfaces/IELVault.sol";
 import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUpgradeable.sol";
 import "src/interfaces/IConsensusVault.sol";
@@ -47,7 +47,7 @@ contract LiquidStaking is
 
     IVNFT public vNFTContract;
 
-    IBeaconOracle public beaconOracleContract;
+    IWithdrawOracle public beaconOracleContract;
 
     bytes public liquidStakingWithdrawalCredentials;
 
@@ -190,7 +190,7 @@ contract LiquidStaking is
 
         vNFTContract = IVNFT(_nVNFTContractAddress);
 
-        beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
+        beaconOracleContract = IWithdrawOracle(_beaconOracleContractAddress);
     }
 
     function initializeV2() public reinitializer(2) onlyDao {
@@ -968,7 +968,7 @@ contract LiquidStaking is
      * @notice Get the total amount of ETH in the protocol
      */
     function getTotalEthValue() public view returns (uint256) {
-        return operatorPoolBalancesSum + beaconOracleContract.getBeaconBalances()
+        return operatorPoolBalancesSum + beaconOracleContract.getClBalances()
             + beaconOracleContract.getPendingBalances();
     }
 
@@ -1057,7 +1057,7 @@ contract LiquidStaking is
      */
     function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
         emit BeaconOracleContractSet(address(beaconOracleContract), _beaconOracleContractAddress);
-        beaconOracleContract = IBeaconOracle(_beaconOracleContractAddress);
+        beaconOracleContract = IWithdrawOracle(_beaconOracleContractAddress);
     }
 
     /**
