@@ -87,6 +87,8 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         ExitValidatorInfo[] exitValidatorInfos;
         // The validator does not exit in time. Procedure
         uint256[] delayedExitTokenIds;
+        //nETH reported a large exit
+        uint256[] largeExitDelayedRequestIds;
     }
 
     /// Length in bytes of packed request
@@ -217,7 +219,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     /// @notice Returns data processing state for the current reporting frame.
     /// @return result See the docs for the `ProcessingState` struct.
-    /// todo
     function getProcessingState() external view returns (ProcessingState memory result) {
         ConsensusReport memory report = _storageConsensusReport().value;
         result.currentFrameRefSlot = _getCurrentRefSlot();
@@ -246,14 +247,17 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         }
     }
 
-    // todo
     function _handleConsensusReportData(ReportData calldata data) internal {
         if (data.exitValidatorInfos.length != data.reportExitedCount) revert InvalidRequestsDataLength();
         if (data.clVaultBalance < exitRequestLimit) revert ClVaultBalanceNotMinSettleLimit();
 
         // Invoke vault Manager to process the reported data
         IVaultManager(vaultManager).reportConsensusData(
-            data.withdrawInfos, data.exitValidatorInfos, data.delayedExitTokenIds, data.clBalance + data.clVaultBalance
+            data.withdrawInfos,
+            data.exitValidatorInfos,
+            data.delayedExitTokenIds,
+            data.largeExitDelayedRequestIds,
+            data.clBalance + data.clVaultBalance
         );
 
         // oracle maintains the necessary data
