@@ -17,6 +17,10 @@ import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUp
 import "src/interfaces/IConsensusVault.sol";
 import "src/interfaces/IVaultManager.sol";
 
+
+import "forge-std/console.sol";
+
+
 /**
  * @title NodeDao LiquidStaking Contract
  *
@@ -306,14 +310,20 @@ contract LiquidStaking is
         if (loanAmounts > 0) {
             if (loanAmounts > _amount) {
                 operatorLoanRecords[_operatorId] -= _amount;
+                _amount = 0;
             } else {
                 operatorLoanRecords[_operatorId] = 0;
                 operatorLoadBlockNumbers[_operatorId] = 0;
+                _amount = _amount - loanAmounts;
                 operatorPoolBalances[_operatorId] += (_amount - loanAmounts);
             }
         }
 
-        operatorPoolBalancesSum += _amount;
+        if (_amount > 0) {
+            operatorPoolBalances[_operatorId] += _amount;
+            operatorPoolBalancesSum += _amount;
+        }
+        
     }
 
     function _stake(uint256 _operatorId, address _from, uint256 _amount) internal {
@@ -1054,6 +1064,8 @@ contract LiquidStaking is
     function getNethOut(uint256 _ethAmountIn) public view returns (uint256) {
         uint256 totalEth = getTotalEthValue();
         uint256 nethSupply = nETHContract.totalSupply();
+        console.log("===========totalEth", totalEth);
+        console.log("===========nethSupply", nethSupply);
         if (nethSupply == 0) {
             return _ethAmountIn;
         }
