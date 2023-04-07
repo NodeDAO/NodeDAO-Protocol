@@ -94,11 +94,9 @@ contract LiquidStaking is
     // key is operatorId, value is loan blockNumber
     mapping(uint256 => uint256) public operatorLoadBlockNumbers;
     // key is tokenId, value is nft unstake blocknumber
-    mapping(uint256 => uint256) public nftUnstakeBlockNumbers;
+    mapping(uint256 => uint256) internal nftUnstakeBlockNumbers;
 
-    function getNftUnstakeBlockNumber(uint256 tokenId) public view returns (uint256) {}
     // key is operatorId, value is operator unstake tokenid lists
-
     mapping(uint256 => uint256[]) internal operatorUnstakeNftLists;
 
     // When nft is punished by the network,
@@ -300,7 +298,7 @@ contract LiquidStaking is
         _updateStakeFundLedger(_operatorId, depositPoolAmount);
         _stake(_operatorId, msg.sender, amountOut);
 
-        emit EthStake(msg.sender, msg.value, amountOut);
+        emit EthStake(_operatorId, msg.sender, msg.value, amountOut);
     }
 
     function _updateStakeFundLedger(uint256 _operatorId, uint256 _amount) internal {
@@ -395,7 +393,7 @@ contract LiquidStaking is
 
         operatorNftPoolBalances[_operatorId] += msg.value;
 
-        emit NftStake(msg.sender, mintNftsCount);
+        emit NftStake(_operatorId, msg.sender, mintNftsCount);
     }
 
     /**
@@ -424,7 +422,7 @@ contract LiquidStaking is
                 operatorUnstakeNftLists[operatorId].push(tokenId);
             }
 
-            emit NftUnstake(tokenId, operatorId);
+            emit NftUnstake(operatorId, tokenId, operatorId);
         }
     }
 
@@ -904,6 +902,14 @@ contract LiquidStaking is
         }
 
         return operatorBalances + operatorCanLoanAmounts - operatorLoanAmounts;
+    }
+
+    /**
+     * @notice get nft unstake block number
+     * @param _tokenId token id
+     */
+    function getNftUnstakeBlockNumber(uint256 _tokenId) public view returns (uint256) {
+        return nftUnstakeBlockNumbers[_tokenId];
     }
 
     /**
