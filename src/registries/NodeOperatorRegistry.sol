@@ -95,7 +95,7 @@ contract NodeOperatorRegistry is
     function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
         uint256[] memory comissions = new uint256[] (_operatorIds.length);
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            if (operatorComissionRate[i] == 0) {
+            if (operatorComissionRate[_operatorIds[0]] == 0) {
                 comissions[i] = DEFAULT_COMISSION;
             } else {
                 comissions[i] = operatorComissionRate[i];
