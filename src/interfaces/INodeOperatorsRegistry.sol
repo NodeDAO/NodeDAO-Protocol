@@ -118,6 +118,10 @@ interface INodeOperatorsRegistry {
      */
     function getPledgeBalanceOfOperator(uint256 _operatorId) external view returns (uint256, uint256);
 
+    /**
+     * @notice get operator comission rate
+     * @param _operatorIds operator id
+     */
     function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory);
     /**
      * @notice Get operator owner address
@@ -131,6 +135,12 @@ interface INodeOperatorsRegistry {
      * @param _amounts slash amount
      */
     function slash(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
+
+    /**
+     * @notice Operators will be penalized when they do not exit validators in time
+     * @param _operatorId operator id
+     * @param _amount slash amount
+     */
     function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external;
     /**
      * @notice deposit pledge fund for operator

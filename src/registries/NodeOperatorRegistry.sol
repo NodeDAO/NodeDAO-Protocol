@@ -88,6 +88,10 @@ contract NodeOperatorRegistry is
     mapping(uint256 => uint256) internal operatorComissionRate;
     uint256 public constant DEFAULT_COMISSION = 700;
 
+    /**
+     * @notice get operator comission rate
+     * @param _operatorIds operator id
+     */
     function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
         uint256[] memory comissions = new uint256[] (_operatorIds.length);
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
@@ -604,6 +608,11 @@ contract NodeOperatorRegistry is
         emit PledgeDeposited(msg.value, _operatorId);
     }
 
+    /**
+     * @notice Operators will be penalized when they do not exit validators in time
+     * @param _operatorId operator id
+     * @param _amount slash amount
+     */
     function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyLiquidStaking {
         uint256 slashAmount = _slash(_operatorId, _amount);
         if (slashAmount > 0) {

@@ -170,6 +170,9 @@ contract VNFT is
         return _nfts;
     }
 
+    /**
+     * @notice Get the number of total active nft counts
+     */
     function getTotalActiveNftCounts() external view returns (uint256) {
         return totalSupply() - totalExitButNoBurnNftCounts - emptyNftCounts;
     }
@@ -370,10 +373,20 @@ contract VNFT is
         }
     }
 
-    function getUserNftWithdrawalCredentialOfTokenId(uint256 tokenId) external view returns (bytes memory) {
-        return userNftWithdrawalCredentials[tokenId];
+    /**
+     * @notice Obtain the withdrawal voucher used by tokenid,
+     * if it is bytes(""), it means it is not the user's nft, and the voucher will be the withdrawal contract address of the nodedao protocol
+     * @param _tokenId - tokenId
+     */
+    function getUserNftWithdrawalCredentialOfTokenId(uint256 _tokenId) external view returns (bytes memory) {
+        return userNftWithdrawalCredentials[_tokenId];
     }
 
+    /**
+     * @notice The operator obtains the withdrawal voucher to be used for the next registration of the validator.
+     *  // If it is bytes (""), it means that it is not the user's NFT, and the voucher will be the withdrawal contract address of the nodedao protocol.
+     * @param _operatorId - operatorId
+     */
     function getNextValidatorWithdrawalCredential(uint256 _operatorId) external view returns (bytes memory) {
         uint256[] memory emptyNfts = operatorEmptyNfts[_operatorId];
         for (uint256 i = operatorEmptyNftIndex[_operatorId]; i < emptyNfts.length; ++i) {
@@ -388,14 +401,19 @@ contract VNFT is
         return bytes("");
     }
 
-    function setNftExitBlockNumbers(uint256[] memory tokenIds, uint256[] memory exitBlockNumbers)
+    /**
+     * @notice set nft exit height
+     * @param _tokenIds - tokenIds
+     * @param _exitBlockNumbers - tokenIds
+     */
+    function setNftExitBlockNumbers(uint256[] memory _tokenIds, uint256[] memory _exitBlockNumbers)
         external
         onlyLiquidStaking
     {
-        for (uint256 i = 0; i < tokenIds.length; ++i) {
-            uint256 tokenId = tokenIds[i];
+        for (uint256 i = 0; i < _tokenIds.length; ++i) {
+            uint256 tokenId = _tokenIds[i];
             require(userNftExitBlockNumbers[tokenId] == 0, "The tokenId already report");
-            uint256 number = exitBlockNumbers[i];
+            uint256 number = _exitBlockNumbers[i];
             require(number <= block.number, "invalid block height");
             userNftExitBlockNumbers[tokenId] = number;
             operatorExitButNoBurnNftCounts[validators[tokenId].operatorId] += 1;
@@ -408,6 +426,10 @@ contract VNFT is
         }
     }
 
+    /**
+     * @notice Get the number of nft exit height
+     * @param _tokenIds - tokenIds
+     */
     function getNftExitBlockNumbers(uint256[] memory _tokenIds) external view returns (uint256[] memory) {
         uint256[] memory numbers = new uint256[] (_tokenIds.length);
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
@@ -418,11 +440,20 @@ contract VNFT is
         return numbers;
     }
 
+    /**
+     * @notice set nft gas height
+     * @param _tokenId - tokenId
+     * @param _number - gas height
+     */
     function setUserNftGasHeight(uint256 _tokenId, uint256 _number) external onlyLiquidStaking {
         require(userNftGasHeights[_tokenId] != 0, "This vNFT is not the user's vNFT");
         userNftGasHeights[_tokenId] = _number;
     }
 
+    /**
+     * @notice Get the number of user's nft gas height
+     * @param _tokenIds - tokenIds
+     */
     function getUsernftGasHeight(uint256[] memory _tokenIds) external view returns (uint256[] memory) {
         uint256[] memory gasHeights = new uint256[] (_tokenIds.length);
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
@@ -441,6 +472,10 @@ contract VNFT is
             - (operatorEmptyNfts[_operatorId].length - 1 - operatorEmptyNftIndex[_operatorId]);
     }
 
+    /**
+     * @notice Get the number of user's active nft
+     * @param _operatorId - operator id
+     */
     function getUserActiveNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
         return userActiceNftCounts[_operatorId];
     }
