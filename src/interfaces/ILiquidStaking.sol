@@ -134,4 +134,6 @@ interface ILiquidStaking {
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
     event NftExitBlockNumberSet(uint256[] tokenIds, uint256[] exitBlockNumbers);
     event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
+    event VaultManagerContractSet(address vaultManagerContractAddress, address _vaultManagerContract);
+    event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
 }

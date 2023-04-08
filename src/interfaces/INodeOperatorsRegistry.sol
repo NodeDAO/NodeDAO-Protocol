@@ -116,7 +116,7 @@ interface INodeOperatorsRegistry {
      * @notice operator pledge balance
      * @param _operatorId operator id
      */
-    function getPledgeBalanceOfOperator(uint256 _operatorId) external view returns (uint256, uint256);
+    function getPledgeInfoOfOperator(uint256 _operatorId) external view returns (uint256, uint256);
 
     /**
      * @notice get operator comission rate

@@ -47,10 +47,16 @@ interface IVNFT is IERC721AUpgradeable {
     function operatorOf(uint256 _tokenId) external view returns (uint256);
 
     /**
-     * @notice Get the number of operator's nft
+     * @notice Get the number of operator's active nft
      * @param _operatorId - operator id
      */
-    function getNftCountsOfOperator(uint256 _operatorId) external view returns (uint256);
+    function getActiveNftCountsOfOperator(uint256 _operatorId) external view returns (uint256);
+
+    /**
+     * @notice Get the number of operator's empty nft
+     * @param _operatorId - operator id
+     */
+    function getEmptyNftCountsOfOperator(uint256 _operatorId) external view returns (uint256);
 
     /**
      * @notice Get the number of user's active nft
@@ -128,7 +134,7 @@ interface IVNFT is IERC721AUpgradeable {
      * @notice Get the number of user's nft gas height
      * @param _tokenIds - tokenIds
      */
-    function getUsernftGasHeight(uint256[] memory _tokenIds) external view returns (uint256[] memory);
+    function getUserNftGasHeight(uint256[] memory _tokenIds) external view returns (uint256[] memory);
 
     /**
      * @notice Get the number of total active nft counts
