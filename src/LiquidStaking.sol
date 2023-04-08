@@ -17,10 +17,6 @@ import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUp
 import "src/interfaces/IConsensusVault.sol";
 import "src/interfaces/IVaultManager.sol";
 
-
-import "forge-std/console.sol";
-
-
 /**
  * @title NodeDao LiquidStaking Contract
  *
@@ -223,7 +219,7 @@ contract LiquidStaking is
      */
     function assignBlacklistOperator(uint256 _assignOperatorId, uint256 _operatorId) external onlyOwner {
         // assignOperatorId must be a blacklist operator
-        require(!nodeOperatorRegistryContract.isBlacklistOperator(_assignOperatorId), "The assign operator is trusted");
+        require(nodeOperatorRegistryContract.isBlacklistOperator(_assignOperatorId), "The assign operator is trusted");
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
 
         uint256 assignOperatorBalances = _assignOperator(_assignOperatorId, _operatorId);
@@ -243,6 +239,9 @@ contract LiquidStaking is
         require(nodeOperatorRegistryContract.isQuitOperator(_quitOperatorId), "The assign operator did not exit");
         require(nodeOperatorRegistryContract.isTrustedOperator(_operatorId), "The operator is not trusted");
 
+        if (reAssignRecords[_quitOperatorId] != 0) {
+            require(reAssignRecords[_quitOperatorId] == _operatorId, "already assigned");
+        }
         uint256 assignOperatorBalances = _assignOperator(_quitOperatorId, _operatorId);
         reAssignRecords[_quitOperatorId] = _operatorId;
 
@@ -315,7 +314,6 @@ contract LiquidStaking is
                 operatorLoanRecords[_operatorId] = 0;
                 operatorLoadBlockNumbers[_operatorId] = 0;
                 _amount = _amount - loanAmounts;
-                operatorPoolBalances[_operatorId] += (_amount - loanAmounts);
             }
         }
 
@@ -323,7 +321,6 @@ contract LiquidStaking is
             operatorPoolBalances[_operatorId] += _amount;
             operatorPoolBalancesSum += _amount;
         }
-        
     }
 
     function _stake(uint256 _operatorId, address _from, uint256 _amount) internal {
@@ -985,7 +982,7 @@ contract LiquidStaking is
 
         uint256 pledgeBalance = 0;
         uint256 requirBalance = 0;
-        (pledgeBalance, requirBalance) = nodeOperatorRegistryContract.getPledgeBalanceOfOperator(_operatorId);
+        (pledgeBalance, requirBalance) = nodeOperatorRegistryContract.getPledgeInfoOfOperator(_operatorId);
         require(pledgeBalance >= requirBalance, "Insufficient pledge of operator");
 
         address[] memory rewardAddresses;
@@ -1064,8 +1061,6 @@ contract LiquidStaking is
     function getNethOut(uint256 _ethAmountIn) public view returns (uint256) {
         uint256 totalEth = getTotalEthValue();
         uint256 nethSupply = nETHContract.totalSupply();
-        console.log("===========totalEth", totalEth);
-        console.log("===========nethSupply", nethSupply);
         if (nethSupply == 0) {
             return _ethAmountIn;
         }
@@ -1125,8 +1120,26 @@ contract LiquidStaking is
     }
 
     /**
+     * @notice Set new vaultManagerContractA address
+     * @param _vaultManagerContract new vaultManagerContract address
+     */
+    function setVaultManagerContract(address _vaultManagerContract) external onlyDao {
+        emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
+        vaultManagerContractAddress = _vaultManagerContract;
+    }
+
+    /**
+     * @notice Set new consensusVaultContract address
+     * @param _consensusVaultContract new consensusVaultContract address
+     */
+    function setConsensusVaultContract(address _consensusVaultContract) external onlyDao {
+        emit ConsensusVaultContractSet(vaultManagerContractAddress, _consensusVaultContract);
+        consensusVaultContract = IConsensusVault(_consensusVaultContract);
+    }
+
+    /**
      * @notice Set new beaconOracleContract address
-     * @param _beaconOracleContractAddress new withdrawalCredentials
+     * @param _beaconOracleContractAddress new beaconOracleContract address
      */
     function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
         emit BeaconOracleContractSet(address(beaconOracleContract), _beaconOracleContractAddress);
