@@ -101,6 +101,8 @@ contract NodeOperatorRegistry is
                 comissions[i] = operatorComissionRate[i];
             }
         }
+
+        return comissions;
     }
 
     function setOperatorComissionRate(uint256 _operatorId, uint256 _rate) external {
@@ -219,7 +221,8 @@ contract NodeOperatorRegistry is
      * @param _to receiving address
      */
     function withdrawOperator(uint256 _operatorId, uint256 _withdrawAmount, address _to) external nonReentrant {
-        require(operatorSlashAmountOwed[_operatorId] != 0, "The operator is in arrears");
+        require(!blacklistOperators[_operatorId], "This operator has been blacklisted");
+        require(operatorSlashAmountOwed[_operatorId] == 0, "The operator is in arrears");
         require(_to != address(0), "Recipient address invalid");
 
         NodeOperator memory operator = operators[_operatorId];
@@ -238,7 +241,8 @@ contract NodeOperatorRegistry is
     }
 
     function calcRequirePledgeBalance(uint256 _operatorId) internal view returns (uint256) {
-        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(_operatorId);
+        uint256 operatorNftCounts = vNFTContract.getActiveNftCountsOfOperator(_operatorId)
+            + vNFTContract.getEmptyNftCountsOfOperator(_operatorId);
         // Pledge the required funds based on the number of validators
         uint256 requireVault = 0;
         if (operatorNftCounts <= 100) {
@@ -260,12 +264,14 @@ contract NodeOperatorRegistry is
      * @param _to The receiving address of the pledged funds of the withdrawn operator
      */
     function quitOperator(uint256 _operatorId, address _to) external {
-        require(operatorSlashAmountOwed[_operatorId] != 0, "The operator is in arrears");
+        require(!blacklistOperators[_operatorId], "This operator has been blacklisted");
+        require(operatorSlashAmountOwed[_operatorId] == 0, "The operator is in arrears");
         NodeOperator memory operator = operators[_operatorId];
         require(operator.owner == msg.sender, "PERMISSION_DENIED");
         require(operators[_operatorId].isQuit == false, "Operator has exited");
 
-        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(_operatorId);
+        uint256 operatorNftCounts = vNFTContract.getActiveNftCountsOfOperator(_operatorId)
+            + vNFTContract.getEmptyNftCountsOfOperator(_operatorId);
         // There are active validators and cannot exit
         require(operatorNftCounts == 0, "unable to exit");
 
@@ -562,7 +568,7 @@ contract NodeOperatorRegistry is
     }
 
     /**
-     * @notice Returns whether an operator is trusted
+     * @notice Returns whether an operator is trusted， return operatorId
      * @param _controllerAddress controller address
      */
     function isTrustedOperatorOfControllerAddress(address _controllerAddress) external view returns (uint256) {
@@ -622,7 +628,6 @@ contract NodeOperatorRegistry is
 
     function _slash(uint256 _operatorId, uint256 _amount) internal returns (uint256) {
         uint256 pledgeAmounts = operatorPledgeVaultBalances[_operatorId];
-
         if (pledgeAmounts == 0) {
             emit OperatorArrearsIncrease(_operatorId, _amount);
             operatorSlashAmountOwed[_operatorId] += _amount;
@@ -653,9 +658,9 @@ contract NodeOperatorRegistry is
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
             uint256 amount = _amounts[i];
-
             uint256 slashAmount = _slash(operatorId, amount);
             slashAmounts[i] = slashAmount;
+            totalSlashAmounts += slashAmount;
         }
 
         liquidStakingContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
@@ -665,7 +670,7 @@ contract NodeOperatorRegistry is
      * @notice operator pledge balance
      * @param _operatorId operator id
      */
-    function getPledgeBalanceOfOperator(uint256 _operatorId) external view returns (uint256, uint256) {
+    function getPledgeInfoOfOperator(uint256 _operatorId) external view returns (uint256, uint256) {
         uint256 requireBalance = calcRequirePledgeBalance(_operatorId);
         return (operatorPledgeVaultBalances[_operatorId], requireBalance);
     }
