@@ -6,10 +6,10 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "ERC721A-Upgradeable/extensions/ERC721AQueryableUpgradeable.sol";
+
 /**
  * @title NodeDao vNFT Contract
  */
-
 contract VNFT is
     Initializable,
     OwnableUpgradeable,
@@ -312,7 +312,6 @@ contract VNFT is
         uint256 nextTokenId = _nextTokenId();
         if (_pubkey.length == 0) {
             emptyNftCounts += 1;
-            userActiceNftCounts[_operatorId] += 1;
             operatorEmptyNfts[_operatorId].push(nextTokenId);
 
             require(_withdrawalCredentials.length != 0, "withdrawalCredentials can not be empty");
@@ -329,10 +328,9 @@ contract VNFT is
                     // When the nft has not been filled, it is unstaked by the user
                     continue;
                 }
-
                 // check withdrawal credentials before filling
                 require(
-                    keccak256(userNftWithdrawalCredentials[nextTokenId]) == keccak256(_withdrawalCredentials),
+                    keccak256(userNftWithdrawalCredentials[tokenId]) == keccak256(_withdrawalCredentials),
                     "withdrawalCredentials mismatch"
                 );
 
@@ -340,6 +338,8 @@ contract VNFT is
                 validators[tokenId].pubkey = _pubkey;
                 emptyNftCounts -= 1;
                 userNftGasHeights[tokenId] = block.number;
+                userActiceNftCounts[_operatorId] += 1;
+
                 return tokenId;
             }
         }
@@ -454,10 +454,14 @@ contract VNFT is
      * @notice Get the number of user's nft gas height
      * @param _tokenIds - tokenIds
      */
-    function getUsernftGasHeight(uint256[] memory _tokenIds) external view returns (uint256[] memory) {
+    function getUserNftGasHeight(uint256[] memory _tokenIds) external view returns (uint256[] memory) {
         uint256[] memory gasHeights = new uint256[] (_tokenIds.length);
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
-            gasHeights[i] = userNftGasHeights[i];
+            if (userNftGasHeights[_tokenIds[i]] == 0) {
+                gasHeights[i] = validators[_tokenIds[i]].initHeight;
+            } else {
+                gasHeights[i] = userNftGasHeights[_tokenIds[i]];
+            }
         }
 
         return gasHeights;
@@ -467,9 +471,13 @@ contract VNFT is
      * @notice Get the number of operator's nft
      * @param _operatorId - operator id
      */
-    function getNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
+    function getActiveNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
         return operatorRecords[_operatorId] - operatorExitButNoBurnNftCounts[_operatorId]
-            - (operatorEmptyNfts[_operatorId].length - 1 - operatorEmptyNftIndex[_operatorId]);
+            - (operatorEmptyNfts[_operatorId].length - operatorEmptyNftIndex[_operatorId]);
+    }
+
+    function getEmptyNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
+        return operatorEmptyNfts[_operatorId].length - operatorEmptyNftIndex[_operatorId];
     }
 
     /**
