@@ -9,7 +9,6 @@
 // import "src/mocks/DepositContract.sol";
 // import "src/vault/ELVault.sol";
 // import "src/vault/ELVaultFactory.sol";
-// import "src/oracles/BeaconOracle.sol";
 // import "openzeppelin-contracts/utils/math/Math.sol";
 
 // contract NodeOperatorRegistryTest is Test {
@@ -45,7 +44,6 @@
 //     LiquidStaking liquidStaking;
 //     NETH neth;
 //     VNFT vnft;
-//     BeaconOracle beaconOracle;
 //     DepositContract depositContract;
 //     ELVault vaultContract;
 //     ELVaultFactory vaultFactoryContract;
@@ -103,20 +101,6 @@
 //         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
 
 //         depositContract = new DepositContract();
-
-//         vm.warp(1673161943);
-//         beaconOracle = new BeaconOracle();
-//         // goerli: 1616508000
-//         // mainnet: 1606824023
-//         uint64 genesisTime = 1616508000;
-//         beaconOracle.initialize(_dao, genesisTime, address(vnft));
-//         vm.startPrank(_dao);
-//         beaconOracle.addOracleMember(_oracleMember1);
-//         beaconOracle.addOracleMember(_oracleMember2);
-//         beaconOracle.addOracleMember(_oracleMember3);
-//         beaconOracle.addOracleMember(_oracleMember4);
-//         beaconOracle.addOracleMember(_oracleMember5);
-//         vm.stopPrank();
 
 //         liquidStaking.initialize(
 //             _dao,
