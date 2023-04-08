@@ -142,7 +142,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
     function _elSettle(uint256[] memory _operatorIds) internal returns (uint256[] memory, bool) {
         uint256[] memory reinvestAmounts = new uint256[] (_operatorIds.length);
-        uint256[] memory operatorElComissionRate = nodeOperatorRegistryContract.getOperatorComissionRate(_operatorIds);
+        uint256[] memory operatorElComissionRate;
+        operatorElComissionRate = nodeOperatorRegistryContract.getOperatorComissionRate(_operatorIds);
+
         bool isSettle = false;
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
@@ -165,28 +167,29 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         RewardMetadata[] memory cumArr = settleCumArrMap[operatorId];
         uint256 outstandingRewards = address(vaultContractAddress).balance - unclaimedRewardsMap[operatorId]
             - operatorRewardsMap[operatorId] - daoRewardsMap[operatorId];
-        if (outstandingRewards >= 1 ether) {
+        if (outstandingRewards < 1 ether) {
             return 0;
         }
 
-        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(operatorId);
+        uint256 operatorNftCounts = vNFTContract.getActiveNftCountsOfOperator(operatorId);
         if (operatorNftCounts == 0) {
             return 0;
         }
 
         uint256 operatorReward = (outstandingRewards * comissionRate) / 10000;
+
         uint256 daoReward = (outstandingRewards * daoElComissionRate) / 10000;
         operatorRewardsMap[operatorId] += operatorReward;
         daoRewardsMap[operatorId] += daoReward;
         outstandingRewards = outstandingRewards - operatorReward - daoReward;
-
         uint256 averageRewards = outstandingRewards / operatorNftCounts;
         uint256 userNftCounts = vNFTContract.getUserActiveNftCountsOfOperator(operatorId);
         uint256 reinvestRewards = averageRewards * (operatorNftCounts - userNftCounts);
 
-        unclaimedRewardsMap[operatorId] += outstandingRewards - reinvestRewards;
-
+        unclaimedRewardsMap[operatorId] += (outstandingRewards - reinvestRewards);
         if (cumArr.length == 0) {
+            RewardMetadata memory r0 = RewardMetadata({value: 0, height: 0});
+            settleCumArrMap[operatorId].push(r0);
             RewardMetadata memory r = RewardMetadata({value: averageRewards, height: block.number});
             settleCumArrMap[operatorId].push(r);
         } else {
@@ -206,7 +209,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      */
     function claimRewardsOfUser(uint256[] memory _tokenIds) external {
         uint256 operatorId = vNFTContract.operatorOf(_tokenIds[0]);
-        uint256[] memory gasHeights = vNFTContract.getUsernftGasHeight(_tokenIds);
+        uint256[] memory gasHeights = vNFTContract.getUserNftGasHeight(_tokenIds);
         uint256[] memory exitBlockNumbers = vNFTContract.getNftExitBlockNumbers(_tokenIds);
         uint256[] memory amounts = new uint256[] (_tokenIds.length);
         uint256 totalNftRewards = 0;
@@ -217,7 +220,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             amounts[i] = nftRewards;
             totalNftRewards += nftRewards;
         }
-
+        unclaimedRewardsMap[operatorId] -= totalNftRewards;
         uint256 gasHeight = settleCumArrMap[operatorId][settleCumArrMap[operatorId].length - 1].height;
         liquidStakingContract.claimRewardsOfUser(operatorId, _tokenIds, amounts, gasHeight);
 
@@ -230,8 +233,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      */
     function rewards(uint256[] memory _tokenIds) external view returns (uint256) {
         uint256 operatorId = vNFTContract.operatorOf(_tokenIds[0]);
-        uint256[] memory gasHeights = vNFTContract.getUsernftGasHeight(_tokenIds);
+        uint256[] memory gasHeights = vNFTContract.getUserNftGasHeight(_tokenIds);
         uint256[] memory exitBlockNumbers = vNFTContract.getNftExitBlockNumbers(_tokenIds);
+
         uint256 totalNftRewards = 0;
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
@@ -249,6 +253,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         returns (uint256)
     {
         RewardMetadata[] memory cumArr = settleCumArrMap[_operatorId];
+        require(cumArr.length != 0, "never settled");
 
         uint256 low = 0;
         uint256 high = cumArr.length;
