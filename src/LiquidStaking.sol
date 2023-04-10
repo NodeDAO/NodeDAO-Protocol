@@ -309,6 +309,8 @@ contract LiquidStaking is
     }
 
     function _updateStakeFundLedger(uint256 _operatorId, uint256 _amount) internal {
+        operatorPoolBalancesSum += _amount;
+        
         uint256 loanAmounts = operatorLoanRecords[_operatorId];
         if (loanAmounts > 0) {
             if (loanAmounts > _amount) {
@@ -323,7 +325,6 @@ contract LiquidStaking is
 
         if (_amount > 0) {
             operatorPoolBalances[_operatorId] += _amount;
-            operatorPoolBalancesSum += _amount;
         }
     }
 
@@ -901,7 +902,7 @@ contract LiquidStaking is
         }
 
         uint256 totalUnstakePoolAmounts = operatorBalances + operatorCanLoanAmounts - operatorLoanAmounts;
-        if (totalUnstakePoolAmounts > operatorPoolBalancesSum) {
+       if (totalUnstakePoolAmounts > operatorPoolBalancesSum) {
             return operatorPoolBalancesSum;
         }
 
