@@ -6,6 +6,7 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "src/interfaces/ILiquidStaking.sol";
 
 /**
  * @title ConsensusVault responsible for managing initial capital and reward
@@ -17,6 +18,7 @@ contract ConsensusVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, R
     event DaoAddressChanged(address _oldDao, address _dao);
     event LiquidStakingChanged(address _from, address _to);
     event Transferred(address _to, uint256 _amount);
+    event RewardReinvestment(address _liquidStakingContract, uint256 _rewards);
 
     modifier onlyLiquidStaking() {
         require(liquidStakingContractAddress == msg.sender, "Not allowed to touch funds");
@@ -27,9 +29,6 @@ contract ConsensusVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, R
         require(msg.sender == dao, "PERMISSION_DENIED");
         _;
     }
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {}
 
     /**
      * @notice Initializes the NodeCapitalVault contract by setting the required external contracts ,
@@ -57,6 +56,15 @@ contract ConsensusVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, R
         require(_to != address(0), "Recipient address invalid");
         payable(_to).transfer(_amount);
         emit Transferred(_to, _amount);
+    }
+
+    /**
+     * @notice transfer ETH
+     * @param _amount transfer amount
+     */
+    function reinvestment(uint256 _amount) external nonReentrant onlyLiquidStaking {
+        ILiquidStaking(liquidStakingContractAddress).receiveRewards{value: _amount}(_amount);
+        emit RewardReinvestment(liquidStakingContractAddress, _amount);
     }
 
     /**

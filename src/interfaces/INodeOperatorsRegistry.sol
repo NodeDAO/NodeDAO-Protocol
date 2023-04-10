@@ -116,8 +116,13 @@ interface INodeOperatorsRegistry {
      * @notice operator pledge balance
      * @param _operatorId operator id
      */
-    function getPledgeBalanceOfOperator(uint256 _operatorId) external view returns (uint256);
+    function getPledgeInfoOfOperator(uint256 _operatorId) external view returns (uint256, uint256);
 
+    /**
+     * @notice get operator comission rate
+     * @param _operatorIds operator id
+     */
+    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory);
     /**
      * @notice Get operator owner address
      * @param _id operator id
@@ -126,11 +131,17 @@ interface INodeOperatorsRegistry {
 
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
+     * @param _operatorIds operator id
+     * @param _amounts slash amount
+     */
+    function slash(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
+
+    /**
+     * @notice Operators will be penalized when they do not exit validators in time
      * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function slash(uint256 _amount, uint256 _operatorId) external;
-
+    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external;
     /**
      * @notice deposit pledge fund for operator
      * @param _operatorId operator Id
@@ -142,6 +153,12 @@ interface INodeOperatorsRegistry {
      * @param _operatorId operator id
      */
     function isConformBasicPledge(uint256 _operatorId) external view returns (bool);
+
+    /**
+     * @notice Returns whether an operator is Blacklist
+     * @param _operatorId operator id
+     */
+    function isBlacklistOperator(uint256 _operatorId) external view returns (bool);
 
     /**
      * @notice Returns whether an operator is quit
@@ -168,7 +185,7 @@ interface INodeOperatorsRegistry {
     event NodeOperatorControllerAddressSet(uint256 _id, string _name, address _controllerAddress);
     event NodeOperatorOwnerAddressSet(uint256 _id, string _name, address _ownerAddress);
     event Transferred(address _to, uint256 _amount);
-    event Slashed(uint256 _amount, uint256 _operatorId);
+    event Slashed(uint256 _operatorId, uint256 _amount);
     event PledgeDeposited(uint256 _amount, uint256 _operatorId);
     event Withdraw(uint256 _amount, uint256 _operatorId, address _to);
     event LiquidStakingChanged(address _from, address _to);
@@ -178,4 +195,7 @@ interface INodeOperatorsRegistry {
     event PermissionlessBlockNumberSet(uint256 _blockNumber);
     event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
+    event ComissionRateChanged(uint256 _oldRate, uint256 _rate);
+    event OperatorArrearsReduce(uint256 _operatorId, uint256 value);
+    event OperatorArrearsIncrease(uint256 _operatorId, uint256 value);
 }

@@ -83,6 +83,37 @@ contract NodeOperatorRegistry is
     // operator pledge funds set
     mapping(uint256 => uint256) public operatorPledgeVaultBalances;
 
+    // v2 storage
+    mapping(uint256 => uint256) public operatorSlashAmountOwed;
+    mapping(uint256 => uint256) internal operatorComissionRate;
+    uint256 public constant DEFAULT_COMISSION = 700;
+
+    /**
+     * @notice get operator comission rate
+     * @param _operatorIds operator id
+     */
+    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
+        uint256[] memory comissions = new uint256[] (_operatorIds.length);
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
+            if (operatorComissionRate[_operatorIds[i]] == 0) {
+                comissions[i] = DEFAULT_COMISSION;
+            } else {
+                comissions[i] = operatorComissionRate[i];
+            }
+        }
+
+        return comissions;
+    }
+
+    function setOperatorComissionRate(uint256 _operatorId, uint256 _rate) external {
+        NodeOperator memory operator = operators[_operatorId];
+        require(msg.sender == operator.owner || msg.sender == dao, "PERMISSION_DENIED");
+        require(_rate < 5000, "Comission cannot be 50%");
+        uint256 comissionRate = operatorComissionRate[_operatorId];
+        emit ComissionRateChanged(comissionRate == 0 ? DEFAULT_COMISSION : comissionRate, _rate);
+        operatorComissionRate[_operatorId] = _rate;
+    }
+
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "PERMISSION_DENIED");
         _;
@@ -190,19 +221,15 @@ contract NodeOperatorRegistry is
      * @param _to receiving address
      */
     function withdrawOperator(uint256 _operatorId, uint256 _withdrawAmount, address _to) external nonReentrant {
+        require(!blacklistOperators[_operatorId], "This operator has been blacklisted");
+        require(operatorSlashAmountOwed[_operatorId] == 0, "The operator is in arrears");
         require(_to != address(0), "Recipient address invalid");
 
         NodeOperator memory operator = operators[_operatorId];
         require(operator.owner == msg.sender, "PERMISSION_DENIED");
 
-        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(_operatorId);
-        // Pledge the required funds based on the number of validators
-        uint256 requireVault = 0;
-        if (operatorNftCounts <= 100) {
-            requireVault = (operatorNftCounts * 10 / 100) * 1 ether;
-        } else {
-            requireVault = operatorNftCounts.sqrt() * 1 ether;
-        }
+        uint256 requireVault = calcRequirePledgeBalance(_operatorId);
+
         // After the withdrawal is completed, the pledge funds requirements must also be met
         require(
             operatorPledgeVaultBalances[_operatorId] >= requireVault + _withdrawAmount, "Insufficient pledge balance"
@@ -213,6 +240,23 @@ contract NodeOperatorRegistry is
         emit OperatorWithdraw(_operatorId, _withdrawAmount, _to);
     }
 
+    function calcRequirePledgeBalance(uint256 _operatorId) internal view returns (uint256) {
+        uint256 operatorNftCounts = vNFTContract.getActiveNftCountsOfOperator(_operatorId)
+            + vNFTContract.getEmptyNftCountsOfOperator(_operatorId);
+        // Pledge the required funds based on the number of validators
+        uint256 requireVault = 0;
+        if (operatorNftCounts <= 100) {
+            requireVault = (operatorNftCounts * 10 / 100) * 1 ether;
+            if (requireVault < 1 ether) {
+                requireVault = 1 ether;
+            }
+        } else {
+            requireVault = operatorNftCounts.sqrt() * 1 ether;
+        }
+
+        return requireVault;
+    }
+
     /**
      * @notice Exit the operator. When there are no validators running, the owner of the operator has the right to opt out.
      * Unused funds must be transferred to another active operator
@@ -220,11 +264,14 @@ contract NodeOperatorRegistry is
      * @param _to The receiving address of the pledged funds of the withdrawn operator
      */
     function quitOperator(uint256 _operatorId, address _to) external {
+        require(!blacklistOperators[_operatorId], "This operator has been blacklisted");
+        require(operatorSlashAmountOwed[_operatorId] == 0, "The operator is in arrears");
         NodeOperator memory operator = operators[_operatorId];
         require(operator.owner == msg.sender, "PERMISSION_DENIED");
         require(operators[_operatorId].isQuit == false, "Operator has exited");
 
-        uint256 operatorNftCounts = vNFTContract.getNftCountsOfOperator(_operatorId);
+        uint256 operatorNftCounts = vNFTContract.getActiveNftCountsOfOperator(_operatorId)
+            + vNFTContract.getEmptyNftCountsOfOperator(_operatorId);
         // There are active validators and cannot exit
         require(operatorNftCounts == 0, "unable to exit");
 
@@ -482,14 +529,14 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice Returns whether an operator is trusted
-     * @param _id operator id
+     * @param _operatorId operator id
      */
-    function isTrustedOperator(uint256 _id) external view operatorExists(_id) returns (bool) {
-        if (blacklistOperators[_id]) {
+    function isTrustedOperator(uint256 _operatorId) external view operatorExists(_operatorId) returns (bool) {
+        if (blacklistOperators[_operatorId]) {
             return false;
         }
 
-        if (operators[_id].isQuit) {
+        if (operators[_operatorId].isQuit) {
             return false;
         }
 
@@ -497,19 +544,31 @@ contract NodeOperatorRegistry is
             return true;
         }
 
-        return operators[_id].trusted;
+        return operators[_operatorId].trusted;
     }
 
     /**
      * @notice Returns whether an operator is quit
-     * @param _id operator id
+     * @param _operatorId operator id
      */
-    function isQuitOperator(uint256 _id) external view operatorExists(_id) returns (bool) {
-        return operators[_id].isQuit;
+    function isQuitOperator(uint256 _operatorId) external view operatorExists(_operatorId) returns (bool) {
+        return operators[_operatorId].isQuit;
     }
 
     /**
-     * @notice Returns whether an operator is trusted
+     * @notice Returns whether an operator is Blacklist
+     * @param _operatorId operator id
+     */
+    function isBlacklistOperator(uint256 _operatorId) external view operatorExists(_operatorId) returns (bool) {
+        if (blacklistOperators[_operatorId]) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @notice Returns whether an operator is trusted， return operatorId
      * @param _controllerAddress controller address
      */
     function isTrustedOperatorOfControllerAddress(address _controllerAddress) external view returns (uint256) {
@@ -534,32 +593,86 @@ contract NodeOperatorRegistry is
      * @param _operatorId operator Id
      */
     function deposit(uint256 _operatorId) external payable nonReentrant {
-        operatorPledgeVaultBalances[_operatorId] += msg.value;
-        if (msg.value >= BASIC_PLEDGE && operators[_operatorId].isQuit) {
-            operators[_operatorId].isQuit = false;
+        require(!operators[_operatorId].isQuit, "operator has exited");
+
+        uint256 amountOwed = operatorSlashAmountOwed[_operatorId];
+        if (amountOwed > 0) {
+            if (amountOwed > msg.value) {
+                liquidStakingContract.slashArrearsReceive{value: msg.value}(msg.value, _operatorId);
+                operatorSlashAmountOwed[_operatorId] -= msg.value;
+                emit OperatorArrearsReduce(_operatorId, msg.value);
+            } else {
+                liquidStakingContract.slashArrearsReceive{value: amountOwed}(amountOwed, _operatorId);
+                operatorSlashAmountOwed[_operatorId] = 0;
+                operatorPledgeVaultBalances[_operatorId] += msg.value - amountOwed;
+                emit OperatorArrearsReduce(_operatorId, amountOwed);
+            }
+        } else {
+            operatorPledgeVaultBalances[_operatorId] += msg.value;
         }
 
         emit PledgeDeposited(msg.value, _operatorId);
     }
 
     /**
-     * @notice When a validator run by an operator goes seriously offline, it will be slashed
+     * @notice Operators will be penalized when they do not exit validators in time
      * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function slash(uint256 _amount, uint256 _operatorId) external nonReentrant onlyLiquidStaking {
-        require(operatorPledgeVaultBalances[_operatorId] >= _amount, "Insufficient funds");
-        operatorPledgeVaultBalances[_operatorId] -= _amount;
-        liquidStakingContract.slashReceive{value: _amount}(_amount);
-        emit Slashed(_amount, _operatorId);
+    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyLiquidStaking {
+        uint256 slashAmount = _slash(_operatorId, _amount);
+        if (slashAmount > 0) {
+            liquidStakingContract.slashArrearsReceive{value: slashAmount}(slashAmount, _operatorId);
+        }
+    }
+
+    function _slash(uint256 _operatorId, uint256 _amount) internal returns (uint256) {
+        uint256 pledgeAmounts = operatorPledgeVaultBalances[_operatorId];
+        if (pledgeAmounts == 0) {
+            emit OperatorArrearsIncrease(_operatorId, _amount);
+            operatorSlashAmountOwed[_operatorId] += _amount;
+            return 0;
+        }
+
+        if (pledgeAmounts >= _amount) {
+            operatorPledgeVaultBalances[_operatorId] -= _amount;
+            emit Slashed(_operatorId, _amount);
+            return _amount;
+        } else {
+            operatorSlashAmountOwed[_operatorId] += _amount - pledgeAmounts;
+            operatorPledgeVaultBalances[_operatorId] = 0;
+            emit Slashed(_operatorId, pledgeAmounts);
+            return pledgeAmounts;
+        }
+    }
+    /**
+     * @notice When a validator run by an operator goes seriously offline, it will be slashed
+     * @param _exitTokenIds tokenid id
+     * @param _amounts slash amount
+     */
+
+    function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyLiquidStaking {
+        uint256 totalSlashAmounts = 0;
+        uint256[] memory slashAmounts = new uint256[] (_exitTokenIds.length);
+        for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
+            uint256 tokenId = _exitTokenIds[i];
+            uint256 operatorId = vNFTContract.operatorOf(tokenId);
+            uint256 amount = _amounts[i];
+            uint256 slashAmount = _slash(operatorId, amount);
+            slashAmounts[i] = slashAmount;
+            totalSlashAmounts += slashAmount;
+        }
+
+        liquidStakingContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
     }
 
     /**
      * @notice operator pledge balance
      * @param _operatorId operator id
      */
-    function getPledgeBalanceOfOperator(uint256 _operatorId) external view returns (uint256) {
-        return operatorPledgeVaultBalances[_operatorId];
+    function getPledgeInfoOfOperator(uint256 _operatorId) external view returns (uint256, uint256) {
+        uint256 requireBalance = calcRequirePledgeBalance(_operatorId);
+        return (operatorPledgeVaultBalances[_operatorId], requireBalance);
     }
 
     /**
@@ -619,32 +732,6 @@ contract NodeOperatorRegistry is
         require(_blockNumber > block.number, "Invalid block height");
         permissionlessBlockNumber = _blockNumber;
         emit PermissionlessBlockNumberSet(_blockNumber);
-    }
-
-    /**
-     * @notice The operator claims the operation reward
-     * @param _operatorId operator Id
-     */
-    function claimRewardsOfOperator(uint256 _operatorId) public {
-        NodeOperator memory operator = operators[_operatorId];
-        address vaultContractAddress = operator.vaultContractAddress;
-
-        uint256 operatorRewards = IELVault(vaultContractAddress).claimOperatorRewards();
-
-        emit OperatorClaimRewards(_operatorId, operatorRewards);
-    }
-
-    /**
-     * @notice The dao claims to belong to the dao reward
-     * @param _operatorId operator Id
-     */
-    function claimRewardsOfDao(uint256 _operatorId) public {
-        NodeOperator memory operator = operators[_operatorId];
-        address vaultContractAddress = operator.vaultContractAddress;
-
-        uint256 daoRewards = IELVault(vaultContractAddress).claimDaoRewards(daoVaultAddress);
-
-        emit DaoClaimRewards(_operatorId, daoRewards);
     }
 
     /**

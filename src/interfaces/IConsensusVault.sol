@@ -3,10 +3,10 @@
 pragma solidity 0.8.8;
 
 /**
- * @title Interface for IELVault
+ * @title Interface for ConsensusVault
  * @notice Vault will manage methods for rewards, commissions, tax
  */
-interface IELVault {
+interface IConsensusVault {
     /**
      * @notice transfer ETH
      * @param _amount transfer amount

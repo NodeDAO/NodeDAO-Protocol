@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.8;
 
-import "src/oracles/BeaconOracle.sol";
 import "src/tokens/NETH.sol";
 import "src/tokens/VNFT.sol";
 import "src/registries/NodeOperatorRegistry.sol";
@@ -23,8 +22,6 @@ contract DeployImplementScript is Script {
     VNFT vnft;
 
     NodeOperatorRegistry operatorRegistry;
-
-    BeaconOracle beaconOracle;
 
     ConsensusVault consensusVault;
 
@@ -52,47 +49,8 @@ contract DeployImplementScript is Script {
         // deploy NodeOperatorRegistry implement
         operatorRegistry = new NodeOperatorRegistry();
 
-        // deploy BeaconOracle implement
-        beaconOracle = new BeaconOracle();
-
         // deploy LiquidStaking implement
         liquidStaking = new LiquidStaking();
-
-        vm.stopBroadcast();
-    }
-}
-
-contract DeployExampleScript is Script, DeployProxy {
-    address payable liquidStakingProxy = payable(0xa8256fD3A31648D49D0f3551e6e45Db6f5f91d53);
-    address vnftProxy = 0xe3CE494D51Cb9806187b5Deca1B4B06c97e52EFc;
-    address dao = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
-    // goerli: 1616508000
-    // mainnet: 1606824023
-    uint64 _genesisTime = 1616508000;
-
-    BeaconOracle beaconOracle;
-    address beaconOracleProxy;
-
-    function setUp() public {}
-
-    function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
-
-        // deploy BeaconOracle implement
-        beaconOracle = new BeaconOracle();
-
-        // deploy BeaconOracle proxy
-        setType("uups");
-        beaconOracleProxy = deploy(
-            address(beaconOracle),
-            abi.encodeWithSelector(BeaconOracle.initialize.selector, dao, _genesisTime, vnftProxy)
-        );
-
-        // BeaconOracle setLiquidStaking
-        BeaconOracle(beaconOracleProxy).setLiquidStaking(address(liquidStakingProxy));
-
-        console.log("========beaconOracleProxy: ", beaconOracleProxy);
 
         vm.stopBroadcast();
     }
@@ -119,17 +77,8 @@ contract UpgradeLiquidStakingScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // deploy LiquidStaking implement
-        // liquidStaking = new LiquidStaking();
-        // LiquidStaking(liquidStakingProxy).upgradeTo(address(liquidStaking));
-
-        // LiquidStaking(liquidStakingProxy).setBeaconOracleContract(address(0x13766719dacc651065D5FF2a94831B46f84481b7));
-
-        // BeaconOracle(beaconOracleProxy).resetEpochsPerFrame(25);
-
-        // BeaconOracle addOracleMember
-        for (uint256 i = 0; i < memberArray.length; ++i) {
-            BeaconOracle(beaconOracleProxy).addOracleMember(memberArray[i]);
-        }
+        liquidStaking = new LiquidStaking();
+        LiquidStaking(liquidStakingProxy).upgradeTo(address(liquidStaking));
 
         vm.stopBroadcast();
     }

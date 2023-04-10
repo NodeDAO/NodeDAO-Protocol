@@ -13,3 +13,6 @@ temp
 .env
 .idea/
 .vscode/
+
+# macos
+.DS_Store
