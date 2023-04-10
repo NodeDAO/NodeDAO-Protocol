@@ -17,6 +17,8 @@ import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUp
 import "src/interfaces/IConsensusVault.sol";
 import "src/interfaces/IVaultManager.sol";
 
+import "forge-std/console.sol";
+
 /**
  * @title NodeDao LiquidStaking Contract
  *
@@ -204,8 +206,8 @@ contract LiquidStaking is
     function initializeV2() public reinitializer(2) onlyDao {
         // merge already stake data to StakeRecords
 
-        delayedExitSlashStandard = 21600;
-        slashAmountPerBlockPerValidator = 5000000000000;
+        delayedExitSlashStandard = 216000;
+        slashAmountPerBlockPerValidator = 2000000000000;
         operatorCanLoanAmounts = 32 ether;
     }
 
@@ -310,7 +312,7 @@ contract LiquidStaking is
 
     function _updateStakeFundLedger(uint256 _operatorId, uint256 _amount) internal {
         operatorPoolBalancesSum += _amount;
-        
+
         uint256 loanAmounts = operatorLoanRecords[_operatorId];
         if (loanAmounts > 0) {
             if (loanAmounts > _amount) {
@@ -902,7 +904,7 @@ contract LiquidStaking is
         }
 
         uint256 totalUnstakePoolAmounts = operatorBalances + operatorCanLoanAmounts - operatorLoanAmounts;
-       if (totalUnstakePoolAmounts > operatorPoolBalancesSum) {
+        if (totalUnstakePoolAmounts > operatorPoolBalancesSum) {
             return operatorPoolBalancesSum;
         }
 
