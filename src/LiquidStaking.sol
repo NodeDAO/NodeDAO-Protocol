@@ -89,6 +89,9 @@ contract LiquidStaking is
 
     // key is quit operatorId, value is asign operatorId
     mapping(uint256 => uint256) public reAssignRecords;
+
+    uint256 public operatorCanLoanAmounts;
+
     // key is operatorId, value is loan amounts
     mapping(uint256 => uint256) public operatorLoanRecords;
     // key is operatorId, value is loan blockNumber
@@ -203,6 +206,7 @@ contract LiquidStaking is
 
         delayedExitSlashStandard = 21600;
         slashAmountPerBlockPerValidator = 5000000000000;
+        operatorCanLoanAmounts = 32 ether;
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -371,6 +375,36 @@ contract LiquidStaking is
         require(false, "No unstake quota");
     }
 
+    function _updateUnstakeFundLedger(uint256 _ethOutAmount, uint256 _operatorId) internal returns (uint256) {
+        uint256 targetOperatorId = _operatorId;
+        bool isQuit = nodeOperatorRegistryContract.isQuitOperator(_operatorId);
+        if (isQuit) {
+            uint256 reAssignOperatorId = reAssignRecords[_operatorId];
+            if (reAssignOperatorId != 0) {
+                targetOperatorId = reAssignOperatorId;
+            }
+        }
+
+        uint256 operatorBalances = operatorPoolBalances[targetOperatorId];
+        if (operatorBalances >= _ethOutAmount) {
+            operatorPoolBalances[targetOperatorId] -= _ethOutAmount;
+        } else {
+            require(!isQuit || (targetOperatorId != _operatorId), "No loan eligibility");
+            uint256 newLoanAmounts = _ethOutAmount - operatorBalances;
+            uint256 operatorLoanAmounts = operatorLoanRecords[targetOperatorId];
+            require((operatorCanLoanAmounts > operatorLoanAmounts + newLoanAmounts), "Insufficient funds to unstake");
+            operatorPoolBalances[targetOperatorId] = 0;
+            operatorLoanRecords[targetOperatorId] += newLoanAmounts;
+            if (operatorLoadBlockNumbers[targetOperatorId] != 0) {
+                operatorLoadBlockNumbers[targetOperatorId] = block.number;
+            }
+        }
+
+        operatorPoolBalancesSum -= _ethOutAmount;
+
+        return targetOperatorId;
+    }
+
     /**
      * @notice Stake 32 multiples of eth to get the corresponding number of vNFTs
      * @param _operatorId operator id
@@ -420,7 +454,7 @@ contract LiquidStaking is
 
             bytes memory pubkey = vNFTContract.validatorOf(tokenId);
             if (keccak256(pubkey) == keccak256(bytes(""))) {
-                _updateUnstakeFundLedger(DEPOSIT_SIZE, operatorId);
+                operatorNftPoolBalances[operatorId] -= DEPOSIT_SIZE;
                 payable(msg.sender).transfer(DEPOSIT_SIZE);
                 emit Transferred(msg.sender, DEPOSIT_SIZE);
                 vNFTContract.whiteListBurn(tokenId);
@@ -431,41 +465,6 @@ contract LiquidStaking is
 
             emit NftUnstake(operatorId, tokenId, operatorId);
         }
-    }
-
-    function _updateUnstakeFundLedger(uint256 _ethOutAmount, uint256 _operatorId) internal returns (uint256) {
-        uint256 targetOperatorId = _operatorId;
-        bool isQuit = nodeOperatorRegistryContract.isQuitOperator(_operatorId);
-        if (isQuit) {
-            uint256 reAssignOperatorId = reAssignRecords[_operatorId];
-            if (reAssignOperatorId != 0) {
-                targetOperatorId = reAssignOperatorId;
-            }
-        }
-
-        uint256 operatorBalances = operatorPoolBalances[targetOperatorId];
-        if (operatorBalances >= _ethOutAmount) {
-            operatorPoolBalances[targetOperatorId] -= _ethOutAmount;
-        } else {
-            require(!isQuit || (targetOperatorId != _operatorId), "No loan eligibility");
-            uint256 newLoanAmounts = _ethOutAmount - operatorBalances;
-            uint256 operatorLoanAmounts = operatorLoanRecords[targetOperatorId];
-            uint256 operatorCanLoanAmounts = operatorPoolBalancesSum * 5 / 100;
-            require(
-                (operatorCanLoanAmounts > operatorLoanAmounts + newLoanAmounts)
-                    && operatorLoanAmounts + newLoanAmounts <= 32 ether,
-                "Insufficient funds to unstake"
-            );
-            operatorPoolBalances[targetOperatorId] = 0;
-            operatorLoanRecords[targetOperatorId] += newLoanAmounts;
-            if (operatorLoadBlockNumbers[targetOperatorId] != 0) {
-                operatorLoadBlockNumbers[targetOperatorId] = block.number;
-            }
-        }
-
-        operatorPoolBalancesSum -= _ethOutAmount;
-
-        return targetOperatorId;
     }
 
     /**
@@ -883,7 +882,7 @@ contract LiquidStaking is
      * @notice Obtain the unstake amount available for users under a certain operator
      * @param _operatorId operator Id
      */
-    function getOperatorNethUnstakePoolBalance(uint256 _operatorId) public view returns (uint256) {
+    function getOperatorNethUnstakePoolAmounts(uint256 _operatorId) public view returns (uint256) {
         uint256 targetOperatorId = _operatorId;
         bool isQuit = nodeOperatorRegistryContract.isQuitOperator(_operatorId);
         if (isQuit) {
@@ -894,21 +893,19 @@ contract LiquidStaking is
         }
 
         uint256 operatorBalances = operatorPoolBalances[targetOperatorId];
-        if (targetOperatorId == _operatorId) {
-            return operatorBalances;
-        }
 
         uint256 operatorLoanAmounts = operatorLoanRecords[targetOperatorId];
-        uint256 operatorCanLoanAmounts = operatorPoolBalancesSum * 5 / 100;
-        if (operatorCanLoanAmounts > 32 ether) {
-            operatorCanLoanAmounts = 32 ether;
-        }
 
-        if (operatorLoanAmounts > operatorCanLoanAmounts) {
+        if (operatorLoanAmounts >= operatorCanLoanAmounts) {
             return operatorBalances;
         }
 
-        return operatorBalances + operatorCanLoanAmounts - operatorLoanAmounts;
+        uint256 totalUnstakePoolAmounts = operatorBalances + operatorCanLoanAmounts - operatorLoanAmounts;
+        if (totalUnstakePoolAmounts > operatorPoolBalancesSum) {
+            return operatorPoolBalancesSum;
+        }
+
+        return totalUnstakePoolAmounts;
     }
 
     /**
@@ -1153,6 +1150,16 @@ contract LiquidStaking is
     function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
         emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    }
+
+    /**
+     * @notice Set new operatorCanLoanAmounts
+     * @param _newCanloadAmounts new _newCanloadAmounts
+     */
+    function setOperatorCanLoanAmounts(uint256 _newCanloadAmounts) public onlyDao {
+        require(_newCanloadAmounts <= 1000 ether, "_newCanloadAmounts too large");
+        emit OperatorCanLoanAmountsSet(operatorCanLoanAmounts, _newCanloadAmounts);
+        operatorCanLoanAmounts = _newCanloadAmounts;
     }
 
     /**

@@ -136,4 +136,5 @@ interface ILiquidStaking {
     event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
     event VaultManagerContractSet(address vaultManagerContractAddress, address _vaultManagerContract);
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
+    event OperatorCanLoanAmountsSet(uint256 operatorCanLoanAmounts, uint256 _newCanloadAmounts);
 }
