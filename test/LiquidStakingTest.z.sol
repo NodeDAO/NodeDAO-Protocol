@@ -18,6 +18,7 @@ import "test/helpers/oracles/MockOracleProvider.sol";
 import "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import "test/helpers/CommonConstantProvider.sol";
 import "src/interfaces/ILiquidStaking.sol";
+import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 
 contract LiquidStakingTest is Test, MockOracleProvider {
     event BlacklistOperatorAssigned(uint256 indexed _blacklistOperatorId, uint256 _operatorId, uint256 _totalAmount);
@@ -129,6 +130,9 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             address(withdrawOracle),
             address(depositContract)
         );
+
+        vm.prank(_dao);
+        liquidStaking.setOperatorCanLoanAmounts(32 ether);
 
         operatorRegistry.registerOperator{value: 1.1 ether}(
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
@@ -1137,5 +1141,306 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vaultManager.settleAndReinvestElReward(operatorIds);
         vaultManager.claimRewardsOfUser(_exitTokenIds);
         assertEq(1 ether, address(24).balance); // 0.1 eth + 0.9 eth
+    }
+
+    function testUnstakeETH() public {
+        vm.deal(address(20), 64 ether);
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 32 ether}(1);
+        assertEq(0, vnft.balanceOf(address(20)));
+        assertEq(32 ether, neth.balanceOf(address(20)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(32 ether, address(20).balance);
+
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 32 ether}(1);
+        assertEq(0, vnft.balanceOf(address(20)));
+        assertEq(64 ether, neth.balanceOf(address(20)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(64 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(0, address(20).balance);
+
+        vm.prank(address(20));
+        liquidStaking.unstakeETH(1, 32 ether);
+        assertEq(0, vnft.balanceOf(address(20)));
+        assertEq(32 ether, neth.balanceOf(address(20)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(32 ether, address(20).balance);
+
+        vm.prank(address(20));
+        liquidStaking.unstakeETH(1, 32 ether);
+        assertEq(0, vnft.balanceOf(address(20)));
+        assertEq(0 ether, neth.balanceOf(address(20)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(64 ether, address(20).balance);
+    }
+
+    function testUnstakeETHOfLoan() public {
+        address[] memory _rewardAddresses3 = new address[] (3);
+        uint256[] memory _ratios3 = new uint256[] (3);
+        _rewardAddresses3[0] = address(70);
+        _rewardAddresses3[1] = address(71);
+        _rewardAddresses3[2] = address(72);
+        _ratios3[0] = 70;
+        _ratios3[1] = 20;
+        _ratios3[2] = 10;
+
+        address _controllerAddress3 = address(80);
+        address _owner3 = address(81);
+
+        uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "testELVault", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
+        );
+
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId);
+
+        vm.deal(address(20), 32 ether);
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 32 ether}(operatorId);
+        assertEq(0, vnft.balanceOf(address(20)));
+        assertEq(32 ether, neth.balanceOf(address(20)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(operatorId));
+        assertEq(0 ether, address(20).balance);
+
+        assertEq(32 ether, address(liquidStaking).balance);
+
+        bytes[] memory pubkeys = new bytes[](1);
+        bytes[] memory signatures = new bytes[](1);
+        bytes32[] memory depositDataRoots = new bytes32[](1);
+
+        liquidStaking.setLiquidStakingWithdrawalCredentials(
+            bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
+        );
+        bytes memory pubkey =
+            bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
+        bytes memory sign = bytes(
+            hex"8c9270550945d18f6500e11d0db074d52408cde8a3a30108c8e341ba6e0b92a4d82efb24097dc808313a0145ba096e0c16455aa1c3a7a1019ae34ddf540d9fa121e498c43f757bc6f4105fe31dd5ea8d67483ab435e5a371874dddffa5e65b58"
+        );
+        bytes32 root = bytes32(hex"2c6181bcae0df24f047332b10657ee75faa7c42657b6577d7efac6672376bc33");
+        pubkeys[0] = pubkey;
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+
+        assertEq(vnft.validatorExists(pubkey), false);
+        vm.prank(address(_controllerAddress3));
+        liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+
+        assertEq(0 ether, address(liquidStaking).balance);
+
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(operatorId));
+
+        vm.deal(address(21), 32 ether);
+        vm.prank(address(21));
+        liquidStaking.stakeETH{value: 32 ether}(1);
+        assertEq(0, vnft.balanceOf(address(21)));
+        assertEq(32 ether, neth.balanceOf(address(21)));
+        assertEq(1, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(0 ether, address(21).balance);
+        assertEq(32 ether, address(liquidStaking).balance);
+
+        assertEq(32 ether, address(liquidStaking).balance);
+
+        vm.expectRevert("No unstake quota");
+        vm.prank(address(20));
+        liquidStaking.unstakeETH(1, 2 ether);
+
+        assertEq(32 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(operatorId));
+
+        vm.prank(address(20));
+        liquidStaking.unstakeETH(operatorId, 2 ether);
+        assertEq(30 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(operatorId));
+        assertEq(0, vnft.balanceOf(address(20)));
+        assertEq(30 ether, neth.balanceOf(address(20)));
+        assertEq(1, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(2 ether, address(20).balance);
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(operatorId));
+        assertEq(2 ether, liquidStaking.operatorLoanRecords(operatorId));
+        assertEq(0 ether, liquidStaking.operatorLoanRecords(1));
+        assertEq(30 ether, address(liquidStaking).balance);
+
+        console.log("rate: 1", liquidStaking.getNethOut(1 ether));
+
+        vm.deal(address(22), 2 ether);
+        vm.prank(address(22));
+        liquidStaking.stakeETH{value: 2 ether}(operatorId);
+        assertEq(0, vnft.balanceOf(address(22)));
+        assertEq(2 ether, neth.balanceOf(address(22)));
+        assertEq(1, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(operatorId));
+        assertEq(0 ether, address(22).balance);
+        assertEq(0 ether, liquidStaking.operatorLoanRecords(operatorId));
+        assertEq(0 ether, liquidStaking.operatorLoanRecords(1));
+        assertEq(32 ether, address(liquidStaking).balance);
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(operatorId) + liquidStaking.operatorPoolBalances(1));
+        assertEq(32 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(operatorId));
+
+        console.log("rate: 2", liquidStaking.getNethOut(1 ether));
+
+        vm.prank(_dao);
+        liquidStaking.setOperatorCanLoanAmounts(0 ether);
+
+        assertEq(0 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(operatorId));
+
+        vm.expectRevert("Insufficient funds to unstake");
+        vm.prank(address(20));
+        liquidStaking.unstakeETH(operatorId, 0.002 ether);
+
+        vm.prank(_dao);
+        liquidStaking.setOperatorCanLoanAmounts(32 ether);
+
+        liquidStaking.setLiquidStakingWithdrawalCredentials(
+            bytes(hex"010000000000000000000000d9e2dc13b0d2f6f73cd21c32fbf7de143c558e29")
+        );
+        pubkey =
+            bytes(hex"83d3693fb9da8aed60a5c94c51927158d6e3a4d36fa6982ba2c87f83260329baf08f93d000f9261911420a9c0f0eb022");
+        sign = bytes(
+            hex"b0e13147956deb0b188e79de8181d0f9f216a43cf8fe0435c5c919da0182400e440ff6ba11d1c2ec12bec824200d9d07130d53260e8f03d7292af14e909731435ffe5beb4e97f7e97e55cd555e99e23de6dbb5618a40bd26b7537b9cd4104370"
+        );
+        root = bytes32(hex"f497234b67c6258b9cd46627adb7a88a26a5b48cbe90ee3bdb24bf9c559a0595");
+        pubkeys[0] = pubkey;
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+
+        assertEq(vnft.validatorExists(pubkey), false);
+        vm.prank(address(_controllerAddress));
+        liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+
+        assertEq(0 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(operatorId));
+        assertEq(0 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(1));
+
+        vm.deal(address(23), 2 ether);
+        vm.prank(address(23));
+        liquidStaking.stakeETH{value: 2 ether}(operatorId);
+
+        assertEq(2 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(operatorId));
+        assertEq(2 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(1));
+    }
+
+    function testUnstakeNFT() public {
+        vm.deal(address(21), 32 ether);
+        vm.prank(address(21));
+        liquidStaking.stakeNFT{value: 32 ether}(1, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc);
+        assertEq(1, vnft.balanceOf(address(21)));
+        assertEq(0, neth.balanceOf(address(21)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0, neth.balanceOf(address(liquidStaking)));
+        assertEq(32 ether, liquidStaking.operatorNftPoolBalances(1));
+
+        uint256[] memory tokenids = new uint256[] (1);
+        tokenids[0] = 0;
+        vm.prank(address(21));
+        liquidStaking.unstakeNFT(tokenids);
+        assertEq(0, vnft.balanceOf(address(21)));
+        assertEq(0, neth.balanceOf(address(21)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0, neth.balanceOf(address(liquidStaking)));
+        assertEq(0, liquidStaking.operatorNftPoolBalances(1));
+        assertEq(32 ether, address(21).balance);
+    }
+
+    function testUnstakeNFT2() public {
+        vm.roll(100);
+        address[] memory _rewardAddresses3 = new address[] (3);
+        uint256[] memory _ratios3 = new uint256[] (3);
+        _rewardAddresses3[0] = address(70);
+        _rewardAddresses3[1] = address(71);
+        _rewardAddresses3[2] = address(72);
+        _ratios3[0] = 70;
+        _ratios3[1] = 20;
+        _ratios3[2] = 10;
+
+        address _controllerAddress3 = address(80);
+        address _owner3 = address(81);
+
+        uint256 opId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "testELVault", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
+        );
+
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(opId);
+
+        vm.deal(address(74), 32 ether);
+        vm.prank(address(74));
+        liquidStaking.stakeNFT{value: 32 ether}(opId, 0xB553A401FBC2427777d05ec21Dd37a03e1FA6894);
+        assertEq(1, vnft.balanceOf(address(74)));
+        assertEq(0, neth.balanceOf(address(74)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(opId));
+        assertEq(32 ether, liquidStaking.operatorNftPoolBalances(opId));
+
+        // registerValidator
+        bytes[] memory pubkeys = new bytes[](1);
+        bytes[] memory signatures = new bytes[](1);
+        bytes32[] memory depositDataRoots = new bytes32[](1);
+        bytes memory pubkey =
+            bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920539a2");
+        bytes memory sign = bytes(
+            hex"87a834c348fe64fd8ead55299ded58ce58fb529326c89a57efcc184e067d29fd89ab6fedf70d722bffbbe0ebfd4beff10810bdfa2a588bf89697273c501b28c3ee04c895c4fcba8d1b193c9416d6808f3eebff8f7be66601a390a2d9d940e253"
+        );
+        bytes32 root = bytes32(hex"13881d4f72c54a43ca210b3766659c28f3fe959ea36e172369813c603d197845");
+        pubkeys[0] = pubkey;
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(opId));
+        assertEq(vnft.validatorExists(pubkey), false);
+        vm.prank(address(_controllerAddress3));
+        liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, liquidStaking.operatorNftPoolBalances(opId));
+
+        uint256[] memory tokenids = new uint256[] (1);
+        tokenids[0] = 0;
+        vm.prank(address(74));
+        liquidStaking.unstakeNFT(tokenids);
+
+        assertEq(100, liquidStaking.getNftUnstakeBlockNumber(0));
+        assertEq(0, liquidStaking.getUserUnstakeButOperatorNoExitNfs(opId)[0]);
+        assertEq(1, vnft.balanceOf(address(74)));
+
+        vm.roll(200);
+
+        WithdrawInfo[] memory _withdrawInfo = new WithdrawInfo[] (1);
+        _withdrawInfo[0] = WithdrawInfo({operatorId: 2, clReward: 0.1 ether, clCapital: 0 ether});
+        ExitValidatorInfo[] memory _exitValidatorInfo = new ExitValidatorInfo[] (1);
+        _exitValidatorInfo[0] = ExitValidatorInfo({exitTokenId: 0, exitBlockNumber: 200, slashAmount: 0});
+        uint256[] memory empty = new uint256[] (0);
+
+        assertEq(1, vnft.getActiveNftCountsOfOperator(2));
+        address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(opId);
+        vm.deal(address(operatorVaultAddr), 1 ether);
+        uint256[] memory operatorIds = new uint256[] (1);
+        operatorIds[0] = opId;
+        vaultManager.settleAndReinvestElReward(operatorIds);
+
+        vm.deal(address(consensusVaultContract), 0.1 ether);
+
+        vm.prank(address(withdrawOracle));
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 0.1 ether);
+
+        assertEq(1, vnft.balanceOf(address(74)));
+
+        uint256[] memory tokenIds = new uint256[] (1);
+        tokenIds[0] = 0;
+        assertEq(200, vnft.getNftExitBlockNumbers(tokenIds)[0]);
+
+        vaultManager.claimRewardsOfUser(tokenIds);
+        assertEq(0.9 ether, address(74).balance);
+        assertEq(0, vnft.balanceOf(address(74)));
     }
 }
