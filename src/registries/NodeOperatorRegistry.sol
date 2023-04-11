@@ -376,9 +376,7 @@ contract NodeOperatorRegistry is
     function _setNodeOperatorRewardAddress(uint256 _id, address[] calldata _rewardAddresses, uint256[] calldata _ratios)
         internal
     {
-        require(_rewardAddresses.length != 0, "Invalid length");
-        require(_rewardAddresses.length <= MAX_REWARDSETTING_LENGTH, "Invalid length");
-        require(_rewardAddresses.length == _ratios.length, "Invalid length");
+        require(_rewardAddresses.length != 0 && _rewardAddresses.length <= MAX_REWARDSETTING_LENGTH && _rewardAddresses.length == _ratios.length, "Invalid length");
 
         // clear old settings
         delete operatorRewardSetting[_id];
