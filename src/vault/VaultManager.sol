@@ -130,6 +130,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         if (_userNftExitDelayedTokenIds.length != 0 || _largeExitDelayedRequestIds.length != 0) {
             liquidStakingContract.slashOfExitDelayed(_userNftExitDelayedTokenIds, _largeExitDelayedRequestIds);
         }
+
+        _settleAndReinvestElReward(operatorIds);
     }
 
     /**
@@ -137,6 +139,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      * @param _operatorIds operator id
      */
     function settleAndReinvestElReward(uint256[] memory _operatorIds) external {
+        _settleAndReinvestElReward(_operatorIds);
+    }
+
+    function _settleAndReinvestElReward(uint256[] memory _operatorIds) internal {
         uint256[] memory reinvestAmounts;
         bool isSettle;
         (reinvestAmounts, isSettle) = _elSettle(_operatorIds);
