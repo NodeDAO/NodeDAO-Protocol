@@ -203,10 +203,21 @@ contract LiquidStaking is
         beaconOracleContract = IWithdrawOracle(_beaconOracleContractAddress);
     }
 
-    function initializeV2() public reinitializer(2) onlyDao {
+    /**
+     * @notice initializeV2 LiquidStaking Contract
+     * @param _operatorIds operator id
+     * @param _users user Address
+     * @param _nethAmounts Withdrawal Credentials, Withdrawal vault contract address
+     */
+    function initializeV2(uint256[] memory _operatorIds, address[] memory _users, uint256[] memory _nethAmounts) public reinitializer(2) onlyDao {
         // merge already stake data to StakeRecords
+        require(_operatorIds.length == _users.length && _nethAmounts.length == _users.length, "invalid parameter");
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
+            _stake(_operatorIds[i], _users[i], _nethAmounts[i]);
+        }
 
-        delayedExitSlashStandard = 216000;
+        // mainnet 50400; goerli 7200
+        delayedExitSlashStandard = 7200;
         slashAmountPerBlockPerValidator = 2000000000000;
         operatorCanLoanAmounts = 32 ether;
     }
