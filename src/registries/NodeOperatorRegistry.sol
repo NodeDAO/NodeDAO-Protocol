@@ -88,32 +88,6 @@ contract NodeOperatorRegistry is
     mapping(uint256 => uint256) internal operatorComissionRate;
     uint256 public constant DEFAULT_COMISSION = 700;
 
-    /**
-     * @notice get operator comission rate
-     * @param _operatorIds operator id
-     */
-    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
-        uint256[] memory comissions = new uint256[] (_operatorIds.length);
-        for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            if (operatorComissionRate[_operatorIds[i]] == 0) {
-                comissions[i] = DEFAULT_COMISSION;
-            } else {
-                comissions[i] = operatorComissionRate[i];
-            }
-        }
-
-        return comissions;
-    }
-
-    function setOperatorComissionRate(uint256 _operatorId, uint256 _rate) external {
-        NodeOperator memory operator = operators[_operatorId];
-        require(msg.sender == operator.owner || msg.sender == dao, "PERMISSION_DENIED");
-        require(_rate < 5000, "Comission cannot be 50%");
-        uint256 comissionRate = operatorComissionRate[_operatorId];
-        emit ComissionRateChanged(comissionRate == 0 ? DEFAULT_COMISSION : comissionRate, _rate);
-        operatorComissionRate[_operatorId] = _rate;
-    }
-
     modifier onlyLiquidStaking() {
         require(address(liquidStakingContract) == msg.sender, "PERMISSION_DENIED");
         _;
@@ -732,6 +706,60 @@ contract NodeOperatorRegistry is
         require(_blockNumber > block.number, "Invalid block height");
         permissionlessBlockNumber = _blockNumber;
         emit PermissionlessBlockNumberSet(_blockNumber);
+    }
+
+    /**
+     * @notice set a new vaultFactoryContract
+     * @param _vaultFactoryContractAddress new vaultFactoryContract address
+     */
+    function setVaultFactorContract(address _vaultFactoryContractAddress) external onlyDao {
+        require(_vaultFactoryContractAddress != address(0), "_vaultFactoryContractAddress address invalid");
+        emit VaultFactorContractSet(address(vaultFactoryContract), _vaultFactoryContractAddress);
+        vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
+    }
+
+    /**
+     * @notice reset a new vault contract for operator
+     * @param _operatorIds operators id
+     */
+    function resetOperatorVaultContract(uint256[] calldata _operatorIds) external onlyDao {
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
+            uint256 operatorId = _operatorIds[i];
+            address vaultContractAddress = vaultFactoryContract.create(operatorId);
+            emit OperatorVaultContractReset(operators[operatorId].vaultContractAddress, vaultContractAddress);
+            operators[operatorId].vaultContractAddress = vaultContractAddress;
+        }
+    }
+
+    /**
+     * @notice get operator comission rate
+     * @param _operatorIds operator id
+     */
+    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
+        uint256[] memory comissions = new uint256[] (_operatorIds.length);
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
+            if (operatorComissionRate[_operatorIds[i]] == 0) {
+                comissions[i] = DEFAULT_COMISSION;
+            } else {
+                comissions[i] = operatorComissionRate[i];
+            }
+        }
+
+        return comissions;
+    }
+
+    /**
+     * @notice set operator comission rate
+     * @param _operatorId operator id
+     * @param _rate _rate
+     */
+    function setOperatorComissionRate(uint256 _operatorId, uint256 _rate) external {
+        NodeOperator memory operator = operators[_operatorId];
+        require(msg.sender == operator.owner || msg.sender == dao, "PERMISSION_DENIED");
+        require(_rate < 5000, "Comission cannot be 50%");
+        uint256 comissionRate = operatorComissionRate[_operatorId];
+        emit ComissionRateChanged(comissionRate == 0 ? DEFAULT_COMISSION : comissionRate, _rate);
+        operatorComissionRate[_operatorId] = _rate;
     }
 
     /**

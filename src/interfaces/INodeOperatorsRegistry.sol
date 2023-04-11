@@ -198,4 +198,6 @@ interface INodeOperatorsRegistry {
     event ComissionRateChanged(uint256 _oldRate, uint256 _rate);
     event OperatorArrearsReduce(uint256 _operatorId, uint256 value);
     event OperatorArrearsIncrease(uint256 _operatorId, uint256 value);
+    event VaultFactorContractSet(address _vaultFactoryContract, address _vaultFactoryContractAddress);
+    event OperatorVaultContractReset(address _oldVaultContractAddress, address _vaultContractAddress);
 }
