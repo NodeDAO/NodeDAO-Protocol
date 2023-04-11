@@ -17,8 +17,6 @@ import {ERC721A__IERC721ReceiverUpgradeable} from "ERC721A-Upgradeable/ERC721AUp
 import "src/interfaces/IConsensusVault.sol";
 import "src/interfaces/IVaultManager.sol";
 
-import "forge-std/console.sol";
-
 /**
  * @title NodeDao LiquidStaking Contract
  *
