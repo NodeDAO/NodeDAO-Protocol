@@ -110,7 +110,7 @@ interface ILiquidStaking {
     event EthUnstake(
         uint256 indexed _operatorId, uint256 targetOperatorId, address ender, uint256 _amounts, uint256 amountOut
     );
-    event NftUnstake(uint256 indexed _operatorId, uint256 tokenId, uint256 operatorId);
+    event NftUnstake(uint256 indexed _operatorId, uint256 tokenId);
     event NftStake(uint256 indexed _operatorId, address indexed _from, uint256 _count);
     event ValidatorRegistered(uint256 indexed _operatorId, uint256 _tokenId);
     event UserClaimRewards(uint256 _operatorId, uint256[] _tokenIds, uint256 _rewards);

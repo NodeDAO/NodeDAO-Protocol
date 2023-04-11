@@ -213,6 +213,7 @@ contract LiquidStaking is
         // merge already stake data to StakeRecords
         require(_operatorIds.length == _users.length && _nethAmounts.length == _users.length, "invalid parameter");
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
+            require(nodeOperatorRegistryContract.isTrustedOperator(_operatorIds[i]), "The operator is not trusted");
             _stake(_operatorIds[i], _users[i], _nethAmounts[i]);
         }
 
@@ -477,7 +478,7 @@ contract LiquidStaking is
                 operatorUnstakeNftLists[operatorId].push(tokenId);
             }
 
-            emit NftUnstake(operatorId, tokenId, operatorId);
+            emit NftUnstake(operatorId, tokenId);
         }
     }
 
