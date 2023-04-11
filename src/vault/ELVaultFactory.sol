@@ -68,7 +68,7 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
      * @param _nodeOperatorRegistryAddress nodeOperatorRegistry contract Address
      */
     function setNodeOperatorRegistry(address _nodeOperatorRegistryAddress) external onlyOwner {
-        require(_nodeOperatorRegistryAddress != address(0), "");
+        require(_nodeOperatorRegistryAddress != address(0), "nodeOperator registry address invalid");
         emit NodeOperatorRegistrySet(nodeOperatorRegistryAddress, _nodeOperatorRegistryAddress);
         nodeOperatorRegistryAddress = _nodeOperatorRegistryAddress;
     }
