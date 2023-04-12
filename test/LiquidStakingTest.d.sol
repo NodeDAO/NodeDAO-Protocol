@@ -415,27 +415,46 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     }
 
     // function testRequestLargeWithdrawals() public {
-    //     vm.deal(address(21), 100 ether);
-
-    //     address _controllerAddress = address(2111);
-    //     address _owner = address(2112);
-    //     address _to = address(2113);
-    //     address[] memory _testRewardAddresses = new address[] (2);
-    //     uint256[] memory _ratios = new uint256[] (2);
-    //     _testRewardAddresses[0] = address(2114);
-    //     _testRewardAddresses[1] = address(2115);
-    //     _ratios[0] = 50;
-    //     _ratios[1] = 50;
-    //     uint256[] memory amounts = new uint256[](1);
-    //     amounts[0] = 32 ether ;
-    //     vm.prank(address(21));
-    //     uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
-    //         "test2", _controllerAddress, _owner, _testRewardAddresses, _ratios
-    //     );
-
-    //     vm.prank(address(21));
-    //     liquidStaking.requestLargeWithdrawals(operatorId, amounts) ;
 
     // }
+    
+
+    function testRequestLargeWithdrawals() public {
+
+        vm.deal(address(21), 120 ether);
+        address _controllerAddress = address(2111);
+        address _owner = address(2112);
+        address _to = address(2113);
+        address[] memory _testRewardAddresses = new address[] (2);
+        uint256[] memory _ratios = new uint256[] (2);
+        _testRewardAddresses[0] = address(2114);
+        _testRewardAddresses[1] = address(2115);
+        _ratios[0] = 50;
+        _ratios[1] = 50;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 32 ether ;
+        vm.prank(address(21));
+        uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "test3", _controllerAddress, _owner, _testRewardAddresses, _ratios
+        );
+        assertEq( 3, operatorId );
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId);
+        vm.prank(address(21));
+        liquidStaking.stakeETH{value: 32 ether}(operatorId) ;
+        vm.prank(address(liquidStaking));
+        neth.whiteListMint(120 ether , address(21));
+        vm.prank(address(21));
+        neth.approve(address(liquidStaking), 33 ether);
+        vm.prank(address(21));
+        vm.expectEmit(true, true, false, true);
+        emit LargeWithdrawalsRequest(operatorId, address(21), 32 ether );
+        liquidStaking.requestLargeWithdrawals(operatorId, amounts) ;
+        assertEq( 32 ether, neth.balanceOf(address(liquidStaking)) );
+
+        // console.log("neth.balanceOf(address(liquidStaking)): ", neth.balanceOf(address(liquidStaking)) );
+        // console.log("After liquidStaking.getOperatorPendingEthRequestAmount(operatorId): ",  liquidStaking.getOperatorPendingEthRequestAmount(operatorId) );
+
+    }
 
 }
