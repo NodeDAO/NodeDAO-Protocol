@@ -18,6 +18,8 @@ import "test/helpers/oracles/MockOracleProvider.sol";
 import "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import "test/helpers/CommonConstantProvider.sol";
 import "src/interfaces/ILiquidStaking.sol";
+import "src/interfaces/INodeOperatorsRegistry.sol";
+
 
 contract LiquidStakingTest is Test, MockOracleProvider {
 
@@ -68,6 +70,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     address payable consensusVaultContractAddr;
     ILiquidStaking public liquidStakingContract;
     HashConsensusWithTimer consensus;
+    INodeOperatorsRegistry  public nodeOperatorsRegistryContract;
 
     address _dao = DAO;
     address _daoValutAddress = address(2);
@@ -108,6 +111,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         consensusVaultContract = new ConsensusVault();
         consensusVaultContract.initialize(_dao, address(liquidStaking));
         consensusVaultContractAddr = payable(consensusVaultContract);
+        console.log(" address(liquidStaking): ", address(liquidStaking) );
 
         liquidStakingContract = ILiquidStaking(address(liquidStaking));
 
@@ -129,6 +133,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         operatorRegistry.setLiquidStaking(address(liquidStaking));
         vm.prank(address(vaultFactoryContract) );
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
+        nodeOperatorsRegistryContract = INodeOperatorsRegistry(address(operatorRegistry));
 
         depositContract = new DepositContract();
 
@@ -206,7 +211,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
     
     function testRegisterOperatorFailRequireCases() public {
-
         vm.prank(address(45));
         vm.deal(address(45), 22 ether);
         vm.expectRevert("Insufficient amount");
@@ -414,11 +418,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq( 32 ether , liquidStaking.operatorCanLoanAmounts() );
     }
 
-    // function testRequestLargeWithdrawals() public {
-
-    // }
-    
-
     function testRequestLargeWithdrawals() public {
 
         vm.deal(address(21), 120 ether);
@@ -451,10 +450,52 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         emit LargeWithdrawalsRequest(operatorId, address(21), 32 ether );
         liquidStaking.requestLargeWithdrawals(operatorId, amounts) ;
         assertEq( 32 ether, neth.balanceOf(address(liquidStaking)) );
-
-        // console.log("neth.balanceOf(address(liquidStaking)): ", neth.balanceOf(address(liquidStaking)) );
-        // console.log("After liquidStaking.getOperatorPendingEthRequestAmount(operatorId): ",  liquidStaking.getOperatorPendingEthRequestAmount(operatorId) );
+        console.log("neth.balanceOf(address(liquidStaking)): ", neth.balanceOf(address(liquidStaking)) );
+        uint256[] memory _requestIds = new uint256[] (1);
+        _requestIds[0]= operatorId;
+        // liquidStaking.claimLargeWithdrawals(_requestIds) ;
 
     }
+
+    // function testNftExitHandle() public {
+    //     uint256[] memory exitTokenIds = new uint256[] (1);
+    //     uint256[] memory exitBlockNumbers = new uint256[] (1);
+    //     exitTokenIds[0]= 1;
+    //     exitBlockNumbers[0]= 1;
+    //     vm.prank(address(vaultManager));
+    //     liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
+    //     // nft exit
+    //     // if (exitTokenIds.length != 0 || exitBlockNumbers.length != 0) {
+    //     //     liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
+    //     // }
+  
+    // }
+
+    function testMscFunctions() public{
+
+        vm.deal(address(301), 100 ether);
+        vm.prank(address(301));
+        liquidStakingContract.receiveRewards{value: 1 ether}(1 ether) ;
+        vm.deal(_dao, 2000 ether);
+       
+        vm.expectRevert("_newCanloadAmounts too large");
+        vm.prank(_dao);
+        liquidStaking.setOperatorCanLoanAmounts( 1001 ether);
+        vm.expectEmit(true, true, false, true);
+        emit NodeOperatorRegistryContractSet( address(operatorRegistry), address(4001) );
+        vm.prank(_dao);
+        liquidStaking.setNodeOperatorRegistryContract(address(4001));
+       
+        console.log("(address(operatorRegistry): ", address(operatorRegistry));
+        bytes4 _bytes= liquidStaking.onERC721Received(address(1111), address(1112), 1,  bytes(hex"0100000000000000000000006ae2f56c057e31a18224dbc6ae32b0a5fbedfcb0"));
+       
+        vm.expectEmit(true, true, false, true);
+        emit BeaconOracleContractSet( address(withdrawOracle), address(4002) );        
+        vm.prank(_dao);
+        liquidStaking.setBeaconOracleContract(address(4002));
+
+
+    }
+
 
 }
