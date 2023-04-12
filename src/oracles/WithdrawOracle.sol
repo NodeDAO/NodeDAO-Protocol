@@ -205,7 +205,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// - The keccak256 hash of the ABI-encoded data is different from the last hash
     ///   provided by the hash consensus contract.
     /// - The provided data doesn't meet safety checks.
-    function submitReportData(ReportData calldata data, uint256 contractVersion) external {
+    function submitReportData(ReportData calldata data, uint256 contractVersion) external whenNotPaused {
         _checkMsgSenderIsAllowedToSubmitData();
         _checkContractVersion(consensusVersion);
         // it's a waste of gas to copy the whole calldata into mem but seems there's no way around

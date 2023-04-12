@@ -4,6 +4,7 @@ pragma solidity 0.8.8;
 import "openzeppelin-contracts/utils/math/SafeCast.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import "src/utils/Versioned.sol";
 import "src/utils/Dao.sol";
 import {IReportAsyncProcessor} from "src/oracles/HashConsensus.sol";
@@ -23,7 +24,14 @@ interface IConsensusContract {
     function getInitialRefSlot() external view returns (uint256);
 }
 
-abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versioned, IReportAsyncProcessor {
+abstract contract BaseOracle is
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    PausableUpgradeable,
+    Dao,
+    Versioned,
+    IReportAsyncProcessor
+{
     using SafeCast for uint256;
 
     error AddressCannotBeZero();
@@ -81,6 +89,7 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     ) internal virtual onlyInitializing {
         __Ownable_init();
         __UUPSUpgradeable_init();
+        __Pausable_init();
 
         if (_dao == address(0)) revert DaoCannotBeZero();
         dao = _dao;
@@ -93,6 +102,20 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
         lastProcessingRefSlot = _lastProcessingRefSlot;
 
         consensusReport.refSlot = uint64(_lastProcessingRefSlot);
+    }
+
+    /**
+     * @notice In the event of an emergency, stop protocol
+     */
+    function pause() external onlyDao {
+        _pause();
+    }
+
+    /**
+     * @notice restart protocol
+     */
+    function unpause() external onlyDao {
+        _unpause();
     }
 
     // set dao vault address
