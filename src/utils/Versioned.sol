@@ -3,7 +3,6 @@
 pragma solidity 0.8.8;
 
 contract Versioned {
-
     event ContractVersionSet(uint256 version);
 
     error NonZeroContractVersionOnInit();
@@ -12,7 +11,7 @@ contract Versioned {
 
     uint256 internal contractVersion;
 
-//    uint256 internal constant PETRIFIED_VERSION_MARK = type(uint256).max;
+    //    uint256 internal constant PETRIFIED_VERSION_MARK = type(uint256).max;
 
     constructor() {
         // lock version in the implementation's storage to prevent initialization

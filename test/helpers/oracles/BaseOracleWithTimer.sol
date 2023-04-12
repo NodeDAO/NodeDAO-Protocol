@@ -11,7 +11,6 @@ struct ConsensusReport {
 }
 
 contract BaseOracleWithTimer is BaseOracle {
-
     uint256 internal _time = 2513040315;
 
     event MockStartProcessingResult(uint256 prevProcessingRefSlot);

@@ -286,5 +286,4 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
             emit WarnDataIncompleteProcessing(prevProcessingRefSlot, exitRequestLimit, state.reportExitedCount);
         }
     }
-
 }
