@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.8;
 
-import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
 
 struct ConsensusReport {
@@ -12,7 +11,6 @@ struct ConsensusReport {
 }
 
 contract BaseOracleWithTimer is BaseOracle {
-    using UnstructuredStorage for bytes32;
 
     uint256 internal _time = 2513040315;
 
