@@ -9,13 +9,14 @@ import "src/interfaces/IVNFT.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
+import "src/interfaces/IOperatorSlash.sol";
 
 contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     ILiquidStaking public liquidStakingContract;
     IVNFT public vNFTContract;
     INodeOperatorsRegistry public nodeOperatorRegistryContract;
+    IOperatorSlash public operatorSlashContract;
     address public withdrawOracleContractAddress;
-    address public clVaultContractAddresss;
     address public dao;
 
     // el settle
@@ -49,13 +50,13 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         address _nVNFTContractAddress,
         address _nodeOperatorRegistryAddress,
         address _withdrawOracleContractAddress,
-        address _clVaultContractAddresss
+        address _operatorSlashContract
     ) public initializer {
         liquidStakingContract = ILiquidStaking(_liquidStakingAddress);
         vNFTContract = IVNFT(_nVNFTContractAddress);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryAddress);
         withdrawOracleContractAddress = _withdrawOracleContractAddress;
-        clVaultContractAddresss = _clVaultContractAddresss;
+        operatorSlashContract = IOperatorSlash(_operatorSlashContract);
 
         dao = _dao;
         daoElComissionRate = 300;
@@ -119,7 +120,11 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         liquidStakingContract.reinvestClRewards(operatorIds, amouts);
 
         if (exitTokenIds.length != 0 || slashAmounts.length != 0) {
-            liquidStakingContract.slashOperator(exitTokenIds, slashAmounts);
+            operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
+        }
+
+        if (_userNftExitDelayedTokenIds.length != 0 || _largeExitDelayedRequestIds.length != 0) {
+            operatorSlashContract.slashOfExitDelayed(_userNftExitDelayedTokenIds, _largeExitDelayedRequestIds);
         }
 
         // nft exit
@@ -127,9 +132,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
         }
 
-        if (_userNftExitDelayedTokenIds.length != 0 || _largeExitDelayedRequestIds.length != 0) {
-            liquidStakingContract.slashOfExitDelayed(_userNftExitDelayedTokenIds, _largeExitDelayedRequestIds);
-        }
+        _settleAndReinvestElReward(operatorIds);
     }
 
     /**
@@ -137,6 +140,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      * @param _operatorIds operator id
      */
     function settleAndReinvestElReward(uint256[] memory _operatorIds) external {
+        _settleAndReinvestElReward(_operatorIds);
+    }
+
+    function _settleAndReinvestElReward(uint256[] memory _operatorIds) internal {
         uint256[] memory reinvestAmounts;
         bool isSettle;
         (reinvestAmounts, isSettle) = _elSettle(_operatorIds);
@@ -222,6 +229,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256 totalNftRewards = 0;
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
+            require(owner == vNFTContract.ownerOf(tokenId), "different owners cannot batch");
             require(operatorId == vNFTContract.operatorOf(tokenId), "Must be the tokenId of the same operator");
             uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
             amounts[i] = nftRewards;
@@ -229,7 +237,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         }
         unclaimedRewardsMap[operatorId] -= totalNftRewards;
         uint256 gasHeight = settleCumArrMap[operatorId][settleCumArrMap[operatorId].length - 1].height;
-        liquidStakingContract.claimRewardsOfUser(operatorId, _tokenIds, amounts, gasHeight);
+        liquidStakingContract.claimRewardsOfUser(operatorId, _tokenIds, totalNftRewards, gasHeight, owner);
         emit RewardClaimed(owner, totalNftRewards);
     }
 
@@ -295,9 +303,39 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      * @param _operatorId operator Id
      */
     function claimRewardsOfOperator(uint256 _operatorId) external {
+        uint256 pledgeBalance = 0;
+        uint256 requirBalance = 0;
+        (pledgeBalance, requirBalance) = nodeOperatorRegistryContract.getPledgeInfoOfOperator(_operatorId);
+        require(pledgeBalance >= requirBalance, "Insufficient pledge of operator");
+
         uint256 operatorRewards = operatorRewardsMap[_operatorId];
         operatorRewardsMap[_operatorId] = 0;
-        liquidStakingContract.claimRewardsOfOperator(_operatorId, operatorRewards);
+
+        address[] memory rewardAddresses;
+        uint256[] memory ratios;
+        (rewardAddresses, ratios) = nodeOperatorRegistryContract.getNodeOperatorRewardSetting(_operatorId);
+        require(rewardAddresses.length != 0, "Invalid rewardAddresses");
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
+        uint256[] memory rewards = new uint256[] (rewardAddresses.length);
+        uint256 totalAmount = 0;
+        uint256 totalRatios = 0;
+        for (uint256 i = 0; i < rewardAddresses.length; ++i) {
+            uint256 ratio = ratios[i];
+            totalRatios += ratio;
+
+            // If it is the last reward address, calculate by subtraction
+            if (i == rewardAddresses.length - 1) {
+                rewards[i] = operatorRewards - totalAmount;
+            } else {
+                uint256 reward = operatorRewards * ratio / 100;
+                rewards[i] = reward;
+                totalAmount += reward;
+            }
+        }
+
+        require(totalRatios == 100, "Invalid ratio");
+
+        liquidStakingContract.claimRewardsOfOperator(_operatorId, rewardAddresses, rewards);
         emit OperatorClaimRewards(_operatorId, operatorRewards);
     }
 
