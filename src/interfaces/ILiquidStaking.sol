@@ -20,18 +20,6 @@ interface ILiquidStaking {
     function receiveRewards(uint256 _rewards) external payable;
 
     /**
-     * @notice Receive slash fund, Because the operator may have insufficient margin, _slashAmounts may be less than or equal to _requireAmounts
-     * @param _exitTokenIds exit tokenIds
-     * @param _slashAmounts slash amount
-     * @param _requireAmounts require slas amount
-     */
-    function slashReceive(
-        uint256[] memory _exitTokenIds,
-        uint256[] memory _slashAmounts,
-        uint256[] memory _requireAmounts
-    ) external payable;
-
-    /**
      * @notice Update the status of the corresponding nft according to the report result of the oracle machine
      * @param _tokenIds token id
      * @param _exitBlockNumbers exit block number
@@ -53,26 +41,45 @@ interface ILiquidStaking {
     function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
 
     /**
-     * @notice According to the report results of the oracle machine, the operator who has reduced nft will be punished
-     * @param _exitTokenIds token id
-     * @param _amounts slash amounts
+     * @notice nETH to ETH exchange rate
+     * @param _nethAmountIn nETH amount
      */
-    function slashOperator(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external;
+    function getEthOut(uint256 _nethAmountIn) external view returns (uint256);
 
     /**
-     * @notice According to the report result of the oracle machine, punish the operator who fails to exit in time
-     * @param _nftExitDelayedTokenIds exit delayed tokenIds
-     * @param _largeExitDelayedRequestIds large exit delayed requestIds
+     * @notice ETH to nETH exchange rate
+     * @param _ethAmountIn ETH amount
      */
-    function slashOfExitDelayed(uint256[] memory _nftExitDelayedTokenIds, uint256[] memory _largeExitDelayedRequestIds)
-        external;
+    function getNethOut(uint256 _ethAmountIn) external view returns (uint256);
 
     /**
-     * @notice The receiving function of the penalty, used for the automatic transfer after the operator recharges the margin
-     * @param _operatorId operator Id
+     * @notice When withdrawing a large amount, update the user's unstake quota
+     * @param _operatorId operator id
+     * @param _from user address
+     * @param _amount unstakeETH amount
+     */
+    function largeWithdrawalUnstake(uint256 _operatorId, address _from, uint256 _amount) external;
+
+    /**
+     * @notice large withdrawals, when users claim eth, will trigger the burning of locked Neth
+     * @param _totalRequestNethAmount totalRequestNethAmount will burn
+     */
+    function largeWithdrawalBurnNeth(uint256 _totalRequestNethAmount) external;
+
+    /**
+     * @notice When unstakeNFT, if the funds pledged by the user have not been deposited, the user is allowed to withdraw directly
+     * @param _operatorId operator id
+     * @param _tokenId tokenId
+     * @param _to receiving address
+     */
+    function fastUnstakeNFT(uint256 _operatorId, uint256 _tokenId, address _to) external;
+
+    /**
+     * @notice When the operator is punished due to an error in operation, the penalty funds are recharged to its own pledge pool
+     * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable;
+    function addSlashFundToStakePool(uint256 _operatorId, uint256 _amount) external payable;
 
     /**
      * @notice Users claim vNFT rewards
@@ -80,22 +87,26 @@ interface ILiquidStaking {
      *      because the liquidStaking cannot directly reward
      * @param _operatorId operator id
      * @param _tokenIds vNFT tokenIds
-     * @param _amounts reward
+     * @param _totalNftRewards _totalNftRewards
      * @param _gasHeight update claim gasHeigt
+     * @param _owner _owner
      */
     function claimRewardsOfUser(
         uint256 _operatorId,
         uint256[] memory _tokenIds,
-        uint256[] memory _amounts,
-        uint256 _gasHeight
+        uint256 _totalNftRewards,
+        uint256 _gasHeight,
+        address _owner
     ) external;
 
     /**
      * @notice The operator claims the operation reward
      * @param _operatorId operator Id
-     * @param _reward operator reward
+     * @param _rewardAddresses reward address
+     * @param _rewards _rewards
      */
-    function claimRewardsOfOperator(uint256 _operatorId, uint256 _reward) external;
+    function claimRewardsOfOperator(uint256 _operatorId, address[] memory _rewardAddresses, uint256[] memory _rewards)
+        external;
 
     /**
      * @notice The dao claims to belong to the dao reward
@@ -104,13 +115,11 @@ interface ILiquidStaking {
      */
     function claimRewardsOfDao(uint256[] memory _operatorIds, uint256[] memory _rewards) external;
 
-    event BlacklistOperatorAssigned(uint256 indexed _blacklistOperatorId, uint256 _operatorId, uint256 _totalAmount);
-    event QuitOperatorAssigned(uint256 indexed _quitOperatorId, uint256 _operatorId, uint256 _totalAmount);
+    event OperatorAssigned(uint256 indexed _blacklistOperatorId, uint256 _operatorId, uint256 _totalAmount);
     event EthStake(uint256 indexed _operatorId, address indexed _from, uint256 _amount, uint256 _amountOut);
     event EthUnstake(
         uint256 indexed _operatorId, uint256 targetOperatorId, address ender, uint256 _amounts, uint256 amountOut
     );
-    event NftUnstake(uint256 indexed _operatorId, uint256 tokenId);
     event NftStake(uint256 indexed _operatorId, address indexed _from, uint256 _count);
     event ValidatorRegistered(uint256 indexed _operatorId, uint256 _tokenId);
     event UserClaimRewards(uint256 _operatorId, uint256[] _tokenIds, uint256 _rewards);
@@ -118,8 +127,6 @@ interface ILiquidStaking {
     event OperatorReinvestClRewards(uint256 _operatorId, uint256 _rewards);
     event OperatorReinvestElRewards(uint256 _operatorId, uint256 _rewards);
     event RewardsReceive(uint256 _rewards);
-    event ArrearsReceiveOfSlash(uint256 _operatorId, uint256 _amount);
-    event SlashReceive(uint256 _operatorId, uint256 tokenId, uint256 _slashAmount, uint256 _requirAmounts);
     event LiquidStakingWithdrawalCredentialsSet(
         bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
     );
@@ -133,7 +140,6 @@ interface ILiquidStaking {
     event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
     event NftExitBlockNumberSet(uint256[] tokenIds, uint256[] exitBlockNumbers);
-    event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
     event VaultManagerContractSet(address vaultManagerContractAddress, address _vaultManagerContract);
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
     event OperatorCanLoanAmountsSet(uint256 operatorCanLoanAmounts, uint256 _newCanloadAmounts);

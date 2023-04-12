@@ -11,6 +11,11 @@ import "src/interfaces/IELVaultFactory.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IELVault.sol";
+import "src/interfaces/IOperatorSlash.sol";
+
+
+import "forge-std/console.sol";
+
 
 /**
  * @title Node Operator registry
@@ -84,27 +89,33 @@ contract NodeOperatorRegistry is
     mapping(uint256 => uint256) public operatorPledgeVaultBalances;
 
     // v2 storage
+    IOperatorSlash public operatorSlashContract;
+
     mapping(uint256 => uint256) public operatorSlashAmountOwed;
     mapping(uint256 => uint256) internal operatorComissionRate;
     uint256 public constant DEFAULT_COMISSION = 700;
 
-    modifier onlyLiquidStaking() {
-        require(address(liquidStakingContract) == msg.sender, "PERMISSION_DENIED");
+    error PermissionDenied();
+    error InvalidParameter();
+    error OperatorNotFound();
+
+    modifier onlyOperatorSlash() {
+        if (msg.sender != address(operatorSlashContract)) revert PermissionDenied();
         _;
     }
 
     modifier onlyDao() {
-        require(msg.sender == dao, "PERMISSION_DENIED");
+        if (msg.sender != dao) revert PermissionDenied();
         _;
     }
 
     modifier validAddress(address _a) {
-        require(_a != address(0), "EMPTY_ADDRESS");
+        if (_a == address(0)) revert InvalidParameter();
         _;
     }
 
     modifier operatorExists(uint256 _id) {
-        require(_id != 0 && _id <= totalOperators, "NODE_OPERATOR_NOT_FOUND");
+        if (_id == 0 || _id > totalOperators) revert OperatorNotFound();
         _;
     }
 
@@ -572,11 +583,11 @@ contract NodeOperatorRegistry is
         uint256 amountOwed = operatorSlashAmountOwed[_operatorId];
         if (amountOwed > 0) {
             if (amountOwed > msg.value) {
-                liquidStakingContract.slashArrearsReceive{value: msg.value}(msg.value, _operatorId);
+                operatorSlashContract.slashArrearsReceive{value: msg.value}(msg.value, _operatorId);
                 operatorSlashAmountOwed[_operatorId] -= msg.value;
                 emit OperatorArrearsReduce(_operatorId, msg.value);
             } else {
-                liquidStakingContract.slashArrearsReceive{value: amountOwed}(amountOwed, _operatorId);
+                operatorSlashContract.slashArrearsReceive{value: amountOwed}(amountOwed, _operatorId);
                 operatorSlashAmountOwed[_operatorId] = 0;
                 operatorPledgeVaultBalances[_operatorId] += msg.value - amountOwed;
                 emit OperatorArrearsReduce(_operatorId, amountOwed);
@@ -593,10 +604,10 @@ contract NodeOperatorRegistry is
      * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyLiquidStaking {
+    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyOperatorSlash {
         uint256 slashAmount = _slash(_operatorId, _amount);
         if (slashAmount > 0) {
-            liquidStakingContract.slashArrearsReceive{value: slashAmount}(slashAmount, _operatorId);
+            operatorSlashContract.slashArrearsReceive{value: slashAmount}(slashAmount, _operatorId);
         }
     }
 
@@ -625,7 +636,7 @@ contract NodeOperatorRegistry is
      * @param _amounts slash amount
      */
 
-    function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyLiquidStaking {
+    function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyOperatorSlash {
         uint256 totalSlashAmounts = 0;
         uint256[] memory slashAmounts = new uint256[] (_exitTokenIds.length);
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
@@ -637,7 +648,9 @@ contract NodeOperatorRegistry is
             totalSlashAmounts += slashAmount;
         }
 
-        liquidStakingContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
+        console.log("=======================totalSlashAmounts", totalSlashAmounts);
+console.log("=======================thisbalance", address(this).balance);
+        operatorSlashContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
     }
 
     /**
@@ -662,8 +675,11 @@ contract NodeOperatorRegistry is
      * @param _liquidStakingContractAddress proxy address of LiquidStaking
      * @dev will only allow call of function by the address registered as the owner
      */
-    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
-        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+    function setLiquidStaking(address _liquidStakingContractAddress)
+        external
+        onlyDao
+        validAddress(_liquidStakingContractAddress)
+    {
         emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
         liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
     }
@@ -672,8 +688,7 @@ contract NodeOperatorRegistry is
      * @notice set dao vault address
      * @param  _dao new dao address
      */
-    function setDaoAddress(address _dao) external onlyOwner {
-        require(_dao != address(0), "Dao address invalid");
+    function setDaoAddress(address _dao) external onlyOwner validAddress(_dao) {
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
@@ -682,8 +697,7 @@ contract NodeOperatorRegistry is
      * @notice set dao vault address
      * @param _daoVaultAddress new dao vault address
      */
-    function setDaoVaultAddress(address _daoVaultAddress) external onlyDao {
-        require(_daoVaultAddress != address(0), "dao vault address invalid");
+    function setDaoVaultAddress(address _daoVaultAddress) external onlyDao validAddress(_daoVaultAddress) {
         emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
         daoVaultAddress = _daoVaultAddress;
     }
@@ -712,8 +726,11 @@ contract NodeOperatorRegistry is
      * @notice set a new vaultFactoryContract
      * @param _vaultFactoryContractAddress new vaultFactoryContract address
      */
-    function setVaultFactorContract(address _vaultFactoryContractAddress) external onlyDao {
-        require(_vaultFactoryContractAddress != address(0), "_vaultFactoryContractAddress address invalid");
+    function setVaultFactorContract(address _vaultFactoryContractAddress)
+        external
+        onlyDao
+        validAddress(_vaultFactoryContractAddress)
+    {
         emit VaultFactorContractSet(address(vaultFactoryContract), _vaultFactoryContractAddress);
         vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
     }
@@ -729,6 +746,19 @@ contract NodeOperatorRegistry is
             emit OperatorVaultContractReset(operators[operatorId].vaultContractAddress, vaultContractAddress);
             operators[operatorId].vaultContractAddress = vaultContractAddress;
         }
+    }
+
+    /**
+     * @notice set operatorslashContract
+     * @param _operatorSlashContractAddress operatorSlashContract address
+     */
+    function setOperatorSlashContract(address _operatorSlashContractAddress)
+        external
+        onlyDao
+        validAddress(_operatorSlashContractAddress)
+    {
+        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContractAddress);
+        operatorSlashContract = IOperatorSlash(_operatorSlashContractAddress);
     }
 
     /**

@@ -200,4 +200,5 @@ interface INodeOperatorsRegistry {
     event OperatorArrearsIncrease(uint256 _operatorId, uint256 value);
     event VaultFactorContractSet(address _vaultFactoryContract, address _vaultFactoryContractAddress);
     event OperatorVaultContractReset(address _oldVaultContractAddress, address _vaultContractAddress);
+    event OperatorSlashContractSet(address _oldOperatorSlashContract, address _operatorSlashContractAddress);
 }
