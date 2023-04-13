@@ -413,4 +413,26 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             assertEq(14 ether, neth.balanceOf(address(withdrawalRequest)));
         }   
 
+        function testFastUnstakeNFT() public {
+            vm.deal(address(withdrawalRequest), 100 ether) ;
+
+            vm.deal(address(155), 32 ether);
+            vm.prank(address(155));
+            liquidStaking.stakeNFT{value: 32 ether}(1, address(255));
+            assertEq(1, vnft.balanceOf(address(155)));
+            console.log("vnft.ownerOf: ", vnft.ownerOf(0));
+            assertEq(address(155),vnft.ownerOf(0) );
+            assertEq(0, neth.balanceOf(address(155)));
+            
+            assertEq(0, vnft.balanceOf(address(liquidStaking)));
+            assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+
+            vm.expectEmit(true, true, false, true);
+            emit Transferred( address(155) ,32 ether);
+            vm.prank(address(withdrawalRequest));
+            liquidStaking.fastUnstakeNFT(1 , 0 , address(155));
+            assertEq(0 , vnft.balanceOf(address(155)) );
+            assertEq(0 ,  eth.balanceOf(address(155)) );
+        }   
+
 }
