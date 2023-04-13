@@ -180,6 +180,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
 
         vm.prank(MEMBER_1);
         oracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_1(refSlot), CONSENSUS_VERSION);
+
+        WithdrawOracleWithTimer.ProcessingState memory procState = oracle.getProcessingState();
+        assertTrue(procState.dataSubmitted);
     }
 
     // forge test -vvvv --match-test testMockWithdrawOracleReportDataMock1Count_ForGas

@@ -2,7 +2,6 @@
 pragma solidity 0.8.8;
 
 import "src/oracles/WithdrawOracle.sol";
-import "src/library/UnstructuredStorage.sol";
 import "openzeppelin-contracts/utils/structs/EnumerableSet.sol";
 import "openzeppelin-contracts/utils/math/SafeCast.sol";
 
@@ -21,7 +20,6 @@ struct MockWithdrawInfo {
 }
 
 contract WithdrawOracleWithTimer is WithdrawOracle {
-    using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -33,12 +31,12 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
     }
 
     function _getTime() internal view override returns (uint256) {
-        address consensus = CONSENSUS_CONTRACT_POSITION.getStorageAddress();
+        address consensus = consensusContract;
         return ITimeProvider(consensus).getTime();
     }
 
     function getDataProcessingState() external view returns (DataProcessingState memory) {
-        return _storageDataProcessingState().value;
+        return dataProcessingState;
     }
 
     struct ReportDataMock1 {
@@ -77,7 +75,7 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
 
     function submitReportDataMock1(ReportDataMock1 calldata data, uint256 contractVersion) external {
         _checkMsgSenderIsAllowedToSubmitData();
-        _checkContractVersion(contractVersion);
+        _checkContractVersion(consensusVersion);
         // it's a waste of gas to copy the whole calldata into mem but seems there's no way around
         _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)));
         _startProcessing();
@@ -106,7 +104,7 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
         // todo 退出请求列表处理 如果数据需要包装 那么 再做实现
         //        _processExitRequestsList(data.data);
 
-        _storageDataProcessingState().value = DataProcessingState({
+        dataProcessingState = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
             reportExitedCount: data.reportExitedCount.toUint64()
         });
