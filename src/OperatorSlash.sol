@@ -52,6 +52,7 @@ contract OperatorSlash is
     error PermissionDenied();
     error InvalidParameter();
     error NoSlashNeeded();
+    error ExcessivePenaltyAmount();
 
     modifier onlyLiquidStaking() {
         if (address(liquidStakingContract) != msg.sender) revert PermissionDenied();
@@ -83,6 +84,8 @@ contract OperatorSlash is
         dao = _dao;
 
         delayedExitSlashStandard = _delayedExitSlashStandard;
+
+        // 2000000000000 * 7200 * 365 = 5256000000000000000 = 5.256 eth
         slashAmountPerBlockPerValidator = 2000000000000;
     }
 
@@ -211,6 +214,11 @@ contract OperatorSlash is
         }
     }
 
+    /**
+     * @notice claim compensation
+     * @param _tokenIds tokens Id
+     * @param _owner owner address
+     */
     function claimCompensated(uint256[] memory _tokenIds, address _owner)
         external
         onlyLiquidStaking
@@ -230,7 +238,12 @@ contract OperatorSlash is
         return totalCompensated;
     }
 
+    /**
+     * @notice Set the penalty amount per block per validator
+     * @param _slashAmountPerBlockPerValidator unit penalty amount 
+     */
     function setSlashAmountPerBlockPerValidator(uint256 _slashAmountPerBlockPerValidator) external onlyOwner {
+        if (_slashAmountPerBlockPerValidator > 10000000000000) revert ExcessivePenaltyAmount();
         emit SlashAmountPerBlockPerValidatorSet(slashAmountPerBlockPerValidator, _slashAmountPerBlockPerValidator);
         slashAmountPerBlockPerValidator = _slashAmountPerBlockPerValidator;
     }
