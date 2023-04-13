@@ -60,6 +60,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
     
     error InvalidParameter();
+    error PermissionDenied();
 
     LiquidStaking liquidStaking;
     NETH neth;
@@ -198,16 +199,16 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         vm.prank(_dao);
         operatorRegistry.setOperatorSlashContract(address(operatorSlash));
-        // vm.prank(_dao);
-        // liquidStaking.initializeV2(
-        //     _operatorIds,
-        //     _users,
-        //     _nethAmounts,
-        //     address(consensusVaultContract),
-        //     address(vaultManager),
-        //     address(withdrawalRequest),
-        //     address(operatorSlash)
-        // );
+        vm.prank(_dao);
+        liquidStaking.initializeV2(
+            _operatorIds,
+            _users,
+            _nethAmounts,
+            address(consensusVaultContract),
+            address(vaultManager),
+            address(withdrawalRequest),
+            address(operatorSlash)
+        );
 
         vaultManager.initialize(
             _dao,
@@ -370,81 +371,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
     }
 
-    // function testInitializeV2() public {
-    //     uint256[] memory _operatorIds = new uint256[] (1);
-    //     _operatorIds[0] = 1;
-    //     address[] memory _users  = new address[] (1);
-    //     _users[0] = address(1);
-    //     uint256[] memory _nethAmounts  = new uint256[] (1);
-    //     _nethAmounts[0] = 1;
-    //     address _consensusVaultContractAddress = address(5001);
-    //     address _vaultManagerContractAddress= address(5002);
-    //     address _withdrawalRequestContractAddress =address(5003);
-    //     address _operatorSlashContractAddress =address(5004);
-    //     vm.prank(_dao);
-    //     liquidStaking.initializeV2(_operatorIds, _users, _nethAmounts, _consensusVaultContractAddress, 
-    //     _vaultManagerContractAddress, _withdrawalRequestContractAddress, _operatorSlashContractAddress ) ;
-    //     // assertEq(2000000000000 , liquidStaking.slashAmountPerBlockPerValidator() );
-    //     assertEq( 32 ether , liquidStaking.operatorCanLoanAmounts() );
-    // }
-
-
-    // function testMscFunctions() public{
-
-    //     vm.deal(address(301), 100 ether);
-    //     vm.prank(address(301));
-    //     liquidStakingContract.receiveRewards{value: 1 ether}(1 ether) ;
-    //     vm.deal(_dao, 2000 ether);
-       
-    //     vm.expectRevert(0x613970e0);
-    //     vm.prank(_dao);
-    //     liquidStaking.setOperatorCanLoanAmounts( 1001 ether);
-    //     vm.expectEmit(true, true, false, true);
-    //     emit NodeOperatorRegistryContractSet( address(operatorRegistry), address(4001) );
-    //     vm.prank(_dao);
-    //     liquidStaking.setNodeOperatorRegistryContract(address(4001));
-       
-    //     console.log("(address(operatorRegistry): ", address(operatorRegistry));
-    //     bytes4 _bytes= liquidStaking.onERC721Received(address(1111), address(1112), 1,  bytes(hex"0100000000000000000000006ae2f56c057e31a18224dbc6ae32b0a5fbedfcb0"));
-       
-    //     vm.expectEmit(true, true, false, true);
-    //     emit BeaconOracleContractSet( address(withdrawOracle), address(4002) );        
-    //     vm.prank(_dao);
-    //     liquidStaking.setBeaconOracleContract(address(4002));
-    // }
-
-// function testWithDrawalRequest() public {
-//         vm.deal(address(21), 120 ether);
-//         address _controllerAddress = address(2111);
-//         address _owner = address(2112);
-//         address _to = address(2113);
-//         address[] memory _testRewardAddresses = new address[] (2);
-//         uint256[] memory _ratios = new uint256[] (2);
-//         _testRewardAddresses[0] = address(2114);
-//         _testRewardAddresses[1] = address(2115);
-//         _ratios[0] = 50;
-//         _ratios[1] = 50;
-//         uint256[] memory amounts = new uint256[](1);
-//         amounts[0] = 32 ether ;
-//         vm.prank(address(21));
-//         uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
-//             "test3", _controllerAddress, _owner, _testRewardAddresses, _ratios
-//         );
-//         assertEq( 3, operatorId );
-//         vm.prank(_dao);
-//         operatorRegistry.setTrustedOperator(operatorId);
-//         vm.prank(address(21));
-//         liquidStaking.stakeETH{value: 32 ether}(operatorId) ;
-//         vm.prank(address(liquidStaking));
-//         neth.whiteListMint(120 ether , address(21));
-//         vm.prank(address(21));
-//         neth.approve(address(withdrawalRequest), 33 ether);
-//         vm.prank(address(21));
-//         // vm.expectEmit(true, true, false, true);
-//         // emit LargeWithdrawalsRequest(operatorId, address(21), 32 ether );
-//         withdrawalRequest.requestLargeWithdrawals(operatorId, amounts) ;
-//         assertEq( 32 ether, neth.balanceOf(address(withdrawalRequest)) );
-//     }
 
     function testLargeWithdrawalUnstake() public {
     //     vm.prank(address(20));
@@ -461,11 +387,17 @@ contract LiquidStakingTest is Test, MockOracleProvider {
            
     }
 
-    // function testAddSlashFundToStakePool() public {
-    //     vm.deal(address(operatorSlash), 12 ether) ;
-    //     //addSlashFundToStakePool (uint256 _operatorId, uint256 _amount) external payable;
-    //     vm.prank(address(operatorSlash));
-    //     liquidStaking.addSlashFundToStakePool(1, 1 ether);  
-    // }
+    function testAddSlashFundToStakePool() public {
+        vm.deal(address(operatorSlash), 12 ether) ;
+        assertEq(0 , liquidStaking.getOperatorPoolBalances(1));
+        vm.prank(address(operatorSlash));
+        liquidStaking.addSlashFundToStakePool{value : 1 ether }(1, 1 ether); 
+        assertEq(1 ether, liquidStaking.getOperatorPoolBalances(1));   
+        
+        vm.prank(address(operatorSlash));
+        liquidStaking.addSlashFundToStakePool{value : 1 ether }(1, 2 ether); 
+        assertEq(3 ether, liquidStaking.getOperatorPoolBalances(1));       
+    }        
+
 
 }

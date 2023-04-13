@@ -902,4 +902,8 @@ contract LiquidStaking is
     function unpause() external onlyDao {
         _unpause();
     }
+
+    function getOperatorPoolBalances(uint256 a) public returns (uint256) {
+        return operatorPoolBalances[a];
+    }
 }
