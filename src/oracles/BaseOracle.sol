@@ -4,7 +4,7 @@ pragma solidity 0.8.8;
 import "openzeppelin-contracts/utils/math/SafeCast.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "src/library/UnstructuredStorage.sol";
+import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import "src/utils/Versioned.sol";
 import "src/utils/Dao.sol";
 import {IReportAsyncProcessor} from "src/oracles/HashConsensus.sol";
@@ -24,8 +24,14 @@ interface IConsensusContract {
     function getInitialRefSlot() external view returns (uint256);
 }
 
-abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versioned, IReportAsyncProcessor {
-    using UnstructuredStorage for bytes32;
+abstract contract BaseOracle is
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    PausableUpgradeable,
+    Dao,
+    Versioned,
+    IReportAsyncProcessor
+{
     using SafeCast for uint256;
 
     error InvalidAddr();
@@ -55,19 +61,16 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
         uint64 processingDeadlineTime;
     }
 
-    /// @dev Storage slot: address consensusContract
-    bytes32 internal constant CONSENSUS_CONTRACT_POSITION = keccak256("BaseOracle.consensusContract");
+    address internal consensusContract;
 
-    /// @dev Storage slot: uint256 consensusVersion
-    bytes32 internal constant CONSENSUS_VERSION_POSITION = keccak256("BaseOracle.consensusVersion");
+    uint256 internal consensusVersion;
 
-    /// @dev Storage slot: uint256 lastProcessingRefSlot
-    bytes32 internal constant LAST_PROCESSING_REF_SLOT_POSITION = keccak256("BaseOracle.lastProcessingRefSlot");
+    uint256 internal lastProcessingRefSlot;
 
-    /// @dev Storage slot: ConsensusReport consensusReport
-    bytes32 internal constant CONSENSUS_REPORT_POSITION = keccak256("BaseOracle.consensusReport");
+    ConsensusReport internal consensusReport;
 
     uint256 public SECONDS_PER_SLOT;
+
     uint256 public GENESIS_TIME;
 
     ///
@@ -82,11 +85,12 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
         uint256 genesisTime,
         address consensusContract,
         uint256 consensusVersion,
-        uint256 lastProcessingRefSlot,
+        uint256 _lastProcessingRefSlot,
         address _dao
     ) internal virtual onlyInitializing {
         __Ownable_init();
         __UUPSUpgradeable_init();
+        __Pausable_init();
 
         if (_dao == address(0)) revert DaoCannotBeZero();
         dao = _dao;
@@ -94,10 +98,25 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
         GENESIS_TIME = genesisTime;
 
         _initializeContractVersionTo(1);
-        _setConsensusContract(consensusContract, lastProcessingRefSlot);
+        _setConsensusContract(consensusContract, _lastProcessingRefSlot);
         _setConsensusVersion(consensusVersion);
-        LAST_PROCESSING_REF_SLOT_POSITION.setStorageUint256(lastProcessingRefSlot);
-        _storageConsensusReport().value.refSlot = lastProcessingRefSlot.toUint64();
+        lastProcessingRefSlot = _lastProcessingRefSlot;
+
+        consensusReport.refSlot = uint64(_lastProcessingRefSlot);
+    }
+
+    /**
+     * @notice In the event of an emergency, stop protocol
+     */
+    function pause() external onlyDao {
+        _pause();
+    }
+
+    /**
+     * @notice restart protocol
+     */
+    function unpause() external onlyDao {
+        _unpause();
     }
 
     // set dao vault address
@@ -110,13 +129,13 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     /// @notice Returns the address of the HashConsensus contract.
     ///
     function getConsensusContract() external view returns (address) {
-        return CONSENSUS_CONTRACT_POSITION.getStorageAddress();
+        return consensusContract;
     }
 
     /// @notice Sets the address of the HashConsensus contract.
     ///
     function setConsensusContract(address addr) external onlyOwner {
-        _setConsensusContract(addr, LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256());
+        _setConsensusContract(addr, lastProcessingRefSlot);
     }
 
     /// @notice Returns the current consensus version expected by the oracle contract.
@@ -125,7 +144,7 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     /// an oracle looking at the same reference slot would calculate a different hash.
     ///
     function getConsensusVersion() external view returns (uint256) {
-        return CONSENSUS_VERSION_POSITION.getStorageUint256();
+        return consensusVersion;
     }
 
     /// @notice Sets the consensus version expected by the oracle contract.
@@ -145,8 +164,8 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
         view
         returns (bytes32 hash, uint256 refSlot, uint256 processingDeadlineTime, bool processingStarted)
     {
-        ConsensusReport memory report = _storageConsensusReport().value;
-        uint256 processingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
+        ConsensusReport memory report = consensusReport;
+        uint256 processingRefSlot = lastProcessingRefSlot;
         return (
             report.hash,
             report.refSlot,
@@ -167,16 +186,16 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     /// using this same function.
     ///
     function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline) external {
-        if (_msgSender() != CONSENSUS_CONTRACT_POSITION.getStorageAddress()) {
+        if (_msgSender() != consensusContract) {
             revert OnlyConsensusContractCanSubmitReport();
         }
 
-        uint256 prevSubmittedRefSlot = _storageConsensusReport().value.refSlot;
+        uint256 prevSubmittedRefSlot = consensusReport.refSlot;
         if (refSlot < prevSubmittedRefSlot) {
             revert RefSlotCannotDecrease(refSlot, prevSubmittedRefSlot);
         }
 
-        uint256 prevProcessingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
+        uint256 prevProcessingRefSlot = lastProcessingRefSlot;
         if (refSlot <= prevProcessingRefSlot) {
             revert RefSlotMustBeGreaterThanProcessingOne(refSlot, prevProcessingRefSlot);
         }
@@ -193,21 +212,20 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
             processingDeadlineTime: deadline.toUint64()
         });
 
-        _storageConsensusReport().value = report;
+        consensusReport = report;
         _handleConsensusReport(report, prevSubmittedRefSlot, prevProcessingRefSlot);
     }
 
     /// @notice Returns the last reference slot for which processing of the report was started.
     ///
     function getLastProcessingRefSlot() external view returns (uint256) {
-        return LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
+        return lastProcessingRefSlot;
     }
 
     /// @notice Returns whether the given address is a member of the oracle committee.
     ///
     function _isConsensusMember(address addr) internal view returns (bool) {
-        address consensus = CONSENSUS_CONTRACT_POSITION.getStorageAddress();
-        return IConsensusContract(consensus).getIsMember(addr);
+        return IConsensusContract(consensusContract).getIsMember(addr);
     }
 
     /// @notice Called when oracle gets a new consensus report from the HashConsensus contract.
@@ -230,12 +248,12 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
         // If the processing deadline for the current consensus report is missed, an error is reported
         _checkProcessingDeadline();
 
-        ConsensusReport memory report = _storageConsensusReport().value;
+        ConsensusReport memory report = consensusReport;
         if (refSlot != report.refSlot) {
             revert UnexpectedRefSlot(report.refSlot, refSlot);
         }
 
-        uint256 expectedConsensusVersion = CONSENSUS_VERSION_POSITION.getStorageUint256();
+        uint256 expectedConsensusVersion = consensusVersion;
         if (consensusVersion != expectedConsensusVersion) {
             revert UnexpectedConsensusVersion(expectedConsensusVersion, consensusVersion);
         }
@@ -256,15 +274,15 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     function _startProcessing() internal returns (uint256) {
         _checkProcessingDeadline();
 
-        ConsensusReport memory report = _storageConsensusReport().value;
+        ConsensusReport memory report = consensusReport;
 
         // If the slot has been reported, an error is reported
-        uint256 prevProcessingRefSlot = LAST_PROCESSING_REF_SLOT_POSITION.getStorageUint256();
+        uint256 prevProcessingRefSlot = lastProcessingRefSlot;
         if (prevProcessingRefSlot == report.refSlot) {
             revert RefSlotAlreadyProcessing();
         }
 
-        LAST_PROCESSING_REF_SLOT_POSITION.setStorageUint256(report.refSlot);
+        lastProcessingRefSlot = report.refSlot;
 
         emit ProcessingStarted(report.refSlot, report.hash);
         return prevProcessingRefSlot;
@@ -273,14 +291,13 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     /// @notice Reverts if the processing deadline for the current consensus report is missed.
     ///
     function _checkProcessingDeadline() internal view {
-        uint256 deadline = _storageConsensusReport().value.processingDeadlineTime;
+        uint256 deadline = consensusReport.processingDeadlineTime;
         if (_getTime() > deadline) revert ProcessingDeadlineMissed(deadline);
     }
 
     /// @notice Returns the reference slot for the current frame.
     ///
     function _getCurrentRefSlot() internal view returns (uint256) {
-        address consensusContract = CONSENSUS_CONTRACT_POSITION.getStorageAddress();
         (uint256 refSlot,) = IConsensusContract(consensusContract).getCurrentFrame();
         return refSlot;
     }
@@ -290,16 +307,16 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
     ///
 
     function _setConsensusVersion(uint256 version) internal {
-        uint256 prevVersion = CONSENSUS_VERSION_POSITION.getStorageUint256();
+        uint256 prevVersion = consensusVersion;
         if (version == prevVersion) revert VersionCannotBeSame();
-        CONSENSUS_VERSION_POSITION.setStorageUint256(version);
+        consensusVersion = version;
         emit ConsensusVersionSet(version, prevVersion);
     }
 
     function _setConsensusContract(address addr, uint256 lastProcessingRefSlot) internal {
         if (addr == address(0)) revert AddressCannotBeZero();
 
-        address prevAddr = CONSENSUS_CONTRACT_POSITION.getStorageAddress();
+        address prevAddr = consensusContract;
         if (addr == prevAddr) revert AddressCannotBeSame();
 
         (, uint256 secondsPerSlot, uint256 genesisTime) = IConsensusContract(addr).getChainConfig();
@@ -312,27 +329,12 @@ abstract contract BaseOracle is OwnableUpgradeable, UUPSUpgradeable, Dao, Versio
             revert InitialRefSlotCannotBeLessThanProcessingOne(initialRefSlot, lastProcessingRefSlot);
         }
 
-        CONSENSUS_CONTRACT_POSITION.setStorageAddress(addr);
+        consensusContract = addr;
         emit ConsensusHashContractSet(addr, prevAddr);
     }
 
     function _getTime() internal view virtual returns (uint256) {
         return block.timestamp; // solhint-disable-line not-rely-on-time
-    }
-
-    ///
-    /// Storage helpers
-    ///
-
-    struct StorageConsensusReport {
-        ConsensusReport value;
-    }
-
-    function _storageConsensusReport() internal pure returns (StorageConsensusReport storage r) {
-        bytes32 position = CONSENSUS_REPORT_POSITION;
-        assembly {
-            r.slot := position
-        }
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}

@@ -8,12 +8,11 @@ import {Math} from "src/library/Math.sol";
 import "src/utils/Dao.sol";
 
 /**
- * todo:
- * 1. del AccessControlEnumerable 角色权限控制，使用 dao 和 owner 去管理
- *  - onlyRole 更换为 onlyDao or onlyOwner
- * 2. 引入 uups 和 init
- * 3. 理解 FastLane 模式
- * 4. quorum 算法是否需要去修改
+ * 1. del AccessControlEnumerable Controls the role permission and uses dao and owner to manage it
+ *  - The onlyRole is changed to onlyDao or onlyOwner
+ * 2. Introduce uups and init
+ * 3. Understand the FastLane pattern
+ * 4. QUORUM ALGORITHM NEEDS TO BE MODIFIED
  */
 
 /// @notice A contract that gets consensus reports (i.e. hashes) pushed to and processes them
@@ -394,14 +393,14 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         return _quorum;
     }
 
-    function setQuorum(uint256 quorum) external {
+    function setQuorum(uint256 quorum) external onlyDao {
         // access control is performed inside the next call
         _setQuorumAndCheckConsensus(quorum, _memberStates.length);
     }
 
     /// @notice Disables the oracle by setting the quorum to an unreachable value.
     ///
-    function disableConsensus() external {
+    function disableConsensus() external onlyOwner {
         // access control is performed inside the next call
         _setQuorumAndCheckConsensus(UNREACHABLE_QUORUM, _memberStates.length);
     }
@@ -879,11 +878,6 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
         uint256 prevQuorum = _quorum;
         if (quorum != prevQuorum) {
-            // todo
-            //            _checkRole(
-            //                quorum == UNREACHABLE_QUORUM ? DISABLE_CONSENSUS_ROLE : MANAGE_MEMBERS_AND_QUORUM_ROLE,
-            //                _msgSender()
-            //            );
             _quorum = quorum;
             emit QuorumSet(quorum, totalMembers, prevQuorum);
         }
