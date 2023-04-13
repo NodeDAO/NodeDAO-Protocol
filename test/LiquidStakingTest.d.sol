@@ -78,6 +78,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     INodeOperatorsRegistry  public nodeOperatorsRegistryContract;
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
+    ERC20 erc20;
 
     address _dao = DAO;
     address _daoValutAddress = address(2);
@@ -365,26 +366,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vm.expectRevert(0x613970e0);
         liquidStaking.registerValidator(pubkeys1, signatures1, depositDataRoots1);
 
-        
-        // vm.prank(_dao);
-        // operatorRegistry.setBlacklistOperator(operatorId);
-
-    }
-
-
-    function testLargeWithdrawalUnstake() public {
-    //     vm.prank(address(20));
-    //      liquidStaking.stakeETH{value: 32 ether}(1);
-    //     assertEq(0, vnft.balanceOf(address(20)));
-    //     assertEq(32 ether, neth.balanceOf(address(20)));
-    //     assertEq(0, vnft.balanceOf(address(liquidStaking)));
-    //     assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
-    //     assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
-    //     assertEq(0, address(20).balance);
-        
-    //     vm.prank(address(withdrawalRequest));
-    //     liquidStaking.largeWithdrawalUnstake(1, address(withdrawalRequest) ,32 ether);            
-           
     }
 
     function testAddSlashFundToStakePool() public {
@@ -397,7 +378,27 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vm.prank(address(operatorSlash));
         liquidStaking.addSlashFundToStakePool{value : 1 ether }(1, 2 ether); 
         assertEq(3 ether, liquidStaking.getOperatorPoolBalances(1));       
-    }        
+    }    
+
+
+        function testLargeWithdrawalUnstake() public {
+            vm.deal(address(20), 100 ether) ;
+            vm.prank(address(20));
+            liquidStaking.stakeETH{value: 32 ether}(1);
+            assertEq(0, vnft.balanceOf(address(20)));
+            assertEq(32 ether, neth.balanceOf(address(20)));
+            assertEq(0, vnft.balanceOf(address(liquidStaking)));
+            assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+            assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
+            
+            LiquidStaking.StakeInfo[] memory testStakeInfo1 = liquidStaking.getUnstakeQuota(address(20));
+            assertEq(32 ether, testStakeInfo1[0].quota);   
+           
+            vm.prank(address(withdrawalRequest));
+            liquidStaking.largeWithdrawalUnstake(1, address(20) ,32 ether);            
+            LiquidStaking.StakeInfo[] memory testStakeInfo2 = liquidStaking.getUnstakeQuota(address(20));
+            assertEq(0 , testStakeInfo2[0].quota);   
+    }    
 
 
 }
