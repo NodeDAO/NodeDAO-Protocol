@@ -21,8 +21,11 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
     address public beacon;
     address public nodeOperatorRegistryAddress;
 
+    error PermissionDenied();
+    error InvalidAddr();
+
     modifier onlyNodeOperatorRegistry() {
-        require(nodeOperatorRegistryAddress == msg.sender, "Not allowed to create vault");
+        if (nodeOperatorRegistryAddress != msg.sender) revert PermissionDenied();
         _;
     }
 
@@ -78,7 +81,7 @@ contract ELVaultFactory is IELVaultFactory, Initializable, OwnableUpgradeable, U
      * @param _dao new dao address
      */
     function setDaoAddress(address _dao) external onlyOwner {
-        require(_dao != address(0), "Dao address invalid");
+        if (_dao == address(0)) revert InvalidAddr();
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }

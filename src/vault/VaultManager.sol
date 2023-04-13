@@ -37,8 +37,18 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
 
+    error PermissionDenied();
+    error InvalidParameter();
+    error WithdrawAmountCheckFailed();
+    error SlashAmountCheckFailed();
+    error MustSameOperator();
+    error NeverSettled();
+    error InsufficientMargin();
+    error InvalidRewardAddr();
+    error InvalidRewardRatio();
+
     modifier onlyWithdrawOracle() {
-        require(withdrawOracleContractAddress == msg.sender, "PERMISSION_DENIED");
+        if (withdrawOracleContractAddress != msg.sender) revert PermissionDenied();
         _;
     }
 
@@ -93,7 +103,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             systemTotalExitCapital += exitClCapital;
         }
 
-        require(totalAmount == _thisTotalWithdrawAmount, "_thisTotalWithdrawAmount check failed");
+        if (totalAmount != _thisTotalWithdrawAmount) revert WithdrawAmountCheckFailed();
 
         uint256[] memory exitTokenIds = new uint256[] (_exitValidatorInfo.length);
         uint256[] memory slashAmounts = new uint256[] (_exitValidatorInfo.length);
@@ -112,10 +122,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             }
         }
 
-        require(
-            systemTotalExitNumber * 32 ether == systemTotalExitCapital + systemTotalSlashAmounts,
-            "totalSlashAmounts check failed"
-        );
+        if (systemTotalExitNumber * 32 ether != systemTotalExitCapital + systemTotalSlashAmounts) {
+            revert SlashAmountCheckFailed();
+        }
 
         liquidStakingContract.reinvestClRewards(operatorIds, amouts);
 
@@ -229,8 +238,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256 totalNftRewards = 0;
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
-            require(owner == vNFTContract.ownerOf(tokenId), "different owners cannot batch");
-            require(operatorId == vNFTContract.operatorOf(tokenId), "Must be the tokenId of the same operator");
+            if (owner != vNFTContract.ownerOf(tokenId)) revert PermissionDenied();
+            if (operatorId != vNFTContract.operatorOf(tokenId)) revert MustSameOperator();
             uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
             amounts[i] = nftRewards;
             totalNftRewards += nftRewards;
@@ -253,7 +262,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256 totalNftRewards = 0;
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
-            require(operatorId == vNFTContract.operatorOf(tokenId), "Must be the tokenId of the same operator");
+            if (operatorId != vNFTContract.operatorOf(tokenId)) revert MustSameOperator();
             uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
             totalNftRewards += nftRewards;
         }
@@ -267,7 +276,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         returns (uint256)
     {
         RewardMetadata[] memory cumArr = settleCumArrMap[_operatorId];
-        require(cumArr.length != 0, "never settled");
+        if (cumArr.length == 0) revert NeverSettled();
         uint256 low = 0;
         uint256 high = cumArr.length;
         while (low < high) {
@@ -306,7 +315,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256 pledgeBalance = 0;
         uint256 requirBalance = 0;
         (pledgeBalance, requirBalance) = nodeOperatorRegistryContract.getPledgeInfoOfOperator(_operatorId);
-        require(pledgeBalance >= requirBalance, "Insufficient pledge of operator");
+        if (pledgeBalance < requirBalance) revert InsufficientMargin();
 
         uint256 operatorRewards = operatorRewardsMap[_operatorId];
         operatorRewardsMap[_operatorId] = 0;
@@ -314,7 +323,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         address[] memory rewardAddresses;
         uint256[] memory ratios;
         (rewardAddresses, ratios) = nodeOperatorRegistryContract.getNodeOperatorRewardSetting(_operatorId);
-        require(rewardAddresses.length != 0, "Invalid rewardAddresses");
+        if (rewardAddresses.length == 0) revert InvalidRewardAddr();
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
         uint256[] memory rewards = new uint256[] (rewardAddresses.length);
         uint256 totalAmount = 0;
@@ -333,7 +342,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             }
         }
 
-        require(totalRatios == 100, "Invalid ratio");
+        if (totalRatios != 100) revert InvalidRewardRatio();
 
         liquidStakingContract.claimRewardsOfOperator(_operatorId, rewardAddresses, rewards);
         emit OperatorClaimRewards(_operatorId, operatorRewards);

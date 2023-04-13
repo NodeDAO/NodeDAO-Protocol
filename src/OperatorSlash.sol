@@ -11,10 +11,6 @@ import "src/interfaces/INodeOperatorsRegistry.sol";
 import "src/interfaces/IWithdrawalRequest.sol";
 import "src/interfaces/IOperatorSlash.sol";
 
-import "forge-std/console.sol";
-
-
-
 contract OperatorSlash is
     IOperatorSlash,
     Initializable,
@@ -53,13 +49,17 @@ contract OperatorSlash is
     // key is requestId, value is blockNumber
     mapping(uint256 => uint256) public largeExitDelayedSlashRecords;
 
+    error PermissionDenied();
+    error InvalidParameter();
+    error NoSlashNeeded();
+
     modifier onlyLiquidStaking() {
-        require(address(liquidStakingContract) == msg.sender, "PERMISSION_DENIED");
+        if (address(liquidStakingContract) != msg.sender) revert PermissionDenied();
         _;
     }
 
     modifier onlyVaultManager() {
-        require(msg.sender == vaultManagerContractAddress, "PERMISSION_DENIED");
+        if (msg.sender != vaultManagerContractAddress) revert PermissionDenied();
         _;
     }
 
@@ -92,10 +92,8 @@ contract OperatorSlash is
      * @param _amounts slash amounts
      */
     function slashOperator(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external onlyVaultManager {
-        console.log("=======================================");
-        require(_exitTokenIds.length == _amounts.length && _amounts.length != 0, "parameter invalid length");
+        if (_exitTokenIds.length != _amounts.length || _amounts.length == 0) revert InvalidParameter();
         nodeOperatorRegistryContract.slash(_exitTokenIds, _amounts);
-        console.log("=======================================slashOperator2");
     }
 
     /**
@@ -138,7 +136,7 @@ contract OperatorSlash is
 
     function _delaySlash(uint256 _operatorId, uint256 _startNumber, uint256 validatorNumber) internal {
         uint256 slashNumber = block.number - _startNumber;
-        require(slashNumber >= delayedExitSlashStandard, "does not qualify for slash");
+        if (slashNumber < delayedExitSlashStandard) revert NoSlashNeeded();
         uint256 _amount = slashNumber * slashAmountPerBlockPerValidator * validatorNumber;
         nodeOperatorRegistryContract.slashOfExitDelayed(_operatorId, _amount);
     }
@@ -154,32 +152,25 @@ contract OperatorSlash is
         uint256[] memory _slashAmounts,
         uint256[] memory _requireAmounts
     ) external payable {
-        console.log("=========================slashReceive");
-        require(msg.sender == address(nodeOperatorRegistryContract), "PERMISSION_DENIED");
+        if (msg.sender != address(nodeOperatorRegistryContract)) revert PermissionDenied();
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
             uint256 tokenId = _exitTokenIds[i];
-            console.log("=========================slashReceive", tokenId);
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
             if (vNFTContract.ownerOf(tokenId) == address(this)) {
-                console.log("=========================slashReceive1", tokenId);
                 liquidStakingContract.addSlashFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
             } else {
                 uint256 requirAmount = _requireAmounts[i];
                 uint256 slashAmount = _slashAmounts[i];
-                require(requirAmount >= slashAmount, "Abnormal slash amount");
+                if (requirAmount < slashAmount) revert InvalidParameter();
                 if (requirAmount != slashAmount) {
                     nftWillCompensated[tokenId] += requirAmount - slashAmount;
                     operatorSlashArrears[operatorId].push(tokenId);
                 }
                 nftHasCompensated[tokenId] += slashAmount;
-                console.log("=========================slashReceive2", tokenId);
             }
 
             emit SlashReceive(operatorId, tokenId, _slashAmounts[i], _requireAmounts[i]);
-            console.log("=========================slashReceive3", tokenId);
         }
-
-        console.log("=======================================slashReceive4");
     }
 
     /**
@@ -190,7 +181,7 @@ contract OperatorSlash is
     function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable {
         emit ArrearsReceiveOfSlash(_operatorId, _amount);
 
-        require(msg.sender == address(nodeOperatorRegistryContract), "PERMISSION_DENIED");
+        if (msg.sender != address(nodeOperatorRegistryContract)) revert PermissionDenied();
         uint256 compensatedIndex = operatorCompensatedIndex;
         while (
             operatorSlashArrears[_operatorId].length != 0

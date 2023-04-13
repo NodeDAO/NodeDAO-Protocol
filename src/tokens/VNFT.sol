@@ -62,6 +62,19 @@ contract VNFT is
     event BaseURIChanged(string _before, string _after);
     event LiquidStakingChanged(address _before, address _after);
 
+    error PermissionDenied();
+    error InvalidPubkey();
+    error TokenNotExist();
+    error TokenNotBurned();
+    error ExceedMaxSupply();
+    error PubkeyAlreadyUsed();
+    error WthdrawalCredentialsEmpty();
+    error WthdrawalCredentialsMismatch();
+    error TokenAlreadyReport();
+    error InvalidBlockHeight();
+    error NotBelongUserNft();
+    error InvalidAddr();
+
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function initialize() public initializer initializerERC721A {
@@ -72,7 +85,7 @@ contract VNFT is
     }
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingContractAddress == msg.sender, "Not allowed to mint/burn nft");
+        if (liquidStakingContractAddress != msg.sender) revert PermissionDenied();
         _;
     }
 
@@ -242,8 +255,9 @@ contract VNFT is
      * @dev Returns MAX_SUPPLY if not found
      * @param _pubkey - A 48 bytes representing the validator's public key
      */
+
     function tokenOfValidator(bytes calldata _pubkey) external view returns (uint256) {
-        require(_pubkey.length != 0, "Invalid pubkey");
+        if (_pubkey.length == 0) revert InvalidPubkey();
         for (uint256 i = 0; i < validators.length; ++i) {
             if (keccak256(validators[i].pubkey) == keccak256(_pubkey) && _exists(i)) {
                 return i;
@@ -280,7 +294,7 @@ contract VNFT is
      * @param _tokenId - tokenId of the validator nft
      */
     function initHeightOf(uint256 _tokenId) external view returns (uint256) {
-        require(_exists(_tokenId), "Token does not exist");
+        if (!_exists(_tokenId)) revert TokenNotExist();
 
         return validators[_tokenId].initHeight;
     }
@@ -289,8 +303,9 @@ contract VNFT is
      * @notice Returns the last owner before the nft is burned
      * @param _tokenId - tokenId of the validator nft
      */
+
     function lastOwnerOf(uint256 _tokenId) external view returns (address) {
-        require(_ownershipAt(_tokenId).burned, "Token not burned yet");
+        if (!_ownershipAt(_tokenId).burned) revert TokenNotBurned();
 
         return lastOwners[_tokenId];
     }
@@ -301,24 +316,25 @@ contract VNFT is
      * @param _to - The recipient of the nft
      * @param _operatorId - The operator repsonsible for operating the physical node
      */
+
     function whiteListMint(
         bytes calldata _pubkey,
         bytes calldata _withdrawalCredentials,
         address _to,
         uint256 _operatorId
     ) external onlyLiquidStaking returns (uint256) {
-        require(totalSupply() + 1 <= MAX_SUPPLY, "Exceed MAX_SUPPLY");
+        if (totalSupply() + 1 > MAX_SUPPLY) revert ExceedMaxSupply();
 
         uint256 nextTokenId = _nextTokenId();
         if (_pubkey.length == 0) {
             emptyNftCounts += 1;
             operatorEmptyNfts[_operatorId].push(nextTokenId);
 
-            require(_withdrawalCredentials.length != 0, "withdrawalCredentials can not be empty");
+            if (_withdrawalCredentials.length == 0) revert WthdrawalCredentialsEmpty();
             // todo If the user fills in the wrong address, this is an invalid address. How to deal with it and how to protect it?
             userNftWithdrawalCredentials[nextTokenId] = _withdrawalCredentials;
         } else {
-            require(validatorRecords[_pubkey] == 0, "Pub key already in used");
+            if (validatorRecords[_pubkey] != 0) revert PubkeyAlreadyUsed();
             validatorRecords[_pubkey] = _operatorId;
 
             uint256[] memory emptyNfts = operatorEmptyNfts[_operatorId];
@@ -329,10 +345,9 @@ contract VNFT is
                     continue;
                 }
                 // check withdrawal credentials before filling
-                require(
-                    keccak256(userNftWithdrawalCredentials[tokenId]) == keccak256(_withdrawalCredentials),
-                    "withdrawalCredentials mismatch"
-                );
+                if (keccak256(userNftWithdrawalCredentials[tokenId]) != keccak256(_withdrawalCredentials)) {
+                    revert WthdrawalCredentialsMismatch();
+                }
 
                 operatorEmptyNftIndex[_operatorId] = i + 1;
                 validators[tokenId].pubkey = _pubkey;
@@ -406,15 +421,16 @@ contract VNFT is
      * @param _tokenIds - tokenIds
      * @param _exitBlockNumbers - tokenIds
      */
+
     function setNftExitBlockNumbers(uint256[] memory _tokenIds, uint256[] memory _exitBlockNumbers)
         external
         onlyLiquidStaking
     {
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
-            require(userNftExitBlockNumbers[tokenId] == 0, "The tokenId already report");
+            if (userNftExitBlockNumbers[tokenId] != 0) revert TokenAlreadyReport();
             uint256 number = _exitBlockNumbers[i];
-            require(number <= block.number, "invalid block height");
+            if (number > block.number) revert InvalidBlockHeight();
             userNftExitBlockNumbers[tokenId] = number;
             operatorExitButNoBurnNftCounts[validators[tokenId].operatorId] += 1;
             totalExitButNoBurnNftCounts += 1;
@@ -445,8 +461,9 @@ contract VNFT is
      * @param _tokenId - tokenId
      * @param _number - gas height
      */
+
     function setUserNftGasHeight(uint256 _tokenId, uint256 _number) external onlyLiquidStaking {
-        require(userNftGasHeights[_tokenId] != 0, "This vNFT is not the user's vNFT");
+        if (userNftGasHeights[_tokenId] == 0) revert NotBelongUserNft();
         userNftGasHeights[_tokenId] = _number;
     }
 
@@ -509,7 +526,7 @@ contract VNFT is
      * @param _liquidStakingContractAddress contract address
      */
     function setLiquidStaking(address _liquidStakingContractAddress) external onlyOwner {
-        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        if (_liquidStakingContractAddress == address(0)) revert InvalidAddr();
         emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
         liquidStakingContractAddress = _liquidStakingContractAddress;
     }

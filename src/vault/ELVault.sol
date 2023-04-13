@@ -19,13 +19,16 @@ contract ELVault is ReentrancyGuard, Initializable {
     event Transferred(address _to, uint256 _amount);
     event RewardReinvestment(address _liquidStakingContract, uint256 _rewards);
 
+    error PermissionDenied();
+    error InvalidAddr();
+
     modifier onlyLiquidStaking() {
-        require(liquidStakingContractAddress == msg.sender, "Not allowed to touch funds");
+        if (liquidStakingContractAddress != msg.sender) revert PermissionDenied();
         _;
     }
 
     modifier onlyDao() {
-        require(msg.sender == dao, "PERMISSION_DENIED");
+        if (msg.sender != dao) revert PermissionDenied();
         _;
     }
 
@@ -52,7 +55,7 @@ contract ELVault is ReentrancyGuard, Initializable {
      * @param _to transfer to address
      */
     function transfer(uint256 _amount, address _to) external nonReentrant onlyLiquidStaking {
-        require(_to != address(0), "recipient address invalid");
+        if (_to == address(0)) revert InvalidAddr();
 
         payable(_to).transfer(_amount);
         emit Transferred(_to, _amount);
@@ -73,7 +76,7 @@ contract ELVault is ReentrancyGuard, Initializable {
      * @dev will only allow call of function by the address registered as the owner
      */
     function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
-        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        if (_liquidStakingContractAddress == address(0)) revert InvalidAddr();
         emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
         liquidStakingContractAddress = _liquidStakingContractAddress;
     }
@@ -83,7 +86,7 @@ contract ELVault is ReentrancyGuard, Initializable {
      * @param _dao new dao address
      */
     function setDaoAddress(address _dao) external onlyDao {
-        require(_dao != address(0), "Dao address invalid");
+        if (_dao == address(0)) revert InvalidAddr();
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
