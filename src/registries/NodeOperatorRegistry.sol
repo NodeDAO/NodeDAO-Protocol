@@ -11,6 +11,9 @@ import "src/interfaces/IELVaultFactory.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IELVault.sol";
+import "src/interfaces/IOperatorSlash.sol";
+
+import "forge-std/console.sol";
 
 /**
  * @title Node Operator registry
@@ -84,53 +87,48 @@ contract NodeOperatorRegistry is
     mapping(uint256 => uint256) public operatorPledgeVaultBalances;
 
     // v2 storage
+    IOperatorSlash public operatorSlashContract;
+
     mapping(uint256 => uint256) public operatorSlashAmountOwed;
     mapping(uint256 => uint256) internal operatorComissionRate;
     uint256 public constant DEFAULT_COMISSION = 700;
 
-    /**
-     * @notice get operator comission rate
-     * @param _operatorIds operator id
-     */
-    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
-        uint256[] memory comissions = new uint256[] (_operatorIds.length);
-        for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            if (operatorComissionRate[_operatorIds[i]] == 0) {
-                comissions[i] = DEFAULT_COMISSION;
-            } else {
-                comissions[i] = operatorComissionRate[i];
-            }
-        }
+    error PermissionDenied();
+    error InvalidAddr();
+    error InvalidParameter();
+    error OperatorNotFound();
+    error InvalidComission();
+    error InsufficientAmount();
+    error ContraollerAddrUsed();
+    error OperatorHasArrears();
+    error OperatorHasBlacklisted();
+    error InsufficientMargin();
+    error OperatorHasExited();
+    error OperatorExitFailed();
+    error OperatorAlreadyTrusted();
+    error OperatorNotTrusted();
+    error OperatorNotBlacklisted();
+    error NoPermissionPhase();
+    error InvalidRewardRatio();
+    error PermissionlessPhaseStart();
 
-        return comissions;
-    }
-
-    function setOperatorComissionRate(uint256 _operatorId, uint256 _rate) external {
-        NodeOperator memory operator = operators[_operatorId];
-        require(msg.sender == operator.owner || msg.sender == dao, "PERMISSION_DENIED");
-        require(_rate < 5000, "Comission cannot be 50%");
-        uint256 comissionRate = operatorComissionRate[_operatorId];
-        emit ComissionRateChanged(comissionRate == 0 ? DEFAULT_COMISSION : comissionRate, _rate);
-        operatorComissionRate[_operatorId] = _rate;
-    }
-
-    modifier onlyLiquidStaking() {
-        require(address(liquidStakingContract) == msg.sender, "PERMISSION_DENIED");
+    modifier onlyOperatorSlash() {
+        if (msg.sender != address(operatorSlashContract)) revert PermissionDenied();
         _;
     }
 
     modifier onlyDao() {
-        require(msg.sender == dao, "PERMISSION_DENIED");
+        if (msg.sender != dao) revert PermissionDenied();
         _;
     }
 
     modifier validAddress(address _a) {
-        require(_a != address(0), "EMPTY_ADDRESS");
+        if (_a == address(0)) revert InvalidParameter();
         _;
     }
 
     modifier operatorExists(uint256 _id) {
-        require(_id != 0 && _id <= totalOperators, "NODE_OPERATOR_NOT_FOUND");
+        if (_id == 0 || _id > totalOperators) revert OperatorNotFound();
         _;
     }
 
@@ -172,6 +170,7 @@ contract NodeOperatorRegistry is
      * @param _ratios reward ratios
      * @return id a unique key of the added operator
      */
+
     function registerOperator(
         string calldata _name,
         address _controllerAddress,
@@ -179,9 +178,9 @@ contract NodeOperatorRegistry is
         address[] calldata _rewardAddresses,
         uint256[] calldata _ratios
     ) external payable nonReentrant validAddress(_controllerAddress) validAddress(_owner) returns (uint256 id) {
-        require(bytes(_name).length <= 32, "Invalid length");
-        require(msg.value >= BASIC_PLEDGE + registrationFee, "Insufficient amount");
-        require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
+        if (bytes(_name).length > 32) revert InvalidParameter();
+        if (msg.value < BASIC_PLEDGE + registrationFee) revert InsufficientAmount();
+        if (usedControllerAddress[_controllerAddress]) revert ContraollerAddrUsed();
         id = totalOperators + 1;
 
         totalOperators = id;
@@ -220,20 +219,19 @@ contract NodeOperatorRegistry is
      * @param _withdrawAmount withdrawal amount
      * @param _to receiving address
      */
+
     function withdrawOperator(uint256 _operatorId, uint256 _withdrawAmount, address _to) external nonReentrant {
-        require(!blacklistOperators[_operatorId], "This operator has been blacklisted");
-        require(operatorSlashAmountOwed[_operatorId] == 0, "The operator is in arrears");
-        require(_to != address(0), "Recipient address invalid");
+        if (blacklistOperators[_operatorId]) revert OperatorHasBlacklisted();
+        if (operatorSlashAmountOwed[_operatorId] != 0) revert OperatorHasArrears();
+        if (_to == address(0)) revert InvalidAddr();
 
         NodeOperator memory operator = operators[_operatorId];
-        require(operator.owner == msg.sender, "PERMISSION_DENIED");
+        if (operator.owner != msg.sender) revert PermissionDenied();
 
         uint256 requireVault = calcRequirePledgeBalance(_operatorId);
 
         // After the withdrawal is completed, the pledge funds requirements must also be met
-        require(
-            operatorPledgeVaultBalances[_operatorId] >= requireVault + _withdrawAmount, "Insufficient pledge balance"
-        );
+        if (operatorPledgeVaultBalances[_operatorId] < requireVault + _withdrawAmount) revert InsufficientMargin();
         operatorPledgeVaultBalances[_operatorId] -= _withdrawAmount;
         payable(_to).transfer(_withdrawAmount);
 
@@ -264,21 +262,21 @@ contract NodeOperatorRegistry is
      * @param _to The receiving address of the pledged funds of the withdrawn operator
      */
     function quitOperator(uint256 _operatorId, address _to) external {
-        require(!blacklistOperators[_operatorId], "This operator has been blacklisted");
-        require(operatorSlashAmountOwed[_operatorId] == 0, "The operator is in arrears");
+        if (blacklistOperators[_operatorId]) revert OperatorHasBlacklisted();
+        if (operatorSlashAmountOwed[_operatorId] != 0) revert OperatorHasArrears();
         NodeOperator memory operator = operators[_operatorId];
-        require(operator.owner == msg.sender, "PERMISSION_DENIED");
-        require(operators[_operatorId].isQuit == false, "Operator has exited");
+        if (operator.owner != msg.sender) revert PermissionDenied();
+        if (operators[_operatorId].isQuit) revert OperatorHasExited();
 
         uint256 operatorNftCounts = vNFTContract.getActiveNftCountsOfOperator(_operatorId)
             + vNFTContract.getEmptyNftCountsOfOperator(_operatorId);
         // There are active validators and cannot exit
-        require(operatorNftCounts == 0, "unable to exit");
+        if (operatorNftCounts != 0) revert OperatorExitFailed();
 
         uint256 nowPledge = operatorPledgeVaultBalances[_operatorId];
         operatorPledgeVaultBalances[_operatorId] = 0;
 
-        require(_to != address(0), "Recipient address invalid");
+        if (_to == address(0)) revert InvalidAddr();
         payable(_to).transfer(nowPledge);
         operators[_operatorId].isQuit = true;
 
@@ -289,11 +287,12 @@ contract NodeOperatorRegistry is
      * @notice Set an operator as trusted
      * @param _id operator id
      */
+
     function setTrustedOperator(uint256 _id) external onlyDao operatorExists(_id) {
         _checkPermission();
 
         NodeOperator memory operator = operators[_id];
-        require(!operator.trusted, "The operator is already trusted");
+        if (operator.trusted) revert OperatorAlreadyTrusted();
         operators[_id].trusted = true;
         totalTrustedOperators += 1;
         trustedControllerAddress[operator.controllerAddress] = _id;
@@ -304,11 +303,12 @@ contract NodeOperatorRegistry is
      * @notice Remove an operator as trusted
      * @param _id operator id
      */
+
     function removeTrustedOperator(uint256 _id) external onlyDao operatorExists(_id) {
         _checkPermission();
 
         NodeOperator memory operator = operators[_id];
-        require(operator.trusted, "operator is not trusted");
+        if (!operator.trusted) revert OperatorNotTrusted();
         operators[_id].trusted = false;
         totalTrustedOperators -= 1;
         trustedControllerAddress[operator.controllerAddress] = 0;
@@ -320,7 +320,7 @@ contract NodeOperatorRegistry is
      * @param _id operator id
      */
     function setBlacklistOperator(uint256 _id) external onlyDao operatorExists(_id) {
-        require(!blacklistOperators[_id], "This operator has been blacklisted");
+        if (blacklistOperators[_id]) revert OperatorHasBlacklisted();
         blacklistOperators[_id] = true;
         totalBlacklistOperators += 1;
         emit NodeOperatorBlacklistSet(_id);
@@ -330,8 +330,9 @@ contract NodeOperatorRegistry is
      * @notice Remove an operator as blacklist
      * @param _id operator id
      */
+
     function removeBlacklistOperator(uint256 _id) external onlyDao operatorExists(_id) {
-        require(blacklistOperators[_id], "The operator is not blacklisted");
+        if (!blacklistOperators[_id]) revert OperatorNotBlacklisted();
         blacklistOperators[_id] = false;
         totalBlacklistOperators -= 1;
         emit NodeOperatorBlacklistRemove(_id);
@@ -339,7 +340,7 @@ contract NodeOperatorRegistry is
 
     function _checkPermission() internal view {
         if (permissionlessBlockNumber != 0) {
-            require(block.number < permissionlessBlockNumber, "No permission phase");
+            if (block.number >= permissionlessBlockNumber) revert NoPermissionPhase();
         }
     }
 
@@ -350,7 +351,7 @@ contract NodeOperatorRegistry is
      */
     function setNodeOperatorName(uint256 _id, string calldata _name) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
-        require(msg.sender == operator.owner, "PERMISSION_DENIED");
+        if (msg.sender != operator.owner) revert PermissionDenied();
 
         operators[_id].name = _name;
         emit NodeOperatorNameSet(_id, _name);
@@ -367,7 +368,7 @@ contract NodeOperatorRegistry is
         operatorExists(_id)
     {
         NodeOperator memory operator = operators[_id];
-        require(msg.sender == operator.owner, "PERMISSION_DENIED");
+        if (msg.sender != operator.owner) revert PermissionDenied();
 
         _setNodeOperatorRewardAddress(_id, _rewardAddresses, _ratios);
         emit NodeOperatorRewardAddressSet(_id, _rewardAddresses, _ratios);
@@ -376,23 +377,24 @@ contract NodeOperatorRegistry is
     function _setNodeOperatorRewardAddress(uint256 _id, address[] calldata _rewardAddresses, uint256[] calldata _ratios)
         internal
     {
-        require(_rewardAddresses.length != 0, "Invalid length");
-        require(_rewardAddresses.length <= MAX_REWARDSETTING_LENGTH, "Invalid length");
-        require(_rewardAddresses.length == _ratios.length, "Invalid length");
+        if (
+            _rewardAddresses.length == 0 || _rewardAddresses.length > MAX_REWARDSETTING_LENGTH
+                || _rewardAddresses.length != _ratios.length
+        ) revert InvalidParameter();
 
         // clear old settings
         delete operatorRewardSetting[_id];
 
         uint256 totalRatio = 0;
         for (uint256 i = 0; i < _rewardAddresses.length; ++i) {
-            require(_rewardAddresses[i] != address(0), "EMPTY_ADDRESS");
+            if (_rewardAddresses[i] == address(0)) revert InvalidAddr();
             operatorRewardSetting[_id].push(RewardSetting({rewardAddress: _rewardAddresses[i], ratio: _ratios[i]}));
 
             totalRatio += _ratios[i];
         }
 
         // Ratio sum should be 100%
-        require(totalRatio == 100, "Invalid Ratio");
+        if (totalRatio != 100) revert InvalidRewardRatio();
     }
 
     /**
@@ -402,11 +404,11 @@ contract NodeOperatorRegistry is
      */
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
         // The same address can only be used once
-        require(!usedControllerAddress[_controllerAddress], "controllerAddress is used");
+        if (usedControllerAddress[_controllerAddress]) revert ContraollerAddrUsed();
 
         NodeOperator memory operator = operators[_id];
-        require(msg.sender == operator.owner, "PERMISSION_DENIED");
 
+        if (operator.owner != msg.sender) revert PermissionDenied();
         if (trustedControllerAddress[operator.controllerAddress] == _id) {
             trustedControllerAddress[operator.controllerAddress] = 0;
             trustedControllerAddress[_controllerAddress] = _id;
@@ -428,7 +430,7 @@ contract NodeOperatorRegistry is
      */
     function setNodeOperatorOwnerAddress(uint256 _id, address _owner) external operatorExists(_id) {
         NodeOperator memory operator = operators[_id];
-        require(msg.sender == operator.owner || msg.sender == dao, "PERMISSION_DENIED");
+        if (operator.owner != msg.sender && msg.sender != dao) revert PermissionDenied();
 
         operators[_id].owner = _owner;
 
@@ -593,16 +595,16 @@ contract NodeOperatorRegistry is
      * @param _operatorId operator Id
      */
     function deposit(uint256 _operatorId) external payable nonReentrant {
-        require(!operators[_operatorId].isQuit, "operator has exited");
+        if (operators[_operatorId].isQuit) revert OperatorHasExited();
 
         uint256 amountOwed = operatorSlashAmountOwed[_operatorId];
         if (amountOwed > 0) {
             if (amountOwed > msg.value) {
-                liquidStakingContract.slashArrearsReceive{value: msg.value}(msg.value, _operatorId);
+                operatorSlashContract.slashArrearsReceive{value: msg.value}(msg.value, _operatorId);
                 operatorSlashAmountOwed[_operatorId] -= msg.value;
                 emit OperatorArrearsReduce(_operatorId, msg.value);
             } else {
-                liquidStakingContract.slashArrearsReceive{value: amountOwed}(amountOwed, _operatorId);
+                operatorSlashContract.slashArrearsReceive{value: amountOwed}(amountOwed, _operatorId);
                 operatorSlashAmountOwed[_operatorId] = 0;
                 operatorPledgeVaultBalances[_operatorId] += msg.value - amountOwed;
                 emit OperatorArrearsReduce(_operatorId, amountOwed);
@@ -619,10 +621,10 @@ contract NodeOperatorRegistry is
      * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyLiquidStaking {
+    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyOperatorSlash {
         uint256 slashAmount = _slash(_operatorId, _amount);
         if (slashAmount > 0) {
-            liquidStakingContract.slashArrearsReceive{value: slashAmount}(slashAmount, _operatorId);
+            operatorSlashContract.slashArrearsReceive{value: slashAmount}(slashAmount, _operatorId);
         }
     }
 
@@ -651,7 +653,7 @@ contract NodeOperatorRegistry is
      * @param _amounts slash amount
      */
 
-    function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyLiquidStaking {
+    function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyOperatorSlash {
         uint256 totalSlashAmounts = 0;
         uint256[] memory slashAmounts = new uint256[] (_exitTokenIds.length);
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
@@ -663,7 +665,9 @@ contract NodeOperatorRegistry is
             totalSlashAmounts += slashAmount;
         }
 
-        liquidStakingContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
+        console.log("=======================totalSlashAmounts", totalSlashAmounts);
+        console.log("=======================thisbalance", address(this).balance);
+        operatorSlashContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
     }
 
     /**
@@ -688,8 +692,11 @@ contract NodeOperatorRegistry is
      * @param _liquidStakingContractAddress proxy address of LiquidStaking
      * @dev will only allow call of function by the address registered as the owner
      */
-    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
-        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+    function setLiquidStaking(address _liquidStakingContractAddress)
+        external
+        onlyDao
+        validAddress(_liquidStakingContractAddress)
+    {
         emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
         liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
     }
@@ -698,8 +705,7 @@ contract NodeOperatorRegistry is
      * @notice set dao vault address
      * @param  _dao new dao address
      */
-    function setDaoAddress(address _dao) external onlyOwner {
-        require(_dao != address(0), "Dao address invalid");
+    function setDaoAddress(address _dao) external onlyOwner validAddress(_dao) {
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
@@ -708,8 +714,7 @@ contract NodeOperatorRegistry is
      * @notice set dao vault address
      * @param _daoVaultAddress new dao vault address
      */
-    function setDaoVaultAddress(address _daoVaultAddress) external onlyDao {
-        require(_daoVaultAddress != address(0), "dao vault address invalid");
+    function setDaoVaultAddress(address _daoVaultAddress) external onlyDao validAddress(_daoVaultAddress) {
         emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
         daoVaultAddress = _daoVaultAddress;
     }
@@ -727,18 +732,89 @@ contract NodeOperatorRegistry is
      * @notice Start the permissionless phase, Cannot be changed once started
      * @param _blockNumber The block height at the start of the permissionless phase must be greater than the current block
      */
+
     function setpermissionlessBlockNumber(uint256 _blockNumber) external onlyDao {
-        require(permissionlessBlockNumber == 0, "The permissionless phase has begun");
-        require(_blockNumber > block.number, "Invalid block height");
+        if (permissionlessBlockNumber != 0) revert PermissionlessPhaseStart();
+        if (_blockNumber <= block.number) revert InvalidParameter();
         permissionlessBlockNumber = _blockNumber;
         emit PermissionlessBlockNumberSet(_blockNumber);
+    }
+
+    /**
+     * @notice set a new vaultFactoryContract
+     * @param _vaultFactoryContractAddress new vaultFactoryContract address
+     */
+    function setVaultFactorContract(address _vaultFactoryContractAddress)
+        external
+        onlyDao
+        validAddress(_vaultFactoryContractAddress)
+    {
+        emit VaultFactorContractSet(address(vaultFactoryContract), _vaultFactoryContractAddress);
+        vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
+    }
+
+    /**
+     * @notice reset a new vault contract for operator
+     * @param _operatorIds operators id
+     */
+    function resetOperatorVaultContract(uint256[] calldata _operatorIds) external onlyDao {
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
+            uint256 operatorId = _operatorIds[i];
+            address vaultContractAddress = vaultFactoryContract.create(operatorId);
+            emit OperatorVaultContractReset(operators[operatorId].vaultContractAddress, vaultContractAddress);
+            operators[operatorId].vaultContractAddress = vaultContractAddress;
+        }
+    }
+
+    /**
+     * @notice set operatorslashContract
+     * @param _operatorSlashContractAddress operatorSlashContract address
+     */
+    function setOperatorSlashContract(address _operatorSlashContractAddress)
+        external
+        onlyDao
+        validAddress(_operatorSlashContractAddress)
+    {
+        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContractAddress);
+        operatorSlashContract = IOperatorSlash(_operatorSlashContractAddress);
+    }
+
+    /**
+     * @notice get operator comission rate
+     * @param _operatorIds operator id
+     */
+    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
+        uint256[] memory comissions = new uint256[] (_operatorIds.length);
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
+            if (operatorComissionRate[_operatorIds[i]] == 0) {
+                comissions[i] = DEFAULT_COMISSION;
+            } else {
+                comissions[i] = operatorComissionRate[i];
+            }
+        }
+
+        return comissions;
+    }
+
+    /**
+     * @notice set operator comission rate
+     * @param _operatorId operator id
+     * @param _rate _rate
+     */
+    function setOperatorComissionRate(uint256 _operatorId, uint256 _rate) external {
+        NodeOperator memory operator = operators[_operatorId];
+        if (operator.owner != msg.sender && msg.sender != dao) revert PermissionDenied();
+        if (_rate >= 5000) revert InvalidComission();
+        uint256 comissionRate = operatorComissionRate[_operatorId];
+        emit ComissionRateChanged(comissionRate == 0 ? DEFAULT_COMISSION : comissionRate, _rate);
+        operatorComissionRate[_operatorId] = _rate;
     }
 
     /**
      * @notice transfer amount to an address
      */
     function transfer(uint256 _amount, address _to) internal {
-        require(_to != address(0), "Recipient address invalid");
+        if (_to == address(0)) revert InvalidAddr();
         payable(_to).transfer(_amount);
         emit Transferred(_to, _amount);
     }

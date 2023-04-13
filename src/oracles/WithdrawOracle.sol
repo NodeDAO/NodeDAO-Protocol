@@ -2,14 +2,12 @@
 pragma solidity 0.8.8;
 
 import "openzeppelin-contracts/utils/math/SafeCast.sol";
-import "src/library/UnstructuredStorage.sol";
 import "src/oracles/BaseOracle.sol";
 import "src/interfaces/IWithdrawOracle.sol";
 import "src/interfaces/IVaultManager.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 
 contract WithdrawOracle is IWithdrawOracle, BaseOracle {
-    using UnstructuredStorage for bytes32;
     using SafeCast for uint256;
 
     event WarnDataIncompleteProcessing(uint256 indexed refSlot, uint256 exitRequestLimit, uint256 reportExitedCount);
@@ -23,6 +21,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 indexed refSlot, uint256 reportExitedCount, uint256 clBalance, uint256 clVaultBalance
     );
 
+    error PermissionDenied();
     error SenderNotAllowed();
     error UnsupportedRequestsDataFormat(uint256 format);
     error InvalidRequestsData();
@@ -94,8 +93,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// Length in bytes of packed request
     //    uint256 internal constant PACKED_REQUEST_LENGTH = 64;
 
-    /// @dev Storage slot: DataProcessingState dataProcessingState
-    bytes32 internal constant DATA_PROCESSING_STATE_POSITION = keccak256("WithdrawOracle.dataProcessingState");
+    DataProcessingState internal dataProcessingState;
 
     // Specifies the maximum number of validator exits reported each time
     uint256 public exitRequestLimit;
@@ -117,7 +115,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     address public vaultManager;
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingContractAddress == msg.sender, "Not allowed onlyLiquidStaking");
+        if (liquidStakingContractAddress != msg.sender) revert PermissionDenied();
         _;
     }
 
@@ -182,13 +180,13 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
      * @param _liquidStakingContractAddress - contract address
      */
     function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
-        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        if (_liquidStakingContractAddress == address(0)) revert InvalidAddr();
         emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
         liquidStakingContractAddress = _liquidStakingContractAddress;
     }
 
     function setVaultManager(address _vaultManagerContractAddress) external onlyDao {
-        require(_vaultManagerContractAddress != address(0), "VaultManager address invalid");
+        if (_vaultManagerContractAddress == address(0)) revert InvalidAddr();
         emit VaultManagerChanged(vaultManager, _vaultManagerContractAddress);
         vaultManager = _vaultManagerContractAddress;
     }
@@ -208,9 +206,9 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// - The keccak256 hash of the ABI-encoded data is different from the last hash
     ///   provided by the hash consensus contract.
     /// - The provided data doesn't meet safety checks.
-    function submitReportData(ReportData calldata data, uint256 contractVersion) external {
+    function submitReportData(ReportData calldata data, uint256 contractVersion) external whenNotPaused {
         _checkMsgSenderIsAllowedToSubmitData();
-        _checkContractVersion(contractVersion);
+        _checkContractVersion(consensusVersion);
         // it's a waste of gas to copy the whole calldata into mem but seems there's no way around
         _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)));
         _startProcessing();
@@ -220,7 +218,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// @notice Returns data processing state for the current reporting frame.
     /// @return result See the docs for the `ProcessingState` struct.
     function getProcessingState() external view returns (ProcessingState memory result) {
-        ConsensusReport memory report = _storageConsensusReport().value;
+        ConsensusReport memory report = consensusReport;
         result.currentFrameRefSlot = _getCurrentRefSlot();
 
         if (result.currentFrameRefSlot != report.refSlot) {
@@ -230,7 +228,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         result.processingDeadlineTime = report.processingDeadlineTime;
         result.dataHash = report.hash;
 
-        DataProcessingState memory procState = _storageDataProcessingState().value;
+        DataProcessingState memory procState = dataProcessingState;
 
         result.dataSubmitted = procState.refSlot == result.currentFrameRefSlot;
         if (!result.dataSubmitted) {
@@ -263,7 +261,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         // oracle maintains the necessary data
         _dealReportOracleData(data.refSlot, data.clBalance, data.clVaultBalance);
 
-        _storageDataProcessingState().value = DataProcessingState({
+        dataProcessingState = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
             reportExitedCount: data.reportExitedCount.toUint64()
         });
@@ -284,20 +282,9 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256, /* prevSubmittedRefSlot */
         uint256 prevProcessingRefSlot
     ) internal override {
-        DataProcessingState memory state = _storageDataProcessingState().value;
+        DataProcessingState memory state = dataProcessingState;
         if (state.refSlot == prevProcessingRefSlot && state.reportExitedCount <= exitRequestLimit) {
             emit WarnDataIncompleteProcessing(prevProcessingRefSlot, exitRequestLimit, state.reportExitedCount);
-        }
-    }
-
-    struct StorageDataProcessingState {
-        DataProcessingState value;
-    }
-
-    function _storageDataProcessingState() internal pure returns (StorageDataProcessingState storage r) {
-        bytes32 position = DATA_PROCESSING_STATE_POSITION;
-        assembly {
-            r.slot := position
         }
     }
 }
