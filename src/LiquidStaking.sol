@@ -601,7 +601,7 @@ contract LiquidStaking is
      * @param _totalRequestNethAmount totalRequestNethAmount will burn
      */
     function largeWithdrawalBurnNeth(uint256 _totalRequestNethAmount) external onlyWithdrawalRequest {
-        nETHContract.whiteListBurn(_totalRequestNethAmount, address(this));
+        nETHContract.whiteListBurn(_totalRequestNethAmount, address(withdrawalRequestContract));
     }
 
     /**

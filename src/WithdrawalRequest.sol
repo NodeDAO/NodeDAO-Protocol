@@ -61,8 +61,11 @@ contract WithdrawalRequest is
     event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
     event WithdrawalsReceive(uint256 _operatorId, uint256 _amount);
 
+    error PermissionDenied();
+    error InvalidParameter();
+
     modifier onlyLiquidStaking() {
-        require(address(liquidStakingContract) == msg.sender, "PERMISSION_DENIED");
+        if (address(liquidStakingContract) != msg.sender) revert PermissionDenied();
         _;
     }
 
@@ -86,16 +89,18 @@ contract WithdrawalRequest is
         dao = _dao;
     }
 
+    error AlreadyUnstake();
     /**
      * @notice Perform unstake operation on the held nft, an irreversible operation, and get back the pledged deth
      * @param _tokenIds unstake token id
      */
+
     function unstakeNFT(uint256[] calldata _tokenIds) external nonReentrant whenNotPaused {
         uint256[] memory operatorIds = new uint256[] (1);
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
-            require(nftUnstakeBlockNumbers[tokenId] == 0, "The tokenId already unstake");
-            require(msg.sender == vNFTContract.ownerOf(tokenId), "The sender must be the nft owner");
+            if (nftUnstakeBlockNumbers[tokenId] != 0) revert AlreadyUnstake();
+            if (msg.sender != vNFTContract.ownerOf(tokenId)) revert PermissionDenied();
 
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
             operatorIds[0] = operatorId;
@@ -113,11 +118,13 @@ contract WithdrawalRequest is
         }
     }
 
+    error NethTransferFailed();
     /**
      * @notice Large withdrawal request, used for withdrawals over 32neth and less than 1000 neth.
      * @param _operatorId operator id
      * @param _amounts untake neth amount
      */
+
     function requestLargeWithdrawals(uint256 _operatorId, uint256[] calldata _amounts)
         public
         nonReentrant
@@ -129,9 +136,7 @@ contract WithdrawalRequest is
         uint256 _exchange = liquidStakingContract.getEthOut(1 ether);
         for (uint256 i = 0; i < _amounts.length; ++i) {
             uint256 _amount = _amounts[i];
-            require(
-                _amount >= MIN_NETH_WITHDRAWAL_AMOUNT && _amount <= MAX_NETH_WITHDRAWAL_AMOUNT, "invalid request amount"
-            );
+            if (_amount < MIN_NETH_WITHDRAWAL_AMOUNT || _amount > MAX_NETH_WITHDRAWAL_AMOUNT) revert InvalidParameter();
 
             uint256 amountOut = liquidStakingContract.getEthOut(_amount);
             withdrawalQueues.push(
@@ -151,7 +156,7 @@ contract WithdrawalRequest is
         }
 
         bool success = nETHContract.transferFrom(msg.sender, address(this), totalRequestNethAmount);
-        require(success, "Failed to transfer neth");
+        if (!success) revert NethTransferFailed();
 
         liquidStakingContract.largeWithdrawalUnstake(_operatorId, msg.sender, totalRequestNethAmount);
         totalLockedNethBalance += totalRequestNethAmount;
@@ -160,6 +165,8 @@ contract WithdrawalRequest is
         emit LargeWithdrawalsRequest(_operatorId, msg.sender, totalRequestNethAmount);
     }
 
+    error AlreadeClaimed();
+
     function claimLargeWithdrawals(uint256[] calldata requestIds) public nonReentrant whenNotPaused {
         uint256 totalRequestNethAmount = 0;
         uint256 totalPendingEthAmount = 0;
@@ -167,8 +174,8 @@ contract WithdrawalRequest is
         for (uint256 i = 0; i < requestIds.length; ++i) {
             uint256 id = requestIds[i];
             WithdrawalInfo memory wInfo = withdrawalQueues[id];
-            require(wInfo.owner == msg.sender, "no permission");
-            require(!wInfo.isClaim, "requestId already claimed");
+            if (wInfo.owner != msg.sender) revert PermissionDenied();
+            if (wInfo.isClaim) revert AlreadeClaimed();
             withdrawalQueues[id].isClaim = true;
             totalRequestNethAmount += wInfo.withdrawNethAmount;
             totalPendingEthAmount += wInfo.claimEthAmount;
@@ -176,7 +183,6 @@ contract WithdrawalRequest is
             operatorPendingEthPoolBalance[wInfo.operatorId] -= wInfo.claimEthAmount;
         }
 
-        nETHContract.transferFrom(address(this), address(liquidStakingContract), totalRequestNethAmount);
         liquidStakingContract.largeWithdrawalBurnNeth(totalRequestNethAmount);
         totalLockedNethBalance -= totalRequestNethAmount;
         payable(msg.sender).transfer(totalPendingEthAmount);
@@ -264,10 +270,6 @@ contract WithdrawalRequest is
         return ids;
     }
 
-    function getNftUnstakeBlockNumbers(uint256 _tokenId) external view returns (uint256) {
-        return nftUnstakeBlockNumbers[_tokenId];
-    }
-
     function getOperatorLargeWitdrawalPendingInfo(uint256 _operatorId) external view returns (uint256, uint256) {
         return (operatorPendingEthRequestAmount[_operatorId], operatorPendingEthPoolBalance[_operatorId]);
     }
@@ -277,7 +279,7 @@ contract WithdrawalRequest is
         view
         returns (uint256, uint256, uint256, uint256, uint256, address, bool)
     {
-        require(_requestId < withdrawalQueues.length - 1, "invalid requestId");
+        if (_requestId >= withdrawalQueues.length - 1) revert InvalidParameter();
         WithdrawalInfo memory wInfo = withdrawalQueues[_requestId];
 
         return (
