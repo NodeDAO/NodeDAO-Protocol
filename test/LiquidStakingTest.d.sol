@@ -400,5 +400,17 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             assertEq(0 , testStakeInfo2[0].quota);   
     }    
 
+        function testLargeWithdrawalBurnNeth() public {
+            vm.deal(address(withdrawalRequest), 100 ether) ;
+            vm.prank(address(withdrawalRequest));
+            liquidStaking.stakeETH{value: 20 ether}(1);
+            assertEq(20 ether, neth.balanceOf(address(withdrawalRequest)));
+            vm.prank(address(withdrawalRequest));
+            liquidStaking.largeWithdrawalBurnNeth(1 ether);
+            assertEq(19 ether, neth.balanceOf(address(withdrawalRequest)));
+            vm.prank(address(withdrawalRequest));
+            liquidStaking.largeWithdrawalBurnNeth(5 ether);
+            assertEq(14 ether, neth.balanceOf(address(withdrawalRequest)));
+        }   
 
 }
