@@ -58,7 +58,8 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
     event VaultManagerContractSet(address vaultManagerContractAddress, address _vaultManagerContract);
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
-    
+    event LogUserNftWithdrawalCredentialsByte(uint index, string value);
+
     error InvalidParameter();
     error PermissionDenied();
 
@@ -401,9 +402,8 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         liquidStaking.stakeNFT{value: 12 ether}(1, address(3355));
         assertEq(0, vnft.balanceOf(address(335)));
         assertEq(0, neth.balanceOf(address(liquidStaking)));
-        }
-
-
+        }   
+    
     function testLargeWithdrawalUnstake() public {
         vm.deal(address(20), 32 ether) ;
         vm.prank(address(20));
@@ -458,7 +458,19 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(0 ,  neth.balanceOf(address(155)) );
     }   
 
+    function testUnstakeNFTCombo() public {
+        vm.deal(address(155), 64 ether);
+        vm.prank(address(155));
+        liquidStaking.stakeNFT{value: 32 ether}(1, address(255));
+        assertEq(1, vnft.balanceOf(address(155)));
+        console.log("vnft.ownerOf: ", vnft.ownerOf(0));
+        assertEq(address(155),vnft.ownerOf(0) );
+        assertEq(0, neth.balanceOf(address(155)));
+        assertEq(32 ether , address(155).balance );
 
-
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+    }
+   
 
 }
