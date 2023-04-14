@@ -378,61 +378,87 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vm.prank(address(operatorSlash));
         liquidStaking.addSlashFundToStakePool{value : 1 ether }(1, 2 ether); 
         assertEq(3 ether, liquidStaking.getOperatorPoolBalances(1));       
-    }    
+    }
+
+    function testStakeNFTFailCases() public {
+        vm.deal(address(335) , 100 ether );
+        vm.roll(20000);
+
+        vm.expectRevert(0x9be73159); // InvalidWithdrawalCredentials
+        vm.prank(address(335));
+        liquidStaking.stakeNFT{value: 32 ether}(1, address(0));
+        assertEq(0, vnft.balanceOf(address(335)));
+        assertEq(0, neth.balanceOf(address(liquidStaking)));
+
+        vm.expectRevert(0xae4207eb); // RequireOperatorTrusted 
+        vm.prank(address(335));
+        liquidStaking.stakeNFT{value: 32 ether}(11, address(3355));
+        assertEq(0, vnft.balanceOf(address(335)));
+        assertEq(0, neth.balanceOf(address(liquidStaking)));
+
+        vm.expectRevert(0x2c5211c6); // InvalidAmount 
+        vm.prank(address(335));
+        liquidStaking.stakeNFT{value: 12 ether}(1, address(3355));
+        assertEq(0, vnft.balanceOf(address(335)));
+        assertEq(0, neth.balanceOf(address(liquidStaking)));
+        }
 
 
-        function testLargeWithdrawalUnstake() public {
-            vm.deal(address(20), 100 ether) ;
-            vm.prank(address(20));
-            liquidStaking.stakeETH{value: 32 ether}(1);
-            assertEq(0, vnft.balanceOf(address(20)));
-            assertEq(32 ether, neth.balanceOf(address(20)));
-            assertEq(0, vnft.balanceOf(address(liquidStaking)));
-            assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
-            assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
+    function testLargeWithdrawalUnstake() public {
+        vm.deal(address(20), 32 ether) ;
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 32 ether}(1);
+        assertEq(0, vnft.balanceOf(address(20)));
+        assertEq(32 ether, neth.balanceOf(address(20)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
             
-            LiquidStaking.StakeInfo[] memory testStakeInfo1 = liquidStaking.getUnstakeQuota(address(20));
-            assertEq(32 ether, testStakeInfo1[0].quota);   
+        LiquidStaking.StakeInfo[] memory testStakeInfo1 = liquidStaking.getUnstakeQuota(address(20));
+        assertEq(32 ether, testStakeInfo1[0].quota);   
            
-            vm.prank(address(withdrawalRequest));
-            liquidStaking.largeWithdrawalUnstake(1, address(20) ,32 ether);            
-            LiquidStaking.StakeInfo[] memory testStakeInfo2 = liquidStaking.getUnstakeQuota(address(20));
-            assertEq(0 , testStakeInfo2[0].quota);   
+        vm.prank(address(withdrawalRequest));
+        liquidStaking.largeWithdrawalUnstake(1, address(20) ,32 ether);            
+        LiquidStaking.StakeInfo[] memory testStakeInfo2 = liquidStaking.getUnstakeQuota(address(20));
+        assertEq(0 , testStakeInfo2[0].quota); 
     }    
 
-        function testLargeWithdrawalBurnNeth() public {
-            vm.deal(address(withdrawalRequest), 100 ether) ;
-            vm.prank(address(withdrawalRequest));
-            liquidStaking.stakeETH{value: 20 ether}(1);
-            assertEq(20 ether, neth.balanceOf(address(withdrawalRequest)));
-            vm.prank(address(withdrawalRequest));
-            liquidStaking.largeWithdrawalBurnNeth(1 ether);
-            assertEq(19 ether, neth.balanceOf(address(withdrawalRequest)));
-            vm.prank(address(withdrawalRequest));
-            liquidStaking.largeWithdrawalBurnNeth(5 ether);
-            assertEq(14 ether, neth.balanceOf(address(withdrawalRequest)));
-        }   
+    function testLargeWithdrawalBurnNeth() public {
+        vm.deal(address(withdrawalRequest), 100 ether) ;
+        vm.prank(address(withdrawalRequest));
+        liquidStaking.stakeETH{value: 20 ether}(1);
+        assertEq(20 ether, neth.balanceOf(address(withdrawalRequest)));
+        vm.prank(address(withdrawalRequest));
+        liquidStaking.largeWithdrawalBurnNeth(1 ether);
+        assertEq(19 ether, neth.balanceOf(address(withdrawalRequest)));
+        vm.prank(address(withdrawalRequest));
+        liquidStaking.largeWithdrawalBurnNeth(5 ether);
+        assertEq(14 ether, neth.balanceOf(address(withdrawalRequest)));
+    }   
 
-        function testFastUnstakeNFT() public {
-            vm.deal(address(withdrawalRequest), 100 ether) ;
+    function testFastUnstakeNFT() public {
+        vm.deal(address(withdrawalRequest), 100 ether) ;
 
-            vm.deal(address(155), 32 ether);
-            vm.prank(address(155));
-            liquidStaking.stakeNFT{value: 32 ether}(1, address(255));
-            assertEq(1, vnft.balanceOf(address(155)));
-            console.log("vnft.ownerOf: ", vnft.ownerOf(0));
-            assertEq(address(155),vnft.ownerOf(0) );
-            assertEq(0, neth.balanceOf(address(155)));
+        vm.deal(address(155), 32 ether);
+        vm.prank(address(155));
+        liquidStaking.stakeNFT{value: 32 ether}(1, address(255));
+        assertEq(1, vnft.balanceOf(address(155)));
+        console.log("vnft.ownerOf: ", vnft.ownerOf(0));
+        assertEq(address(155),vnft.ownerOf(0) );
+        assertEq(0, neth.balanceOf(address(155)));
             
-            assertEq(0, vnft.balanceOf(address(liquidStaking)));
-            assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
 
-            vm.expectEmit(true, true, false, true);
-            emit Transferred( address(155) ,32 ether);
-            vm.prank(address(withdrawalRequest));
-            liquidStaking.fastUnstakeNFT(1 , 0 , address(155));
-            assertEq(0 , vnft.balanceOf(address(155)) );
-            assertEq(0 ,  eth.balanceOf(address(155)) );
-        }   
+        vm.expectEmit(true, true, false, true);
+        emit Transferred( address(155) ,32 ether);
+        vm.prank(address(withdrawalRequest));
+        liquidStaking.fastUnstakeNFT(1 , 0 , address(155));
+        assertEq(0 , vnft.balanceOf(address(155)) );
+        assertEq(0 ,  neth.balanceOf(address(155)) );
+    }   
+
+
+
 
 }
