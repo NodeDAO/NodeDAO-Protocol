@@ -64,6 +64,7 @@ contract WithdrawalRequest is
     error PermissionDenied();
     error InvalidParameter();
     error InvalidRequestId();
+    error InsufficientNETHBalance();
 
     modifier onlyLiquidStaking() {
         if (address(liquidStakingContract) != msg.sender) revert PermissionDenied();
@@ -155,6 +156,10 @@ contract WithdrawalRequest is
             totalRequestNethAmount += _amount;
             totalPendingEthAmount += amountOut;
         }
+
+        // Check if the user has enough nETH balance to cover the total requested amount
+        uint256 userNethBalance = nETHContract.balanceOf(msg.sender);
+        if (userNethBalance < totalRequestNethAmount) revert InsufficientNETHBalance();
 
         bool success = nETHContract.transferFrom(msg.sender, address(this), totalRequestNethAmount);
         if (!success) revert NethTransferFailed();
