@@ -128,6 +128,8 @@ abstract contract BaseContract {
         // =============================================
         // configure contract settings
         // =============================================
+        // !!! It can be set to a future value after which the contract can be used
+        HashConsensus(hashConsensusProxy).updateInitialEpoch(1);
 
         // withdrawOracleProxy setLiquidStaking
         WithdrawOracle(withdrawOracleProxy).setLiquidStaking(_liquidStakingProxy);
