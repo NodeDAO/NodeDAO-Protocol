@@ -22,6 +22,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 indexed refSlot, uint256 reportExitedCount, uint256 clBalance, uint256 clVaultBalance
     );
 
+    error PermissionDenied();
     error SenderNotAllowed();
     error UnsupportedRequestsDataFormat(uint256 format);
     error InvalidRequestsData();
@@ -113,7 +114,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     address public vaultManager;
 
     modifier onlyLiquidStaking() {
-        require(liquidStakingContractAddress == msg.sender, "Not allowed onlyLiquidStaking");
+        if (liquidStakingContractAddress != msg.sender) revert PermissionDenied();
         _;
     }
 
@@ -188,13 +189,13 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
      * @param _liquidStakingContractAddress - contract address
      */
     function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
-        require(_liquidStakingContractAddress != address(0), "LiquidStaking address invalid");
+        if (_liquidStakingContractAddress == address(0)) revert InvalidAddr();
         emit LiquidStakingChanged(liquidStakingContractAddress, _liquidStakingContractAddress);
         liquidStakingContractAddress = _liquidStakingContractAddress;
     }
 
     function setVaultManager(address _vaultManagerContractAddress) external onlyDao {
-        require(_vaultManagerContractAddress != address(0), "VaultManager address invalid");
+        if (_vaultManagerContractAddress == address(0)) revert InvalidAddr();
         emit VaultManagerChanged(vaultManager, _vaultManagerContractAddress);
         vaultManager = _vaultManagerContractAddress;
     }

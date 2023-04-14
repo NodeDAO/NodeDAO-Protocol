@@ -39,6 +39,7 @@ abstract contract BaseOracle is
 {
     using SafeCast for uint256;
 
+    error InvalidAddr();
     error AddressCannotBeZero();
     error AddressCannotBeSame();
     error VersionCannotBeSame();
@@ -125,7 +126,7 @@ abstract contract BaseOracle is
 
     // set dao vault address
     function setDaoAddress(address _dao) external override onlyOwner {
-        require(_dao != address(0), "Dao address invalid");
+        if (_dao == address(0)) revert InvalidAddr();
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }

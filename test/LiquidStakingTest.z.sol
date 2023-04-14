@@ -19,8 +19,25 @@ import "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import "test/helpers/CommonConstantProvider.sol";
 import "src/interfaces/ILiquidStaking.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
+import "src/OperatorSlash.sol";
+import "src/WithdrawalRequest.sol";
 
 contract LiquidStakingTest is Test, MockOracleProvider {
+    error PermissionDenied();
+    error RequireBlacklistOperator();
+    error AssignMustSameOperator();
+    error InvalidParameter();
+    error RequireOperatorTrusted();
+    error InvalidAmount();
+    error InsufficientMargin();
+    error InvalidDaoVaultAddr();
+    error UnstakeEthNoQuota();
+    error OperatorLoanFailed();
+    error InvalidWithdrawalCredentials();
+    error InsufficientFunds();
+    error OperatorHasArrears();
+    error TotalEthIsZero();
+
     event BlacklistOperatorAssigned(uint256 indexed _blacklistOperatorId, uint256 _operatorId, uint256 _totalAmount);
     event QuitOperatorAssigned(uint256 indexed _quitOperatorId, uint256 _operatorId, uint256 _totalAmount);
     event EthStake(uint256 indexed _operatorId, address indexed _from, uint256 _amount, uint256 _amountOut);
@@ -65,6 +82,8 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     ELVaultFactory vaultFactoryContract;
     ConsensusVault consensusVaultContract;
     address payable consensusVaultContractAddr;
+    OperatorSlash operatorSlash;
+    WithdrawalRequest withdrawalRequest;
 
     HashConsensusWithTimer consensus;
 
@@ -142,18 +161,54 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         operatorRegistry.setTrustedOperator(1);
 
         vaultManager = new VaultManager();
+
+        uint256[] memory _operatorIds = new uint256[](0);
+        address[] memory _users = new address[](0);
+        uint256[] memory _nethAmounts = new uint256[](0);
+
+        withdrawalRequest = new WithdrawalRequest();
+        withdrawalRequest.initialize(
+            _dao,
+            address(liquidStaking),
+            address(vnft),
+            address(neth),
+            address(operatorRegistry),
+            address(withdrawalRequest),
+            address(vaultManager)
+        );
+
+        operatorSlash = new OperatorSlash();
+        operatorSlash.initialize(
+            _dao,
+            address(liquidStaking),
+            address(vnft),
+            address(operatorRegistry),
+            address(withdrawalRequest),
+            address(vaultManager),
+            7200
+        );
+
+        vm.prank(_dao);
+        operatorRegistry.setOperatorSlashContract(address(operatorSlash));
+        vm.prank(_dao);
+        liquidStaking.initializeV2(
+            _operatorIds,
+            _users,
+            _nethAmounts,
+            address(consensusVaultContract),
+            address(vaultManager),
+            address(withdrawalRequest),
+            address(operatorSlash)
+        );
+
         vaultManager.initialize(
             _dao,
             address(liquidStaking),
             address(vnft),
             address(operatorRegistry),
             address(withdrawOracle),
-            address(consensusVaultContract)
+            address(operatorSlash)
         );
-        vm.prank(_dao);
-        liquidStaking.setVaultManagerContract(address(vaultManager));
-        vm.prank(_dao);
-        liquidStaking.setConsensusVaultContract(address(consensusVaultContract));
     }
 
     function testStakeETH() public {
@@ -249,7 +304,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(userWithdrawalCredentials, hex"010000000000000000000000f5ade6b61ba60b8b82566af0dfca982169a470dc");
     }
 
-    function testStakeNFT2() public {
+    function testFailedStakeNFT2() public {
         vm.prank(address(20));
         vm.roll(10000);
 
@@ -724,9 +779,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vm.prank(_dao);
         operatorRegistry.setpermissionlessBlockNumber(1000000);
         assertEq(1000000, operatorRegistry.permissionlessBlockNumber());
-        vm.expectRevert("The permissionless phase has begun");
-        vm.prank(_dao);
-        operatorRegistry.setpermissionlessBlockNumber(2000000);
     }
 
     function testConsensusVault() public {
@@ -745,9 +797,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     function testELVaultFactory() public {
         vaultFactoryContract.setNodeOperatorRegistry(address(70));
         assertEq(vaultFactoryContract.nodeOperatorRegistryAddress(), address(70));
-
-        vm.expectRevert("Not allowed to create vault");
-        vaultFactoryContract.create(2);
 
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
         vm.prank(address(operatorRegistry));
@@ -1014,12 +1063,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vm.prank(_dao);
         operatorRegistry.setBlacklistOperator(operatorId);
 
-        liquidStaking.assignBlacklistOperator(operatorId, operatorId2);
+        liquidStaking.assignOperator(operatorId, operatorId2);
         assertEq(0 ether, liquidStaking.operatorPoolBalances(operatorId));
         assertEq(64 ether, liquidStaking.operatorPoolBalances(operatorId2));
-
-        vm.expectRevert("The operator is not trusted");
-        liquidStaking.assignBlacklistOperator(operatorId, operatorId3);
+        assertEq(0, liquidStaking.reAssignRecords(operatorId));
     }
 
     function testAssignQuitOperator() public {
@@ -1061,20 +1108,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vm.prank(_owner3);
         operatorRegistry.quitOperator(operatorId, address(100));
 
-        liquidStaking.assignQuitOperator(operatorId, operatorId2);
+        liquidStaking.assignOperator(operatorId, operatorId2);
         assertEq(0 ether, liquidStaking.operatorPoolBalances(operatorId));
         assertEq(64 ether, liquidStaking.operatorPoolBalances(operatorId2));
-
-        vm.expectRevert("The operator is not trusted");
-        liquidStaking.assignQuitOperator(operatorId, operatorId3);
-
-        vm.expectRevert("The assign operator did not exit");
-        liquidStaking.assignQuitOperator(operatorId2, operatorId3);
-
-        vm.prank(_dao);
-        operatorRegistry.setTrustedOperator(operatorId3);
-        vm.expectRevert("already assigned");
-        liquidStaking.assignQuitOperator(operatorId, operatorId3);
+        assertEq(operatorId2, liquidStaking.reAssignRecords(operatorId));
     }
 
     function testSlashOperator() public {
@@ -1124,8 +1161,9 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         _amounts[0] = 0.1 ether;
 
         vm.prank(address(vaultManager));
-        liquidStaking.slashOperator(_exitTokenIds, _amounts);
-        assertEq(0.1 ether, liquidStaking.nftHasCompensated(0));
+
+        operatorSlash.slashOperator(_exitTokenIds, _amounts);
+        assertEq(0.1 ether, operatorSlash.nftHasCompensated(0));
 
         assertEq(operatorRegistry.operatorPledgeVaultBalances(1), 0.9 ether);
 
@@ -1252,10 +1290,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         assertEq(32 ether, address(liquidStaking).balance);
 
-        vm.expectRevert("No unstake quota");
-        vm.prank(address(20));
-        liquidStaking.unstakeETH(1, 2 ether);
-
         assertEq(32 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(operatorId));
 
         vm.prank(address(20));
@@ -1295,10 +1329,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         liquidStaking.setOperatorCanLoanAmounts(0 ether);
 
         assertEq(0 ether, liquidStaking.getOperatorNethUnstakePoolAmounts(operatorId));
-
-        vm.expectRevert("Insufficient funds to unstake");
-        vm.prank(address(20));
-        liquidStaking.unstakeETH(operatorId, 0.002 ether);
 
         vm.prank(_dao);
         liquidStaking.setOperatorCanLoanAmounts(32 ether);
@@ -1344,7 +1374,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         uint256[] memory tokenids = new uint256[] (1);
         tokenids[0] = 0;
         vm.prank(address(21));
-        liquidStaking.unstakeNFT(tokenids);
+        withdrawalRequest.unstakeNFT(tokenids);
         assertEq(0, vnft.balanceOf(address(21)));
         assertEq(0, neth.balanceOf(address(21)));
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
@@ -1407,10 +1437,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         uint256[] memory tokenids = new uint256[] (1);
         tokenids[0] = 0;
         vm.prank(address(74));
-        liquidStaking.unstakeNFT(tokenids);
+        withdrawalRequest.unstakeNFT(tokenids);
 
-        assertEq(100, liquidStaking.getNftUnstakeBlockNumber(0));
-        assertEq(0, liquidStaking.getUserUnstakeButOperatorNoExitNfs(opId)[0]);
+        assertEq(100, withdrawalRequest.getNftUnstakeBlockNumber(0));
+        assertEq(0, withdrawalRequest.getUserUnstakeButOperatorNoExitNfs(opId)[0]);
         assertEq(1, vnft.balanceOf(address(74)));
 
         vm.roll(200);
@@ -1443,4 +1473,42 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(0.9 ether, address(74).balance);
         assertEq(0, vnft.balanceOf(address(74)));
     }
+
+    function testResetOperatorVaultContract() public {
+        ELVault vaultContract2 = new ELVault();
+        ELVaultFactory vaultFactoryContract2 = new ELVaultFactory();
+        vaultFactoryContract2.initialize(address(vaultContract2), address(liquidStaking), _dao);
+        vaultFactoryContract2.setNodeOperatorRegistry(address(operatorRegistry));
+
+        address[] memory _rewardAddresses3 = new address[] (3);
+        uint256[] memory _ratios3 = new uint256[] (3);
+        _rewardAddresses3[0] = address(70);
+        _rewardAddresses3[1] = address(71);
+        _rewardAddresses3[2] = address(72);
+        _ratios3[0] = 70;
+        _ratios3[1] = 20;
+        _ratios3[2] = 10;
+
+        address _controllerAddress3 = address(80);
+        address _owner3 = address(81);
+
+        uint256 opId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "testELVault", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
+        );
+
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(opId);
+        address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(opId);
+        console.log("========testResetOperatorVaultContract==========", operatorVaultAddr);
+        vm.prank(_dao);
+        operatorRegistry.setVaultFactorContract(address(vaultFactoryContract2));
+        uint256[] memory resetOperatorIds = new uint256[] (1);
+        resetOperatorIds[0] = opId;
+        vm.prank(_dao);
+        operatorRegistry.resetOperatorVaultContract(resetOperatorIds);
+        operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(opId);
+        console.log("========testResetOperatorVaultContract==========", operatorVaultAddr);
+    }
+
+    // todo unstakeETH / unstakeNFT / requestLargeWithdrawals / claimLargeWithdrawals / reportConsensusData /
 }

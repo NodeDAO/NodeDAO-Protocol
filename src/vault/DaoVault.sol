@@ -16,8 +16,11 @@ contract DaoVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reentra
     event DaoAddressChanged(address _oldDao, address _dao);
     event Transferred(address _to, uint256 _amount);
 
+    error PermissionDenied();
+    error InvalidAddr();
+
     modifier onlyDao() {
-        require(msg.sender == dao, "PERMISSION_DENIED");
+        if (msg.sender != dao) revert PermissionDenied();
         _;
     }
 
@@ -41,7 +44,7 @@ contract DaoVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reentra
      * @param _to transfer to address
      */
     function transfer(uint256 _amount, address _to) external nonReentrant onlyDao {
-        require(_to != address(0), "Recipient address invalid");
+        if (_to == address(0)) revert InvalidAddr();
         payable(_to).transfer(_amount);
         emit Transferred(_to, _amount);
     }
@@ -51,7 +54,7 @@ contract DaoVault is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reentra
      * @param _dao new dao address
      */
     function setDaoAddress(address _dao) external onlyOwner {
-        require(_dao != address(0), "Dao address invalid");
+        if (_dao == address(0)) revert InvalidAddr();
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }

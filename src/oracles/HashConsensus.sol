@@ -76,6 +76,7 @@ interface IReportAsyncProcessor {
 contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     using SafeCast for uint256;
 
+    error InvalidAddr();
     error NumericOverflow();
     error ReportProcessorCannotBeZero();
     error DuplicateMember();
@@ -215,7 +216,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
     // set dao vault address
     function setDaoAddress(address _dao) external override onlyOwner {
-        require(_dao != address(0), "Dao address invalid");
+        if (_dao == address(0)) revert InvalidAddr();
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
