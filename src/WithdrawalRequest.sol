@@ -63,6 +63,7 @@ contract WithdrawalRequest is
 
     error PermissionDenied();
     error InvalidParameter();
+    error InvalidRequestId();
 
     modifier onlyLiquidStaking() {
         if (address(liquidStakingContract) != msg.sender) revert PermissionDenied();
@@ -173,6 +174,7 @@ contract WithdrawalRequest is
 
         for (uint256 i = 0; i < requestIds.length; ++i) {
             uint256 id = requestIds[i];
+            if (id >= withdrawalQueues.length) revert InvalidRequestId(); 
             WithdrawalInfo memory wInfo = withdrawalQueues[id];
             if (wInfo.owner != msg.sender) revert PermissionDenied();
             if (wInfo.isClaim) revert AlreadeClaimed();
