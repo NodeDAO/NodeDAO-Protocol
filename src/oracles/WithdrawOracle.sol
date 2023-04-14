@@ -12,11 +12,12 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     event WarnDataIncompleteProcessing(uint256 indexed refSlot, uint256 exitRequestLimit, uint256 reportExitedCount);
     event UpdateExitRequestLimit(uint256 exitRequestLimit);
+    event UpdateTotalBalanceTolerate(uint256 old, uint256 totalBalanceTolerate);
     event UpdateClVaultMinSettleLimit(uint256 clVaultMinSettleLimit);
     event PendingBalancesAdd(uint256 _addBalance, uint256 _totalBalance);
-    event PendingBalancesReset(uint256 _totalBalance);
-    event LiquidStakingChanged(address _before, address _after);
-    event VaultManagerChanged(address _before, address _after);
+    event PendingBalancesReset(uint256 totalBalance);
+    event LiquidStakingChanged(address oldLiq, address newLiq);
+    event VaultManagerChanged(address oldVaultManager, address newVaultManager);
     event ReportDataSuccess(
         uint256 indexed refSlot, uint256 reportExitedCount, uint256 clBalance, uint256 clVaultBalance
     );
@@ -31,6 +32,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     error ClVaultMinSettleLimitNotZero();
     error ValidatorReportedExited(uint256 tokenId);
     error ClVaultBalanceNotMinSettleLimit();
+    error InvalidTotalBalance(uint256 curTotal, uint256 minTotal, uint256 maxTotal);
 
     struct DataProcessingState {
         uint64 refSlot;
@@ -53,15 +55,8 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 reportExitedCount;
     }
 
-    ///
     /// Data provider interface
-    ///
-
     struct ReportData {
-        ///
-        /// Oracle consensus info
-        ///
-
         /// @dev Version of the oracle consensus rules. Current version expected
         /// by the oracle can be obtained by calling getConsensusVersion().
         uint256 consensusVersion;
@@ -75,11 +70,12 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 clBalance;
         /// Consensus Vault contract balance
         uint256 clVaultBalance;
+        // clSettleAmount  The total amount settled at the consensus level this time
+        uint256 clSettleAmount;
         /// Number of exits reported
         uint256 reportExitedCount;
-        ///
-        /// Report core data
-        ///
+        // operator exit principal and reward reinvestment distribution
+        // sum(clReward + clCapital)  = clSettleAmount
         WithdrawInfo[] withdrawInfos;
         // To exit the validator's info
         ExitValidatorInfo[] exitValidatorInfos;
@@ -88,9 +84,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         //nETH reported a large exit
         uint256[] largeExitDelayedRequestIds;
     }
-
-    /// Length in bytes of packed request
-    //    uint256 internal constant PACKED_REQUEST_LENGTH = 64;
 
     DataProcessingState internal dataProcessingState;
 
@@ -109,6 +102,12 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// Consensus Vault contract balance
     uint256 public clVaultBalance;
 
+    // The total amount settled at the consensus level this time
+    uint256 public lastClSettleAmount;
+
+    // Acceptable difference in reported totalBalance
+    uint256 public totalBalanceTolerate;
+
     address public liquidStakingContractAddress;
 
     address public vaultManager;
@@ -126,12 +125,16 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 lastProcessingRefSlot,
         address _dao,
         uint256 _exitRequestLimit,
-        uint256 _clVaultMinSettleLimit
+        uint256 _clVaultMinSettleLimit,
+        uint256 _clBalance,
+        uint256 _pendingBalance
     ) public initializer {
         __BaseOracle_init(secondsPerSlot, genesisTime, consensusContract, consensusVersion, lastProcessingRefSlot, _dao);
 
         exitRequestLimit = _exitRequestLimit;
         clVaultMinSettleLimit = _clVaultMinSettleLimit;
+        clBalances = _clBalance;
+        pendingBalances = _pendingBalance;
     }
 
     /// Set the number limit for the validator to report
@@ -139,6 +142,12 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         if (_exitRequestLimit == 0) revert ExitRequestLimitNotZero();
         exitRequestLimit = _exitRequestLimit;
         emit UpdateExitRequestLimit(_exitRequestLimit);
+    }
+
+    function setTotalBalanceTolerate(uint256 _totalBalanceTolerate) external onlyDao {
+        uint256 old = totalBalanceTolerate;
+        totalBalanceTolerate = _totalBalanceTolerate;
+        emit UpdateTotalBalanceTolerate(old, _totalBalanceTolerate);
     }
 
     function setClVaultMinSettleLimit(uint256 _clVaultMinSettleLimit) external onlyDao {
@@ -193,7 +202,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// @notice Submits report data for processing.
     ///
     /// @param data The data. See the `ReportData` structure's docs for details.
-    /// @param contractVersion Expected version of the oracle contract.
+    /// @param _contractVersion Expected version of the oracle contract.
     ///
     /// Reverts if:
     /// - The caller is not a member of the oracle committee and doesn't possess the
@@ -205,9 +214,9 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// - The keccak256 hash of the ABI-encoded data is different from the last hash
     ///   provided by the hash consensus contract.
     /// - The provided data doesn't meet safety checks.
-    function submitReportData(ReportData calldata data, uint256 contractVersion) external whenNotPaused {
+    function submitReportData(ReportData calldata data, uint256 _contractVersion) external whenNotPaused {
         _checkMsgSenderIsAllowedToSubmitData();
-        _checkContractVersion(consensusVersion);
+        _checkContractVersion(_contractVersion);
         // it's a waste of gas to copy the whole calldata into mem but seems there's no way around
         _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)));
         _startProcessing();
@@ -248,17 +257,20 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         if (data.exitValidatorInfos.length != data.reportExitedCount) revert InvalidRequestsDataLength();
         if (data.clVaultBalance < exitRequestLimit) revert ClVaultBalanceNotMinSettleLimit();
 
+        // TotalClBalance check
+        _checkTotalClBalance(data.refSlot, data.clBalance, data.clVaultBalance);
+
         // Invoke vault Manager to process the reported data
         IVaultManager(vaultManager).reportConsensusData(
             data.withdrawInfos,
             data.exitValidatorInfos,
             data.delayedExitTokenIds,
             data.largeExitDelayedRequestIds,
-            data.clBalance + data.clVaultBalance
+            data.clBalance + data.clSettleAmount
         );
 
         // oracle maintains the necessary data
-        _dealReportOracleData(data.refSlot, data.clBalance, data.clVaultBalance);
+        _dealReportOracleData(data.clBalance, data.clVaultBalance, data.clSettleAmount);
 
         dataProcessingState = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
@@ -267,12 +279,35 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         emit ReportDataSuccess(data.refSlot, data.reportExitedCount, data.clBalance, data.clVaultBalance);
     }
 
-    function _dealReportOracleData(uint256 refSlot, uint256 _clBalances, uint256 _clVaultBalance) internal {
+    /// revert case
+    /// preTotal = clVaultBalance + clBalances - lastClSettleAmount
+    /// curTotal = _curClVaultBalance + _curClBalances
+    /// culTotal < preTotal - totalBalanceTolerate
+    /// culTotal > preTotal + pendingBalances + preTotal * (curRefSlot - preRefSlot) * 10 / 100 / 365 / 7200
+    function _checkTotalClBalance(uint256 _curRefSlot, uint256 _curClBalances, uint256 _curClVaultBalance)
+        internal
+        view
+    {
+        (uint256 lastReportRefSlot,) = _getLastReportingRefSlotState();
+
+        uint256 preTotal = clVaultBalance + clBalances - lastClSettleAmount;
+        uint256 curTotal = _curClVaultBalance + _curClBalances;
+        uint256 minTotal = preTotal - totalBalanceTolerate;
+        uint256 maxTotal =
+            preTotal + pendingBalances + preTotal * (_curRefSlot - lastReportRefSlot) * 10 / 100 / 365 / 7200;
+
+        if (curTotal < minTotal || curTotal > maxTotal) {
+            revert InvalidTotalBalance(curTotal, minTotal, maxTotal);
+        }
+    }
+
+    function _dealReportOracleData(uint256 _clBalances, uint256 _clVaultBalance, uint256 _clSettleAmount) internal {
         pendingBalances = 0;
         emit PendingBalancesReset(0);
 
         clBalances = _clBalances;
         clVaultBalance = _clVaultBalance;
+        lastClSettleAmount = _clSettleAmount;
     }
 
     // use for submitConsensusReport

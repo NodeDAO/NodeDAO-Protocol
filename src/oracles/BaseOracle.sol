@@ -22,6 +22,11 @@ interface IConsensusContract {
     function getFrameConfig() external view returns (uint256 initialEpoch, uint256 epochsPerFrame);
 
     function getInitialRefSlot() external view returns (uint256);
+
+    function getLastReportingRefSlotState()
+        external
+        view
+        returns (uint256 lastReportRefSlot, uint256 lastConsensusRefSlot);
 }
 
 abstract contract BaseOracle is
@@ -82,8 +87,8 @@ abstract contract BaseOracle is
     function __BaseOracle_init(
         uint256 secondsPerSlot,
         uint256 genesisTime,
-        address consensusContract,
-        uint256 consensusVersion,
+        address _consensusContract,
+        uint256 _consensusVersion,
         uint256 _lastProcessingRefSlot,
         address _dao
     ) internal virtual onlyInitializing {
@@ -97,8 +102,8 @@ abstract contract BaseOracle is
         GENESIS_TIME = genesisTime;
 
         _initializeContractVersionTo(1);
-        _setConsensusContract(consensusContract, _lastProcessingRefSlot);
-        _setConsensusVersion(consensusVersion);
+        _setConsensusContract(_consensusContract, _lastProcessingRefSlot);
+        _setConsensusVersion(_consensusVersion);
         lastProcessingRefSlot = _lastProcessingRefSlot;
 
         consensusReport.refSlot = uint64(_lastProcessingRefSlot);
@@ -243,7 +248,7 @@ abstract contract BaseOracle is
     /// the currently submitted consensus report, and that processing deadline is not missed.
     /// Reverts otherwise.
     ///
-    function _checkConsensusData(uint256 refSlot, uint256 consensusVersion, bytes32 hash) internal view {
+    function _checkConsensusData(uint256 refSlot, uint256 _consensusVersion, bytes32 hash) internal view {
         // If the processing deadline for the current consensus report is missed, an error is reported
         _checkProcessingDeadline();
 
@@ -252,7 +257,7 @@ abstract contract BaseOracle is
             revert UnexpectedRefSlot(report.refSlot, refSlot);
         }
 
-        uint256 expectedConsensusVersion = consensusVersion;
+        uint256 expectedConsensusVersion = _consensusVersion;
         if (consensusVersion != expectedConsensusVersion) {
             revert UnexpectedConsensusVersion(expectedConsensusVersion, consensusVersion);
         }
@@ -312,7 +317,7 @@ abstract contract BaseOracle is
         emit ConsensusVersionSet(version, prevVersion);
     }
 
-    function _setConsensusContract(address addr, uint256 lastProcessingRefSlot) internal {
+    function _setConsensusContract(address addr, uint256 _lastProcessingRefSlot) internal {
         if (addr == address(0)) revert AddressCannotBeZero();
 
         address prevAddr = consensusContract;
@@ -324,12 +329,20 @@ abstract contract BaseOracle is
         }
 
         uint256 initialRefSlot = IConsensusContract(addr).getInitialRefSlot();
-        if (initialRefSlot < lastProcessingRefSlot) {
-            revert InitialRefSlotCannotBeLessThanProcessingOne(initialRefSlot, lastProcessingRefSlot);
+        if (initialRefSlot < _lastProcessingRefSlot) {
+            revert InitialRefSlotCannotBeLessThanProcessingOne(initialRefSlot, _lastProcessingRefSlot);
         }
 
         consensusContract = addr;
         emit ConsensusHashContractSet(addr, prevAddr);
+    }
+
+    function _getLastReportingRefSlotState()
+        internal
+        view
+        returns (uint256 lastReportRefSlot, uint256 lastConsensusRefSlot)
+    {
+        (lastReportRefSlot, lastConsensusRefSlot) = IConsensusContract(consensusContract).getLastReportingRefSlotState();
     }
 
     function _getTime() internal view virtual returns (uint256) {
