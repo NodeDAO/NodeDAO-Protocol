@@ -423,7 +423,7 @@ contract LiquidStaking is
 
         uint256 mintNftsCount = msg.value / DEPOSIT_SIZE;
         for (uint256 i = 0; i < mintNftsCount; ++i) {
-            uint256 tokenId = vNFTContract.whiteListMint(bytes(""), userWithdrawalCredentials, msg.sender, _operatorId);
+            vNFTContract.whiteListMint(bytes(""), userWithdrawalCredentials, msg.sender, _operatorId);
         }
 
         operatorNftPoolBalances[_operatorId] += msg.value;
