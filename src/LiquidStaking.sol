@@ -579,7 +579,7 @@ contract LiquidStaking is
      * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function addSlashFundToStakePool(uint256 _operatorId, uint256 _amount) external payable onlyOperatorSlash {
+    function addPenaltyFundToStakePool(uint256 _operatorId, uint256 _amount) external payable onlyOperatorSlash {
         _updateStakeFundLedger(_operatorId, _amount);
     }
 
@@ -833,6 +833,15 @@ contract LiquidStaking is
     function setVaultManagerContract(address _vaultManagerContract) external onlyDao {
         emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
         vaultManagerContractAddress = _vaultManagerContract;
+    }
+
+    /**
+     * @notice Set new withdrawalRequestContract address
+     * @param _withdrawalRequestContractAddress new withdrawalRequestContract address
+     */
+    function setWithdrawalRequestContract(address _withdrawalRequestContractAddress) external onlyDao {
+        emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
+        withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
     }
 
     /**

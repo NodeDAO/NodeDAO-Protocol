@@ -7,7 +7,7 @@ pragma solidity 0.8.8;
  * @notice WithdrawalRequest contract
  */
 interface IWithdrawalRequest {
-    function getNftUnstakeBlockNumbers(uint256 _tokenId) external view returns (uint256);
+    function getNftUnstakeBlockNumber(uint256 _tokenId) external view returns (uint256);
     function getWithdrawalOfRequestId(uint256 _requestId)
         external
         view

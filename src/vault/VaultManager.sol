@@ -36,6 +36,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event RewardClaimed(address _owner, uint256 _amount);
     event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
+    event NodeOperatorRegistryContractSet(
+        address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
+    );
 
     error PermissionDenied();
     error InvalidParameter();
@@ -52,6 +55,11 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         _;
     }
 
+    modifier onlyDao() {
+        if (msg.sender != dao) revert PermissionDenied();
+        _;
+    }
+
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function initialize(
@@ -62,6 +70,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         address _withdrawOracleContractAddress,
         address _operatorSlashContract
     ) public initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+
         liquidStakingContract = ILiquidStaking(_liquidStakingAddress);
         vNFTContract = IVNFT(_nVNFTContractAddress);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryAddress);
@@ -363,5 +375,14 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         }
 
         liquidStakingContract.claimRewardsOfDao(_operatorIds, daoRewards);
+    }
+
+    /**
+     * @notice Set new nodeOperatorRegistryContract address
+     * @param _nodeOperatorRegistryContract new withdrawalCredentials
+     */
+    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
+        emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
+        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
     }
 }

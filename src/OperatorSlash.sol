@@ -165,7 +165,7 @@ contract OperatorSlash is
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
             if (vNFTContract.ownerOf(tokenId) == address(this)) {
-                liquidStakingContract.addSlashFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
+                liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
             } else {
                 uint256 requirAmount = _requireAmounts[i];
                 uint256 slashAmount = _slashAmounts[i];
@@ -215,7 +215,7 @@ contract OperatorSlash is
         }
 
         if (_amount != 0) {
-            liquidStakingContract.addSlashFundToStakePool{value: _amount}(_operatorId, _amount);
+            liquidStakingContract.addPenaltyFundToStakePool{value: _amount}(_operatorId, _amount);
         }
     }
 

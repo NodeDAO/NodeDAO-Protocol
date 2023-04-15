@@ -79,7 +79,7 @@ interface ILiquidStaking {
      * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function addSlashFundToStakePool(uint256 _operatorId, uint256 _amount) external payable;
+    function addPenaltyFundToStakePool(uint256 _operatorId, uint256 _amount) external payable;
 
     /**
      * @notice Users claim vNFT rewards
@@ -143,4 +143,5 @@ interface ILiquidStaking {
     event VaultManagerContractSet(address vaultManagerContractAddress, address _vaultManagerContract);
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
     event OperatorCanLoanAmountsSet(uint256 operatorCanLoanAmounts, uint256 _newCanloadAmounts);
+    event WithdrawalRequestContractSet(address _withdrawalRequestContract, address _withdrawalRequestContractAddress);
 }
