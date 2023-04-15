@@ -39,6 +39,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event NodeOperatorRegistryContractSet(
         address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
     );
+    event WithdrawOracleContractSet(address oldWithdrawOracleContractAddress, address _withdrawOracleContractAddress);
 
     error PermissionDenied();
     error InvalidParameter();
@@ -384,5 +385,14 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
         emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    }
+
+    /**
+     * @notice Set new withdrawOracleContract address
+     * @param _withdrawOracleContractAddress new withdrawOracleContract address
+     */
+    function setWithdrawOracleContractAddress(address _withdrawOracleContractAddress) external onlyDao {
+        emit WithdrawOracleContractSet(withdrawOracleContractAddress, _withdrawOracleContractAddress);
+        withdrawOracleContractAddress = _withdrawOracleContractAddress;
     }
 }

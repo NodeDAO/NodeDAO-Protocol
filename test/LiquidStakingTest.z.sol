@@ -173,7 +173,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             address(vnft),
             address(neth),
             address(operatorRegistry),
-            address(withdrawalRequest),
             address(vaultManager)
         );
 

@@ -24,7 +24,6 @@ contract WithdrawalRequest is
     INETH public nETHContract;
     INodeOperatorsRegistry public nodeOperatorRegistryContract;
     IVaultManager public vaultManagerContract;
-    address public withdrawOracleContractAddress;
     address public dao;
 
     // key is tokenId, value is nft unstake blocknumber
@@ -86,7 +85,6 @@ contract WithdrawalRequest is
         address _nVNFTContractAddress,
         address _nETHContractAddress,
         address _nodeOperatorRegistryAddress,
-        address _withdrawOracleContractAddress,
         address _vaultManagerContract
     ) public initializer {
         __Ownable_init();
@@ -98,7 +96,6 @@ contract WithdrawalRequest is
         vNFTContract = IVNFT(_nVNFTContractAddress);
         nETHContract = INETH(_nETHContractAddress);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryAddress);
-        withdrawOracleContractAddress = _withdrawOracleContractAddress;
         vaultManagerContract = IVaultManager(_vaultManagerContract);
         dao = _dao;
     }

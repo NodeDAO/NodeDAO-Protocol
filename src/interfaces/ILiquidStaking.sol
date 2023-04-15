@@ -131,7 +131,9 @@ interface ILiquidStaking {
     event LiquidStakingWithdrawalCredentialsSet(
         bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
     );
-    event BeaconOracleContractSet(address _oldBeaconOracleContract, address _beaconOracleContractAddress);
+    event WithdrawOracleContractSet(
+        address _oldWithdrawOracleContractSet, address _withdrawOracleContractSetAddress
+    );
     event NodeOperatorRegistryContractSet(
         address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
     );

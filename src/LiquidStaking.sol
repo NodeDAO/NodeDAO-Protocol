@@ -48,7 +48,7 @@ contract LiquidStaking is
 
     IVNFT public vNFTContract;
 
-    IWithdrawOracle public beaconOracleContract;
+    IWithdrawOracle public withdrawOracleContract;
 
     bytes public liquidStakingWithdrawalCredentials;
 
@@ -143,7 +143,7 @@ contract LiquidStaking is
      * @param _nodeOperatorRegistryContractAddress Node Operator Registry Contract Address
      * @param _nETHContractAddress NETH contract address, The liquidity token for the eth stake
      * @param _nVNFTContractAddress VNFT contract address, The NFT representing the validator
-     * @param _beaconOracleContractAddress Beacon Oracle Contract Address, where balances and VNFT values are tracked
+     * @param _withdrawOracleContractAddress Beacon Oracle Contract Address, where balances and VNFT values are tracked
      * @param _depositContractAddress eth2 Deposit Contract Address
      */
     function initialize(
@@ -153,7 +153,7 @@ contract LiquidStaking is
         address _nodeOperatorRegistryContractAddress,
         address _nETHContractAddress,
         address _nVNFTContractAddress,
-        address _beaconOracleContractAddress,
+        address _withdrawOracleContractAddress,
         address _depositContractAddress
     ) public initializer {
         __Ownable_init();
@@ -173,7 +173,7 @@ contract LiquidStaking is
 
         vNFTContract = IVNFT(_nVNFTContractAddress);
 
-        beaconOracleContract = IWithdrawOracle(_beaconOracleContractAddress);
+        withdrawOracleContract = IWithdrawOracle(_withdrawOracleContractAddress);
     }
 
     /**
@@ -468,7 +468,7 @@ contract LiquidStaking is
             operatorNftPoolBalances[operatorId] -= userStakeAmount;
         }
 
-        beaconOracleContract.addPendingBalances(poolStakeAmount);
+        withdrawOracleContract.addPendingBalances(poolStakeAmount);
     }
 
     function _stakeAndMint(
@@ -740,9 +740,9 @@ contract LiquidStaking is
      * @notice Get the total amount of ETH in the protocol
      */
     function getTotalEthValue() public view returns (uint256) {
-        return operatorPoolBalancesSum + beaconOracleContract.getPendingBalances()
-            + beaconOracleContract.getClBalances() + beaconOracleContract.getClVaultBalances()
-            - beaconOracleContract.getLastClSettleAmount() - withdrawalRequestContract.getTotalPendingClaimedAmounts();
+        return operatorPoolBalancesSum + withdrawOracleContract.getPendingBalances()
+            + withdrawOracleContract.getClBalances() + withdrawOracleContract.getClVaultBalances()
+            - withdrawOracleContract.getLastClSettleAmount() - withdrawalRequestContract.getTotalPendingClaimedAmounts();
     }
 
     /**
@@ -850,12 +850,12 @@ contract LiquidStaking is
     }
 
     /**
-     * @notice Set new beaconOracleContract address
-     * @param _beaconOracleContractAddress new beaconOracleContract address
+     * @notice Set new withdrawOracleContract address
+     * @param _withdrawOracleContractAddress new withdrawOracleContract address
      */
-    function setBeaconOracleContract(address _beaconOracleContractAddress) external onlyDao {
-        emit BeaconOracleContractSet(address(beaconOracleContract), _beaconOracleContractAddress);
-        beaconOracleContract = IWithdrawOracle(_beaconOracleContractAddress);
+    function setWithdrawOracleContract(address _withdrawOracleContractAddress) external onlyDao {
+        emit WithdrawOracleContractSet(address(withdrawOracleContract), _withdrawOracleContractAddress);
+        withdrawOracleContract = IWithdrawOracle(_withdrawOracleContractAddress);
     }
 
     /**
