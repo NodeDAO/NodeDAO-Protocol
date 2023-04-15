@@ -168,12 +168,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         withdrawalRequest = new WithdrawalRequest();
         withdrawalRequest.initialize(
-            _dao,
-            address(liquidStaking),
-            address(vnft),
-            address(neth),
-            address(operatorRegistry),
-            address(vaultManager)
+            _dao, address(liquidStaking), address(vnft), address(neth), address(operatorRegistry), address(vaultManager)
         );
 
         operatorSlash = new OperatorSlash();
