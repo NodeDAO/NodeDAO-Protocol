@@ -80,6 +80,11 @@ contract WithdrawalRequest is
         address _withdrawOracleContractAddress,
         address _vaultManagerContract
     ) public initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+        __Pausable_init();
+
         liquidStakingContract = ILiquidStaking(_liquidStakingAddress);
         vNFTContract = IVNFT(_nVNFTContractAddress);
         nETHContract = INETH(_nETHContractAddress);
