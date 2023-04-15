@@ -736,8 +736,9 @@ contract LiquidStaking is
      * @notice Get the total amount of ETH in the protocol
      */
     function getTotalEthValue() public view returns (uint256) {
-        return
-            operatorPoolBalancesSum + beaconOracleContract.getClBalances() + beaconOracleContract.getPendingBalances();
+        return operatorPoolBalancesSum + beaconOracleContract.getPendingBalances()
+            + beaconOracleContract.getClBalances() + beaconOracleContract.getClVaultBalances()
+            - beaconOracleContract.getLastClSettleAmount();
     }
 
     /**

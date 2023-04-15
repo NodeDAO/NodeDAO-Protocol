@@ -13,6 +13,11 @@ interface IWithdrawOracle {
     function getClVaultBalances() external view returns (uint256);
 
     /**
+     * @return {uint256} Consensus reward settle amounte
+     */
+    function getLastClSettleAmount() external view returns (uint256);
+
+    /**
      * @return {uint256} The total balance of the pending validators
      */
     function getPendingBalances() external view returns (uint256);
