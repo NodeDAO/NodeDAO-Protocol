@@ -199,7 +199,7 @@ contract LiquidStaking is
         if (_operatorIds.length != _users.length && _nethAmounts.length != _users.length) revert InvalidParameter();
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             if (!nodeOperatorRegistryContract.isTrustedOperator(_operatorIds[i])) revert RequireOperatorTrusted();
-            _stake(_operatorIds[i], _users[i], _nethAmounts[i]);
+            _stakeRecords(_operatorIds[i], _users[i], _nethAmounts[i]);
         }
 
         if (
@@ -295,7 +295,7 @@ contract LiquidStaking is
         nETHContract.whiteListMint(amountOut, msg.sender);
 
         _updateStakeFundLedger(_operatorId, depositPoolAmount);
-        _stake(_operatorId, msg.sender, amountOut);
+        _stakeRecords(_operatorId, msg.sender, amountOut);
 
         emit EthStake(_operatorId, msg.sender, msg.value, amountOut);
     }
@@ -320,7 +320,7 @@ contract LiquidStaking is
         }
     }
 
-    function _stake(uint256 _operatorId, address _from, uint256 _amount) internal {
+    function _stakeRecords(uint256 _operatorId, address _from, uint256 _amount) internal {
         StakeInfo[] memory records = stakeRecords[_from];
         if (records.length == 0) {
             stakeRecords[_from].push(StakeInfo({operatorId: _operatorId, quota: _amount}));
@@ -847,6 +847,15 @@ contract LiquidStaking is
     function setWithdrawalRequestContract(address _withdrawalRequestContractAddress) external onlyDao {
         emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
         withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
+    }
+
+    /**
+     * @notice Set new operatorSlashContract address
+     * @param _operatorSlashContract new operatorSlashContract address
+     */
+    function setOperatorSlashContract(address _operatorSlashContract) external onlyDao {
+        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContract);
+        operatorSlashContract = IOperatorSlash(_operatorSlashContract);
     }
 
     /**
