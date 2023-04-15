@@ -64,6 +64,11 @@ contract OperatorSlash is
         _;
     }
 
+    modifier onlyDao() {
+        if (msg.sender != dao) revert PermissionDenied();
+        _;
+    }
+
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function initialize(
@@ -251,5 +256,52 @@ contract OperatorSlash is
         if (_slashAmountPerBlockPerValidator > 10000000000000) revert ExcessivePenaltyAmount();
         emit SlashAmountPerBlockPerValidatorSet(slashAmountPerBlockPerValidator, _slashAmountPerBlockPerValidator);
         slashAmountPerBlockPerValidator = _slashAmountPerBlockPerValidator;
+    }
+
+    /**
+     * @notice Set new nodeOperatorRegistryContract address
+     * @param _nodeOperatorRegistryContract new withdrawalCredentials
+     */
+    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
+        emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
+        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    }
+
+    /**
+     * @notice Set new withdrawalRequestContract address
+     * @param _withdrawalRequestContractAddress new withdrawalRequestContract address
+     */
+    function setWithdrawalRequestContract(address _withdrawalRequestContractAddress) external onlyDao {
+        emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
+        withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
+    }
+
+    /**
+     * @notice Set new vaultManagerContractA address
+     * @param _vaultManagerContract new vaultManagerContract address
+     */
+    function setVaultManagerContract(address _vaultManagerContract) external onlyDao {
+        emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
+        vaultManagerContractAddress = _vaultManagerContract;
+    }
+
+    /**
+     * @notice Set proxy address of LiquidStaking
+     * @param _liquidStakingContractAddress proxy address of LiquidStaking
+     * @dev will only allow call of function by the address registered as the owner
+     */
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+    }
+
+    /**
+     * @notice set dao address
+     * @param _dao new dao address
+     */
+    function setDaoAddress(address _dao) external onlyOwner {
+        if (_dao == address(0)) revert InvalidParameter();
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
     }
 }

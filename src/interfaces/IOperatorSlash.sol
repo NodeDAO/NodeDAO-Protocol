@@ -47,4 +47,14 @@ interface IOperatorSlash {
     event SlashAmountPerBlockPerValidatorSet(
         uint256 _oldSlashAmountPerBlockPerValidator, uint256 _slashAmountPerBlockPerValidator
     );
+
+    event NodeOperatorRegistryContractSet(
+        address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
+    );
+    event VaultManagerContractSet(address _oldVaultManagerContractAddress, address _vaultManagerContract);
+    event WithdrawalRequestContractSet(
+        address _oldWithdrawalRequestContract, address _withdrawalRequestContractAddress
+    );
+    event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
+    event DaoAddressChanged(address oldDao, address _dao);
 }
