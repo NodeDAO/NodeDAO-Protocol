@@ -35,7 +35,7 @@ abstract contract GoerliHelperContract {
 
     address liquidStakingProxy = address(0xa8256fD3A31648D49D0f3551e6e45Db6f5f91d53);
 
-    address vaultManagerProxy = address(0x0dfb3d69aeC85892d4e5CDd7Ad431B2C50b0E358);
+    address vaultManagerProxy = address(0xb9fBa348D4f02EA62496EC972e85Ab7A3F9918dC);
 }
 
 abstract contract BaseContract {
