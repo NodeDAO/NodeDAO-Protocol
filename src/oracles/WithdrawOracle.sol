@@ -165,6 +165,16 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         return clBalances;
     }
 
+    /**
+     * @return {uint256} Consensus reward settle amounte
+     */
+    function getLastClSettleAmount() external view returns (uint256) {
+        return lastClSettleAmount;
+    }
+
+    /**
+     * @return {uint256} Consensus Vault contract balance
+     */
     function getClVaultBalances() external view returns (uint256) {
         return clVaultBalance;
     }

@@ -63,8 +63,9 @@ interface ILiquidStaking {
     /**
      * @notice large withdrawals, when users claim eth, will trigger the burning of locked Neth
      * @param _totalRequestNethAmount totalRequestNethAmount will burn
+     * @param _to burn neth address
      */
-    function largeWithdrawalBurnNeth(uint256 _totalRequestNethAmount) external;
+    function LargeWithdrawalRequestBurnNeth(uint256 _totalRequestNethAmount, address _to) external;
 
     /**
      * @notice When unstakeNFT, if the funds pledged by the user have not been deposited, the user is allowed to withdraw directly
@@ -79,7 +80,7 @@ interface ILiquidStaking {
      * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function addSlashFundToStakePool(uint256 _operatorId, uint256 _amount) external payable;
+    function addPenaltyFundToStakePool(uint256 _operatorId, uint256 _amount) external payable;
 
     /**
      * @notice Users claim vNFT rewards
@@ -143,4 +144,5 @@ interface ILiquidStaking {
     event VaultManagerContractSet(address vaultManagerContractAddress, address _vaultManagerContract);
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
     event OperatorCanLoanAmountsSet(uint256 operatorCanLoanAmounts, uint256 _newCanloadAmounts);
+    event WithdrawalRequestContractSet(address _withdrawalRequestContract, address _withdrawalRequestContractAddress);
 }

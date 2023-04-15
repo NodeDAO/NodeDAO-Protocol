@@ -76,6 +76,10 @@ contract OperatorSlash is
         // goerli 7200; mainnet 50400;
         uint256 _delayedExitSlashStandard
     ) public initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+
         liquidStakingContract = ILiquidStaking(_liquidStakingAddress);
         vNFTContract = IVNFT(_nVNFTContractAddress);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryAddress);
@@ -110,7 +114,8 @@ contract OperatorSlash is
     {
         for (uint256 i = 0; i < _nftExitDelayedTokenIds.length; ++i) {
             uint256 tokenId = _nftExitDelayedTokenIds[i];
-            uint256 startNumber = withdrawalRequestContract.getNftUnstakeBlockNumbers(tokenId);
+            uint256 startNumber = withdrawalRequestContract.getNftUnstakeBlockNumber(tokenId);
+            if (startNumber == 0) revert InvalidParameter();
             if (nftExitDelayedSlashRecords[tokenId] != 0) {
                 startNumber = nftExitDelayedSlashRecords[tokenId];
             }
@@ -160,7 +165,7 @@ contract OperatorSlash is
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
             if (vNFTContract.ownerOf(tokenId) == address(this)) {
-                liquidStakingContract.addSlashFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
+                liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
             } else {
                 uint256 requirAmount = _requireAmounts[i];
                 uint256 slashAmount = _slashAmounts[i];
@@ -210,7 +215,7 @@ contract OperatorSlash is
         }
 
         if (_amount != 0) {
-            liquidStakingContract.addSlashFundToStakePool{value: _amount}(_operatorId, _amount);
+            liquidStakingContract.addPenaltyFundToStakePool{value: _amount}(_operatorId, _amount);
         }
     }
 

@@ -141,7 +141,7 @@ contract DeployNewContractScript is Script {
         );
 
         VaultManager(vaultManagerProxy).initialize(
-            dao, liquidStakingProxy, vnftProxy, withdrawOracleProxy, withdrawOracleProxy, operatorSlashProxy
+            dao, liquidStakingProxy, vnftProxy, operatorRegistryProxy, withdrawOracleProxy, operatorSlashProxy
         );
 
         vm.stopBroadcast();

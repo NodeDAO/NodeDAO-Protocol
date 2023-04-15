@@ -579,7 +579,7 @@ contract LiquidStaking is
      * @param _operatorId operator id
      * @param _amount slash amount
      */
-    function addSlashFundToStakePool(uint256 _operatorId, uint256 _amount) external payable onlyOperatorSlash {
+    function addPenaltyFundToStakePool(uint256 _operatorId, uint256 _amount) external payable onlyOperatorSlash {
         _updateStakeFundLedger(_operatorId, _amount);
     }
 
@@ -599,9 +599,13 @@ contract LiquidStaking is
     /**
      * @notice large withdrawals, when users claim eth, will trigger the burning of locked Neth
      * @param _totalRequestNethAmount totalRequestNethAmount will burn
+     * @param _to burn neth address
      */
-    function largeWithdrawalBurnNeth(uint256 _totalRequestNethAmount) external onlyWithdrawalRequest {
-        nETHContract.whiteListBurn(_totalRequestNethAmount, address(withdrawalRequestContract));
+    function LargeWithdrawalRequestBurnNeth(uint256 _totalRequestNethAmount, address _to)
+        external
+        onlyWithdrawalRequest
+    {
+        nETHContract.whiteListBurn(_totalRequestNethAmount, address(_to));
     }
 
     /**
@@ -736,8 +740,9 @@ contract LiquidStaking is
      * @notice Get the total amount of ETH in the protocol
      */
     function getTotalEthValue() public view returns (uint256) {
-        return
-            operatorPoolBalancesSum + beaconOracleContract.getClBalances() + beaconOracleContract.getPendingBalances();
+        return operatorPoolBalancesSum + beaconOracleContract.getPendingBalances()
+            + beaconOracleContract.getClBalances() + beaconOracleContract.getClVaultBalances()
+            - beaconOracleContract.getLastClSettleAmount() - withdrawalRequestContract.getTotalPendingClaimedAmounts();
     }
 
     /**
@@ -833,6 +838,15 @@ contract LiquidStaking is
     function setVaultManagerContract(address _vaultManagerContract) external onlyDao {
         emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
         vaultManagerContractAddress = _vaultManagerContract;
+    }
+
+    /**
+     * @notice Set new withdrawalRequestContract address
+     * @param _withdrawalRequestContractAddress new withdrawalRequestContract address
+     */
+    function setWithdrawalRequestContract(address _withdrawalRequestContractAddress) external onlyDao {
+        emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
+        withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
     }
 
     /**
