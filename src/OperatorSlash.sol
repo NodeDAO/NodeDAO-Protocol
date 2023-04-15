@@ -52,6 +52,7 @@ contract OperatorSlash is
     error PermissionDenied();
     error InvalidParameter();
     error NoSlashNeeded();
+    error ExcessivePenaltyAmount();
 
     modifier onlyLiquidStaking() {
         if (address(liquidStakingContract) != msg.sender) revert PermissionDenied();
@@ -60,6 +61,11 @@ contract OperatorSlash is
 
     modifier onlyVaultManager() {
         if (msg.sender != vaultManagerContractAddress) revert PermissionDenied();
+        _;
+    }
+
+    modifier onlyDao() {
+        if (msg.sender != dao) revert PermissionDenied();
         _;
     }
 
@@ -75,6 +81,10 @@ contract OperatorSlash is
         // goerli 7200; mainnet 50400;
         uint256 _delayedExitSlashStandard
     ) public initializer {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+
         liquidStakingContract = ILiquidStaking(_liquidStakingAddress);
         vNFTContract = IVNFT(_nVNFTContractAddress);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryAddress);
@@ -83,6 +93,8 @@ contract OperatorSlash is
         dao = _dao;
 
         delayedExitSlashStandard = _delayedExitSlashStandard;
+
+        // 2000000000000 * 7200 * 365 = 5256000000000000000 = 5.256 eth
         slashAmountPerBlockPerValidator = 2000000000000;
     }
 
@@ -107,7 +119,8 @@ contract OperatorSlash is
     {
         for (uint256 i = 0; i < _nftExitDelayedTokenIds.length; ++i) {
             uint256 tokenId = _nftExitDelayedTokenIds[i];
-            uint256 startNumber = withdrawalRequestContract.getNftUnstakeBlockNumbers(tokenId);
+            uint256 startNumber = withdrawalRequestContract.getNftUnstakeBlockNumber(tokenId);
+            if (startNumber == 0) revert InvalidParameter();
             if (nftExitDelayedSlashRecords[tokenId] != 0) {
                 startNumber = nftExitDelayedSlashRecords[tokenId];
             }
@@ -157,7 +170,7 @@ contract OperatorSlash is
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
             if (vNFTContract.ownerOf(tokenId) == address(this)) {
-                liquidStakingContract.addSlashFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
+                liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
             } else {
                 uint256 requirAmount = _requireAmounts[i];
                 uint256 slashAmount = _slashAmounts[i];
@@ -207,10 +220,15 @@ contract OperatorSlash is
         }
 
         if (_amount != 0) {
-            liquidStakingContract.addSlashFundToStakePool{value: _amount}(_operatorId, _amount);
+            liquidStakingContract.addPenaltyFundToStakePool{value: _amount}(_operatorId, _amount);
         }
     }
 
+    /**
+     * @notice claim compensation
+     * @param _tokenIds tokens Id
+     * @param _owner owner address
+     */
     function claimCompensated(uint256[] memory _tokenIds, address _owner)
         external
         onlyLiquidStaking
@@ -230,8 +248,60 @@ contract OperatorSlash is
         return totalCompensated;
     }
 
+    /**
+     * @notice Set the penalty amount per block per validator
+     * @param _slashAmountPerBlockPerValidator unit penalty amount
+     */
     function setSlashAmountPerBlockPerValidator(uint256 _slashAmountPerBlockPerValidator) external onlyOwner {
+        if (_slashAmountPerBlockPerValidator > 10000000000000) revert ExcessivePenaltyAmount();
         emit SlashAmountPerBlockPerValidatorSet(slashAmountPerBlockPerValidator, _slashAmountPerBlockPerValidator);
         slashAmountPerBlockPerValidator = _slashAmountPerBlockPerValidator;
+    }
+
+    /**
+     * @notice Set new nodeOperatorRegistryContract address
+     * @param _nodeOperatorRegistryContract new withdrawalCredentials
+     */
+    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
+        emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
+        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    }
+
+    /**
+     * @notice Set new withdrawalRequestContract address
+     * @param _withdrawalRequestContractAddress new withdrawalRequestContract address
+     */
+    function setWithdrawalRequestContract(address _withdrawalRequestContractAddress) external onlyDao {
+        emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
+        withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
+    }
+
+    /**
+     * @notice Set new vaultManagerContractA address
+     * @param _vaultManagerContract new vaultManagerContract address
+     */
+    function setVaultManagerContract(address _vaultManagerContract) external onlyDao {
+        emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
+        vaultManagerContractAddress = _vaultManagerContract;
+    }
+
+    /**
+     * @notice Set proxy address of LiquidStaking
+     * @param _liquidStakingContractAddress proxy address of LiquidStaking
+     * @dev will only allow call of function by the address registered as the owner
+     */
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+    }
+
+    /**
+     * @notice set dao address
+     * @param _dao new dao address
+     */
+    function setDaoAddress(address _dao) external onlyOwner {
+        if (_dao == address(0)) revert InvalidParameter();
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
     }
 }

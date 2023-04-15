@@ -32,6 +32,9 @@ contract MockOracleProvider is CommonConstantProvider {
     uint256 public constant EXIT_REQUEST_LIMIT = 1000;
     uint256 public constant CL_VAULT_MIN_SETTLE_LIMIT = 1e19;
 
+    uint256 public constant CL_BALANCE = 0;
+    uint256 public constant PENDING_BALANCE = 0;
+
     function computeTimestampAtEpoch(uint256 _epoch) public pure returns (uint256) {
         return GENESIS_TIME + _epoch * SECONDS_PER_EPOCH;
     }
@@ -86,7 +89,10 @@ contract MockOracleProvider is CommonConstantProvider {
         return (consensus, reportProcessor);
     }
 
-    function deployWithdrawOracleMock() public returns (HashConsensusWithTimer, WithdrawOracleWithTimer) {
+    function deployWithdrawOracleMock()
+        public
+        returns (HashConsensusWithTimer, WithdrawOracleWithTimer)
+    {
         HashConsensusWithTimer consensus = new HashConsensusWithTimer();
         WithdrawOracleWithTimer oracle = new WithdrawOracleWithTimer();
         consensus.initialize(
@@ -107,7 +113,9 @@ contract MockOracleProvider is CommonConstantProvider {
             0,
             DAO,
             EXIT_REQUEST_LIMIT,
-            CL_VAULT_MIN_SETTLE_LIMIT
+            CL_VAULT_MIN_SETTLE_LIMIT,
+            CL_BALANCE,
+            PENDING_BALANCE
         );
 
         return (consensus, oracle);

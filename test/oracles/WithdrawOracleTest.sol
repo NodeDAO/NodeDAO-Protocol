@@ -5,11 +5,16 @@ import "forge-std/Test.sol";
 import "test/helpers/oracles/HashConsensusWithTimer.sol";
 import "test/helpers/oracles/MockOracleProvider.sol";
 import "test/helpers/oracles/WithdrawOracleWithTimer.sol";
+import "src/LiquidStaking.sol";
+import "src/vault/VaultManager.sol";
 
 // forge test --match-path  test/oracles/WithdrawOracleTest.sol
 contract WithdrawOracleTest is Test, MockOracleProvider {
     HashConsensusWithTimer consensus;
     WithdrawOracleWithTimer oracle;
+
+    LiquidStaking liquidStaking;
+    VaultManager vaultManager;
 
     function setUp() public {
         (consensus, oracle) = deployWithdrawOracleMock();
@@ -22,6 +27,8 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         consensus.addMember(MEMBER_2, 3);
         consensus.addMember(MEMBER_3, 3);
         consensus.addMember(MEMBER_4, 3);
+
+        // todo set address(liquidStaking), address(vaultManager)
         vm.stopPrank();
     }
 

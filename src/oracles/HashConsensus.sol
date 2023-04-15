@@ -170,7 +170,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
     /// @dev A structure containing the last reference slot any report was received for, the last
     /// reference slot consensus report was achieved for, and the last consensus variant index
-    ReportingState internal _reportingState;
+    ReportingState internal reportingState;
 
     /// @dev Oracle committee members quorum value, must be larger than totalMembers // 2
     uint256 internal _quorum;
@@ -444,7 +444,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     /// @notice Returns report variants and their support for the current reference slot.
     ///
     function getReportVariants() external view returns (bytes32[] memory variants, uint256[] memory support) {
-        if (_reportingState.lastReportRefSlot != _getCurrentFrame().refSlot) {
+        if (reportingState.lastReportRefSlot != _getCurrentFrame().refSlot) {
             return (variants, support);
         }
 
@@ -457,6 +457,16 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
             variants[i] = variant.hash;
             support[i] = variant.support;
         }
+    }
+
+    /// @notice Returns the last reported slot
+    function getLastReportingRefSlotState()
+        external
+        view
+        returns (uint256 lastReportRefSlot, uint256 lastConsensusRefSlot)
+    {
+        lastReportRefSlot = reportingState.lastReportRefSlot;
+        lastConsensusRefSlot = reportingState.lastConsensusRefSlot;
     }
 
     struct MemberConsensusState {
@@ -810,9 +820,9 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
         uint256 variantsLength;
 
-        if (_reportingState.lastReportRefSlot != slot) {
+        if (reportingState.lastReportRefSlot != slot) {
             // first report for a new slot => clear report variants
-            _reportingState.lastReportRefSlot = uint64(slot);
+            reportingState.lastReportRefSlot = uint64(slot);
             variantsLength = 0;
         } else {
             variantsLength = _reportVariantsLength;
@@ -856,11 +866,11 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         internal
     {
         if (
-            _reportingState.lastConsensusRefSlot != frame.refSlot
-                || _reportingState.lastConsensusVariantIndex != variantIndex
+            reportingState.lastConsensusRefSlot != frame.refSlot
+                || reportingState.lastConsensusVariantIndex != variantIndex
         ) {
-            _reportingState.lastConsensusRefSlot = uint64(frame.refSlot);
-            _reportingState.lastConsensusVariantIndex = uint64(variantIndex);
+            reportingState.lastConsensusRefSlot = uint64(frame.refSlot);
+            reportingState.lastConsensusVariantIndex = uint64(variantIndex);
 
             _submitReportForProcessing(frame, report);
 
@@ -915,7 +925,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         view
         returns (bytes32 report, int256 variantIndex, uint256 support)
     {
-        if (_reportingState.lastReportRefSlot != currentRefSlot) {
+        if (reportingState.lastReportRefSlot != currentRefSlot) {
             // there were no reports for the current ref. slot
             return (ZERO_HASH, -1, 0);
         }
@@ -950,7 +960,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         emit ReportProcessorSet(newProcessor, prevProcessor);
 
         ConsensusFrame memory frame = _getCurrentFrame();
-        uint256 lastConsensusRefSlot = _reportingState.lastConsensusRefSlot;
+        uint256 lastConsensusRefSlot = reportingState.lastConsensusRefSlot;
 
         uint256 processingRefSlotPrev = IReportAsyncProcessor(prevProcessor).getLastProcessingRefSlot();
         uint256 processingRefSlotNext = IReportAsyncProcessor(newProcessor).getLastProcessingRefSlot();
@@ -959,7 +969,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
             processingRefSlotPrev < frame.refSlot && processingRefSlotNext < frame.refSlot
                 && lastConsensusRefSlot == frame.refSlot
         ) {
-            bytes32 report = _reportVariants[_reportingState.lastConsensusVariantIndex].hash;
+            bytes32 report = _reportVariants[reportingState.lastConsensusVariantIndex].hash;
             _submitReportForProcessing(frame, report);
         }
     }

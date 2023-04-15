@@ -90,7 +90,6 @@ contract HashConsensusTest is Test, MockOracleProvider {
         /// ------------------------add more member case--------------------------------
         // allows setting the quorum more than total members count
         // QuorumSet(newQuorum: 3, totalMembers: 2, prevQuorum: 1)
-        // todo quorum > member 为什么会允许这样？ 岂不是永远不会触发？
         consensus.addMember(MEMBER_2, 3);
 
         // lowering the quorum while adding a member may trigger consensus
@@ -149,6 +148,11 @@ contract HashConsensusTest is Test, MockOracleProvider {
     }
 
     ///------------------------------Test Frame----------------------------------
+
+    // forge test -vvvv --match-test testCurrentFrame
+    function testCurrentFrame() public {
+        consensus.getCurrentFrame();
+    }
 
     // forge test -vvvv --match-test testFrameData
     function testFrameData() public {
