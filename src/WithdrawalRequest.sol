@@ -37,8 +37,12 @@ contract WithdrawalRequest is
     uint256 public constant MIN_NETH_WITHDRAWAL_AMOUNT = 32 * 1e18;
     uint256 public constant MAX_NETH_WITHDRAWAL_AMOUNT = 1000 * 1e18;
 
-    // For large withdrawals, the withdrawn Neth will be locked in the liquid contract and wait for the user to claim to complete the burning
-    uint256 public totalLockedNethBalance;
+    // For large withdrawals, the withdrawn Neth will be destroyed immediately,
+    // which is an irreversible process.
+    // At the same time,
+    // the sum totalPendingClaimedAmounts of the eth withdrawal belonging to the user will not be included in the totalETH of the agreement
+    uint256 internal totalPendingClaimedAmounts;
+
     // The total amount of requests for large withdrawals by the operator
     mapping(uint256 => uint256) public operatorPendingEthRequestAmount;
     // Repay the pool amount for large withdrawals
@@ -60,10 +64,14 @@ contract WithdrawalRequest is
     event NftUnstake(uint256 indexed _operatorId, uint256 tokenId);
     event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
     event WithdrawalsReceive(uint256 _operatorId, uint256 _amount);
+    event LargeWithdrawalsClaim(address sender, uint256 totalPendingEthAmount);
 
     error PermissionDenied();
     error InvalidParameter();
     error InvalidRequestId();
+    error AlreadeClaimed();
+    error AlreadyUnstake();
+    error NethTransferFailed();
 
     modifier onlyLiquidStaking() {
         if (address(liquidStakingContract) != msg.sender) revert PermissionDenied();
@@ -95,12 +103,10 @@ contract WithdrawalRequest is
         dao = _dao;
     }
 
-    error AlreadyUnstake();
     /**
      * @notice Perform unstake operation on the held nft, an irreversible operation, and get back the pledged deth
      * @param _tokenIds unstake token id
      */
-
     function unstakeNFT(uint256[] calldata _tokenIds) external nonReentrant whenNotPaused {
         uint256[] memory operatorIds = new uint256[] (1);
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
@@ -124,13 +130,11 @@ contract WithdrawalRequest is
         }
     }
 
-    error NethTransferFailed();
     /**
      * @notice Large withdrawal request, used for withdrawals over 32neth and less than 1000 neth.
      * @param _operatorId operator id
      * @param _amounts untake neth amount
      */
-
     function requestLargeWithdrawals(uint256 _operatorId, uint256[] calldata _amounts)
         public
         nonReentrant
@@ -161,24 +165,26 @@ contract WithdrawalRequest is
             totalPendingEthAmount += amountOut;
         }
 
-        bool success = nETHContract.transferFrom(msg.sender, address(this), totalRequestNethAmount);
-        if (!success) revert NethTransferFailed();
+        totalPendingClaimedAmounts += totalPendingEthAmount;
+
+        liquidStakingContract.LargeWithdrawalRequestBurnNeth(totalRequestNethAmount, msg.sender);
 
         liquidStakingContract.largeWithdrawalUnstake(_operatorId, msg.sender, totalRequestNethAmount);
-        totalLockedNethBalance += totalRequestNethAmount;
         operatorPendingEthRequestAmount[_operatorId] += totalPendingEthAmount;
 
         emit LargeWithdrawalsRequest(_operatorId, msg.sender, totalRequestNethAmount);
     }
 
-    error AlreadeClaimed();
-
-    function claimLargeWithdrawals(uint256[] calldata requestIds) public nonReentrant whenNotPaused {
+    /**
+     * @notice claim eth for withdrawals request
+     * @param _requestIds requestIds
+     */
+    function claimLargeWithdrawals(uint256[] calldata _requestIds) public nonReentrant whenNotPaused {
         uint256 totalRequestNethAmount = 0;
         uint256 totalPendingEthAmount = 0;
 
-        for (uint256 i = 0; i < requestIds.length; ++i) {
-            uint256 id = requestIds[i];
+        for (uint256 i = 0; i < _requestIds.length; ++i) {
+            uint256 id = _requestIds[i];
             if (id >= withdrawalQueues.length) revert InvalidRequestId();
             WithdrawalInfo memory wInfo = withdrawalQueues[id];
             if (wInfo.owner != msg.sender) revert PermissionDenied();
@@ -190,11 +196,9 @@ contract WithdrawalRequest is
             operatorPendingEthPoolBalance[wInfo.operatorId] -= wInfo.claimEthAmount;
         }
 
-        liquidStakingContract.largeWithdrawalBurnNeth(totalRequestNethAmount);
-        totalLockedNethBalance -= totalRequestNethAmount;
         payable(msg.sender).transfer(totalPendingEthAmount);
 
-        // todo emit
+        emit LargeWithdrawalsClaim(msg.sender, totalPendingEthAmount);
     }
 
     /**
@@ -221,19 +225,19 @@ contract WithdrawalRequest is
 
         return noExitNfts;
     }
+
     /**
      * @notice get nft unstake block number
      * @param _tokenId token id
      */
-
     function getNftUnstakeBlockNumber(uint256 _tokenId) public view returns (uint256) {
         return nftUnstakeBlockNumbers[_tokenId];
     }
+
     /**
      * @notice Obtain all large withdrawal requests of an operator
      * @param _operatorId operator Id
      */
-
     function getWithdrawalOfOperator(uint256 _operatorId) external view returns (WithdrawalInfo[] memory) {
         uint256 counts = 0;
 
@@ -253,11 +257,11 @@ contract WithdrawalRequest is
 
         return wInfo;
     }
+
     /**
      * @notice Can get a large amount of active withdrawal requests from an address
      * @param _owner _owner address
      */
-
     function getWithdrawalRequestIdOfOwner(address _owner) external view returns (uint256[] memory) {
         uint256 counts = 0;
         for (uint256 i = 0; i < withdrawalQueues.length; ++i) {
@@ -277,10 +281,18 @@ contract WithdrawalRequest is
         return ids;
     }
 
+    /**
+     * @notice Get information about operator's withdrawal request
+     * @param  _operatorId operator Id
+     */
     function getOperatorLargeWitdrawalPendingInfo(uint256 _operatorId) external view returns (uint256, uint256) {
         return (operatorPendingEthRequestAmount[_operatorId], operatorPendingEthPoolBalance[_operatorId]);
     }
 
+    /**
+     * @notice Get information about Withdrawal request
+     * @param  _requestId request Id
+     */
     function getWithdrawalOfRequestId(uint256 _requestId)
         external
         view
@@ -300,7 +312,20 @@ contract WithdrawalRequest is
         );
     }
 
+    /**
+     * @notice getTotalPendingClaimedAmounts: Used when calculating exchange rates
+     */
+    function getTotalPendingClaimedAmounts() external view returns (uint256) {
+        return totalPendingClaimedAmounts;
+    }
+
+    /**
+     * @notice receive eth for withdrawals
+     * @param _operatorId _operator id
+     * @param  _amount receive fund amount
+     */
     function receiveWithdrawals(uint256 _operatorId, uint256 _amount) external payable onlyLiquidStaking {
+        totalPendingClaimedAmounts -= _amount;
         operatorPendingEthPoolBalance[_operatorId] += _amount;
         emit WithdrawalsReceive(_operatorId, _amount);
     }

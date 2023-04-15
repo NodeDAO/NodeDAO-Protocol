@@ -599,9 +599,13 @@ contract LiquidStaking is
     /**
      * @notice large withdrawals, when users claim eth, will trigger the burning of locked Neth
      * @param _totalRequestNethAmount totalRequestNethAmount will burn
+     * @param _to burn neth address
      */
-    function largeWithdrawalBurnNeth(uint256 _totalRequestNethAmount) external onlyWithdrawalRequest {
-        nETHContract.whiteListBurn(_totalRequestNethAmount, address(withdrawalRequestContract));
+    function LargeWithdrawalRequestBurnNeth(uint256 _totalRequestNethAmount, address _to)
+        external
+        onlyWithdrawalRequest
+    {
+        nETHContract.whiteListBurn(_totalRequestNethAmount, address(_to));
     }
 
     /**
@@ -738,7 +742,7 @@ contract LiquidStaking is
     function getTotalEthValue() public view returns (uint256) {
         return operatorPoolBalancesSum + beaconOracleContract.getPendingBalances()
             + beaconOracleContract.getClBalances() + beaconOracleContract.getClVaultBalances()
-            - beaconOracleContract.getLastClSettleAmount();
+            - beaconOracleContract.getLastClSettleAmount() - withdrawalRequestContract.getTotalPendingClaimedAmounts();
     }
 
     /**
