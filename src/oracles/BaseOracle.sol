@@ -23,10 +23,6 @@ interface IConsensusContract {
 
     function getInitialRefSlot() external view returns (uint256);
 
-    function getLastReportingRefSlotState()
-        external
-        view
-        returns (uint256 lastReportRefSlot, uint256 lastConsensusRefSlot);
 }
 
 abstract contract BaseOracle is
@@ -336,14 +332,6 @@ abstract contract BaseOracle is
 
         consensusContract = addr;
         emit ConsensusHashContractSet(addr, prevAddr);
-    }
-
-    function _getLastReportingRefSlotState()
-        internal
-        view
-        returns (uint256 lastReportRefSlot, uint256 lastConsensusRefSlot)
-    {
-        (lastReportRefSlot, lastConsensusRefSlot) = IConsensusContract(consensusContract).getLastReportingRefSlotState();
     }
 
     function _getTime() internal view virtual returns (uint256) {

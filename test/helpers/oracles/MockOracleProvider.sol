@@ -11,8 +11,10 @@ import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 contract MockOracleProvider is CommonConstantProvider {
     uint256 public constant SLOTS_PER_EPOCH = 32;
     uint256 public constant SECONDS_PER_SLOT = 12;
-    uint256 public constant GENESIS_TIME = 100;
-    uint256 public constant EPOCHS_PER_FRAME = 225;
+    // goerli: 1616508000
+    // mainnet: 1606824023
+    uint256 public constant GENESIS_TIME = 1616508000;
+    uint256 public constant EPOCHS_PER_FRAME = 20;
     uint256 public constant INITIAL_EPOCH = 1;
     uint256 public constant INITIAL_FAST_LANE_LENGTH_SLOTS = 0;
 
