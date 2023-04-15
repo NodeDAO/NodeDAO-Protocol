@@ -95,11 +95,10 @@ contract DeployNewContractScript is Script {
 
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
-    WithdrawOracle withdrawOracle;
     VaultManager vaultManager;
-    address operatorSlashProxy;
+    address operatorSlashProxy = 0x0f14e0381bBBc2cF3602262Dbd175f2A8fD9A145 ;
     address withdrawalRequestProxy;
-    address withdrawOracleProxy;
+    address withdrawOracleProxy = 0x28fbAe8c1A4c04209eb4452907F85560055bC675;
     address vaultManagerProxy;
 
     function setUp() public {}
@@ -115,8 +114,6 @@ contract DeployNewContractScript is Script {
         console.log("===============operatorSlash=================", address(operatorSlash));
         withdrawalRequest = new WithdrawalRequest();
         console.log("===============withdrawalRequest=================", address(withdrawalRequest));
-        withdrawOracle = new WithdrawOracle();
-        console.log("===============withdrawOracle=================", address(withdrawOracle));
         vaultManager = new VaultManager();
         console.log("===============vaultManager=================", address(vaultManager));
 
@@ -126,9 +123,6 @@ contract DeployNewContractScript is Script {
         withdrawalRequestProxy = deployer.deploy(address(withdrawalRequest));
         console.log("===============withdrawalRequestProxy=================", address(withdrawalRequestProxy));
 
-        withdrawOracleProxy = deployer.deploy(address(withdrawOracle));
-        console.log("===============withdrawOracleProxy=================", address(withdrawOracleProxy));
-
         vaultManagerProxy = deployer.deploy(address(vaultManager));
         console.log("===============vaultManagerProxy=================", address(vaultManagerProxy));
 
@@ -137,7 +131,7 @@ contract DeployNewContractScript is Script {
         );
 
         WithdrawalRequest(withdrawalRequestProxy).initialize(
-            dao, liquidStakingProxy, vnftProxy, neth, operatorRegistryProxy, withdrawalRequestProxy, vaultManagerProxy
+            dao, liquidStakingProxy, vnftProxy, neth, operatorRegistryProxy, vaultManagerProxy
         );
 
         VaultManager(vaultManagerProxy).initialize(
