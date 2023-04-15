@@ -410,6 +410,7 @@ contract LiquidStaking is
         whenNotPaused
     {
         if (withdrawalCredentialsAddress == address(0)) revert InvalidWithdrawalCredentials();
+        if (withdrawalCredentialsAddress.balance < 1 wei) revert InvalidWithdrawalCredentials();
 
         // operatorId must be a trusted operator
         if (!nodeOperatorRegistryContract.isTrustedOperator(_operatorId)) revert RequireOperatorTrusted();
