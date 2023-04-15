@@ -5,6 +5,7 @@ import "test/helpers/oracles/HashConsensusWithTimer.sol";
 import "test/helpers/oracles/MockReportProcessor.sol";
 import {MockWithdrawInfo, WithdrawOracleWithTimer} from "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import "test/helpers/CommonConstantProvider.sol";
+import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 
 // Provide baseline data for the Hash Consensus contract test
 contract MockOracleProvider is CommonConstantProvider {
@@ -89,10 +90,7 @@ contract MockOracleProvider is CommonConstantProvider {
         return (consensus, reportProcessor);
     }
 
-    function deployWithdrawOracleMock()
-        public
-        returns (HashConsensusWithTimer, WithdrawOracleWithTimer)
-    {
+    function deployWithdrawOracleMock() public returns (HashConsensusWithTimer, WithdrawOracleWithTimer) {
         HashConsensusWithTimer consensus = new HashConsensusWithTimer();
         WithdrawOracleWithTimer oracle = new WithdrawOracleWithTimer();
         consensus.initialize(
@@ -119,40 +117,6 @@ contract MockOracleProvider is CommonConstantProvider {
         );
 
         return (consensus, oracle);
-    }
-
-    function mockWithdrawOracleReportDataMock1_1(uint256 refSlot)
-        public
-        pure
-        returns (WithdrawOracleWithTimer.ReportDataMock1 memory reportData)
-    {
-        reportData.consensusVersion = CONSENSUS_VERSION;
-        reportData.refSlot = refSlot;
-        reportData.reportExitedCount = 3;
-        reportData.dataFormat = DATA_FORMAT_LIST;
-        reportData.data = ZERO_BYTES;
-
-        uint256[] memory exitTokenIds = new uint256[](3);
-        exitTokenIds[0] = 1;
-        exitTokenIds[1] = 3;
-        exitTokenIds[2] = 5;
-        reportData.exitTokenIds = exitTokenIds;
-
-        uint256[] memory exitBlockNumbers = new uint256[](3);
-        exitBlockNumbers[0] = 1000;
-        exitBlockNumbers[1] = 1005;
-        exitBlockNumbers[2] = 1010;
-        reportData.exitBlockNumbers = exitBlockNumbers;
-
-        MockWithdrawInfo[] memory withdrawInfos = new MockWithdrawInfo[](2);
-
-        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 1, clRewards: 1e17, clCapital: 64 ether});
-        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 2, clRewards: 1e16, clCapital: 31 ether});
-
-        withdrawInfos[0] = withdrawInfo1;
-        withdrawInfos[1] = withdrawInfo2;
-
-        reportData.withdrawInfos = withdrawInfos;
     }
 
     function mockWithdrawOracleReportDataMock1Hash_1(uint256 refSlot) public pure returns (bytes32 hash) {
@@ -325,5 +289,71 @@ contract MockOracleProvider is CommonConstantProvider {
         returns (bytes32 hash)
     {
         hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount)));
+    }
+
+    function mockWithdrawOracleReportDataMock1_1(uint256 refSlot)
+        public
+        pure
+        returns (WithdrawOracleWithTimer.ReportDataMock1 memory reportData)
+    {
+        reportData.consensusVersion = CONSENSUS_VERSION;
+        reportData.refSlot = refSlot;
+        reportData.reportExitedCount = 3;
+        reportData.dataFormat = DATA_FORMAT_LIST;
+        reportData.data = ZERO_BYTES;
+
+        uint256[] memory exitTokenIds = new uint256[](3);
+        exitTokenIds[0] = 1;
+        exitTokenIds[1] = 3;
+        exitTokenIds[2] = 5;
+        reportData.exitTokenIds = exitTokenIds;
+
+        uint256[] memory exitBlockNumbers = new uint256[](3);
+        exitBlockNumbers[0] = 1000;
+        exitBlockNumbers[1] = 1005;
+        exitBlockNumbers[2] = 1010;
+        reportData.exitBlockNumbers = exitBlockNumbers;
+
+        MockWithdrawInfo[] memory withdrawInfos = new MockWithdrawInfo[](2);
+
+        MockWithdrawInfo memory withdrawInfo1 = MockWithdrawInfo({operatorId: 1, clRewards: 1e17, clCapital: 64 ether});
+        MockWithdrawInfo memory withdrawInfo2 = MockWithdrawInfo({operatorId: 2, clRewards: 1e16, clCapital: 31 ether});
+
+        withdrawInfos[0] = withdrawInfo1;
+        withdrawInfos[1] = withdrawInfo2;
+
+        reportData.withdrawInfos = withdrawInfos;
+    }
+
+    //----------------------------- Real ReportData mock  -----------------------------------
+    // The array is empty
+    function mockFinalReportData_1(uint256 refSlot)
+        public
+        pure
+        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+    {
+        reportData.consensusVersion = CONSENSUS_VERSION;
+        //        reportData.refSlot = 5414431;
+        reportData.refSlot = refSlot;
+        reportData.clBalance = 607910611984000000000;
+        reportData.clVaultBalance = 1453040740000000000;
+        reportData.clSettleAmount = 0;
+        reportData.reportExitedCount = 0;
+
+        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](0);
+        reportData.withdrawInfos = withdrawInfos;
+
+        ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](0);
+        reportData.exitValidatorInfos = exitValidatorInfos;
+
+        uint256[] memory delayedExitTokenIds = new uint256[](0);
+        reportData.delayedExitTokenIds = delayedExitTokenIds;
+
+        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
+        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
+    }
+
+    function mockFinalReportDataHash_1(uint256 refSlot) public pure returns (bytes32 hash) {
+        hash = keccak256(abi.encode(mockFinalReportData_1(refSlot)));
     }
 }

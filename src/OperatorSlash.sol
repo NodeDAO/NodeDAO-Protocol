@@ -240,7 +240,7 @@ contract OperatorSlash is
 
     /**
      * @notice Set the penalty amount per block per validator
-     * @param _slashAmountPerBlockPerValidator unit penalty amount 
+     * @param _slashAmountPerBlockPerValidator unit penalty amount
      */
     function setSlashAmountPerBlockPerValidator(uint256 _slashAmountPerBlockPerValidator) external onlyOwner {
         if (_slashAmountPerBlockPerValidator > 10000000000000) revert ExcessivePenaltyAmount();

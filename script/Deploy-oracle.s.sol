@@ -41,7 +41,7 @@ abstract contract GoerliHelperContract {
 abstract contract BaseContract {
     uint256 public constant SLOTS_PER_EPOCH = 32;
     uint256 public constant SECONDS_PER_SLOT = 12;
-    uint256 public constant EPOCHS_PER_FRAME = 225;
+    uint256 public constant EPOCHS_PER_FRAME = 20;
     uint256 public constant INITIAL_FAST_LANE_LENGTH_SLOTS = 0;
 
     uint256 public constant SECONDS_PER_EPOCH = SLOTS_PER_EPOCH * SECONDS_PER_SLOT;
@@ -53,8 +53,8 @@ abstract contract BaseContract {
     uint256 public constant EXIT_REQUEST_LIMIT = 100;
     uint256 public constant CL_VAULT_MIN_SETTLE_LIMIT = 1e19;
 
-    uint256 public constant CL_BALANCE = 1e19;
-    uint256 public constant PENDING_BALANCE = 1e19;
+    uint256 public constant CL_BALANCE = 416110825088000000000;
+    uint256 public constant PENDING_BALANCE = 192000000000000000000;
 
     WithdrawOracle withdrawOracle;
 
@@ -178,6 +178,25 @@ contract DeployGoerliOracleScript is Script, BaseContract, GoerliHelperContract 
         initializeContract(_daoEOA, _genesisTime);
         setContractSettings(memberArray, liquidStakingProxy, vaultManagerProxy);
         transferOwnerToTimelock(timelock);
+
+        vm.stopBroadcast();
+    }
+}
+
+// forge script script/Deploy-oracle.s.sol:UpgradeWithdrawOracleScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify --retries 10 --delay 30
+contract UpgradeWithdrawOracleScript is Script {
+    WithdrawOracle withdrawOracle;
+    address withdrawOracleProxy = address(0x6bB86fd121e43772A9607438C55b07A33CF53B17);
+
+    function setUp() public {}
+
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        // deploy WithdrawOracle implement
+        withdrawOracle = new WithdrawOracle();
+//        WithdrawOracle(withdrawOracleProxy).upgradeTo(address(withdrawOracle));
 
         vm.stopBroadcast();
     }

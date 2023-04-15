@@ -267,7 +267,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
             data.exitValidatorInfos,
             data.delayedExitTokenIds,
             data.largeExitDelayedRequestIds,
-            data.clBalance + data.clSettleAmount
+            data.clSettleAmount
         );
 
         // oracle maintains the necessary data
@@ -297,7 +297,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 maxTotal =
             preTotal + pendingBalances + preTotal * (_curRefSlot - lastReportRefSlot) * 10 / 100 / 365 / 7200;
 
-        if (curTotal < minTotal || curTotal > maxTotal) {
+        if (curTotal < minTotal || (maxTotal != 0 && curTotal > maxTotal)) {
             revert InvalidTotalBalance(curTotal, minTotal, maxTotal);
         }
     }
