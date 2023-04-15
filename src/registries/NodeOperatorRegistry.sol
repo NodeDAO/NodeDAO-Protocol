@@ -13,8 +13,6 @@ import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IELVault.sol";
 import "src/interfaces/IOperatorSlash.sol";
 
-import "forge-std/console.sol";
-
 /**
  * @title Node Operator registry
  *
@@ -665,8 +663,6 @@ contract NodeOperatorRegistry is
             totalSlashAmounts += slashAmount;
         }
 
-        console.log("=======================totalSlashAmounts", totalSlashAmounts);
-        console.log("=======================thisbalance", address(this).balance);
         operatorSlashContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
     }
 
