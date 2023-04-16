@@ -96,22 +96,22 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      * @param _thisTotalWithdrawAmount The total settlement amount reported this time
      */
     function reportConsensusData(
-        // _withdrawInfo is the meta-information for each oracle settlement, 
-        // including clReward and clCapital are owned by the protocol. 
+        // _withdrawInfo is the meta-information for each oracle settlement,
+        // including clReward and clCapital are owned by the protocol.
         // Does not include user's nft
         WithdrawInfo[] memory _withdrawInfo,
-        // _exitValidatorInfo contains information about each exit, 
-        // including whether it was penalized. 
+        // _exitValidatorInfo contains information about each exit,
+        // including whether it was penalized.
         // It contains the protocol and all nft held by the user
         ExitValidatorInfo[] memory _exitValidatorInfo,
-        // The user's nft has applied for unstakeNFT, 
-        // and the operator should complete the withdrawal of the nft within the specified time, 
+        // The user's nft has applied for unstakeNFT,
+        // and the operator should complete the withdrawal of the nft within the specified time,
         // otherwise it will be punished.
         uint256[] memory _userNftExitDelayedTokenIds,
-        // For holders of neth, after initiating a large amount of withdrawal, 
-        // the operator should complete it within the specified time, 
+        // For holders of neth, after initiating a large amount of withdrawal,
+        // the operator should complete it within the specified time,
         // otherwise they will face punishment
-        uint256[] memory _largeExitDelayedRequestIds, 
+        uint256[] memory _largeExitDelayedRequestIds,
         // The amount of this settlement is the sum of the cumulative funds of clReward and clCapital in _withdrawInfo
         uint256 _thisTotalWithdrawAmount
     ) external onlyWithdrawOracle {

@@ -113,6 +113,8 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     address public vaultManager;
 
+    uint256 public lastRefSlot;
+
     modifier onlyLiquidStaking() {
         if (liquidStakingContractAddress != msg.sender) revert PermissionDenied();
         _;
@@ -277,11 +279,11 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
             data.exitValidatorInfos,
             data.delayedExitTokenIds,
             data.largeExitDelayedRequestIds,
-            data.clBalance + data.clSettleAmount
+            data.clSettleAmount
         );
 
         // oracle maintains the necessary data
-        _dealReportOracleData(data.clBalance, data.clVaultBalance, data.clSettleAmount);
+        _dealReportOracleData(data.refSlot, data.clBalance, data.clVaultBalance, data.clSettleAmount);
 
         dataProcessingState = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
@@ -294,28 +296,32 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// preTotal = clVaultBalance + clBalances - lastClSettleAmount
     /// curTotal = _curClVaultBalance + _curClBalances
     /// culTotal < preTotal - totalBalanceTolerate
-    /// culTotal > preTotal + pendingBalances + preTotal * (curRefSlot - preRefSlot) * 10 / 100 / 365 / 7200
+    /// culTotal > preTotal + pendingBalances + preTotal * (curRefSlot - preRefSlot) * 10 / 100 / 365 / 7200 + totalBalanceTolerate
     function _checkTotalClBalance(uint256 _curRefSlot, uint256 _curClBalances, uint256 _curClVaultBalance)
         internal
         view
     {
-        (uint256 lastReportRefSlot,) = _getLastReportingRefSlotState();
-
         uint256 preTotal = clVaultBalance + clBalances - lastClSettleAmount;
         uint256 curTotal = _curClVaultBalance + _curClBalances;
         uint256 minTotal = preTotal - totalBalanceTolerate;
-        uint256 maxTotal =
-            preTotal + pendingBalances + preTotal * (_curRefSlot - lastReportRefSlot) * 10 / 100 / 365 / 7200;
+        uint256 maxTotal = preTotal + pendingBalances + preTotal * (_curRefSlot - lastRefSlot) * 10 / 100 / 365 / 7200
+            + totalBalanceTolerate;
 
-        if (curTotal < minTotal || curTotal > maxTotal) {
+        if (curTotal < minTotal || (maxTotal != 0 && maxTotal != pendingBalances && curTotal > maxTotal)) {
             revert InvalidTotalBalance(curTotal, minTotal, maxTotal);
         }
     }
 
-    function _dealReportOracleData(uint256 _clBalances, uint256 _clVaultBalance, uint256 _clSettleAmount) internal {
+    function _dealReportOracleData(
+        uint256 _refSlot,
+        uint256 _clBalances,
+        uint256 _clVaultBalance,
+        uint256 _clSettleAmount
+    ) internal {
         pendingBalances = 0;
         emit PendingBalancesReset(0);
 
+        lastRefSlot = _refSlot;
         clBalances = _clBalances;
         clVaultBalance = _clVaultBalance;
         lastClSettleAmount = _clSettleAmount;
