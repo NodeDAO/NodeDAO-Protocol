@@ -10,7 +10,7 @@ import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.s
 /**
  * @title Treasury
  */
-contract Treasury is Initializable, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract NodeDaoTreasury is Initializable, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     address public dao;
 
     event DaoAddressChanged(address _oldDao, address _dao);
