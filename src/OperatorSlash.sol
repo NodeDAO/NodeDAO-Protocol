@@ -169,7 +169,7 @@ contract OperatorSlash is
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
-            if (vNFTContract.ownerOf(tokenId) == address(this)) {
+            if (vNFTContract.ownerOf(tokenId) == address(liquidStakingContract)) {
                 liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
             } else {
                 uint256 requirAmount = _requireAmounts[i];
