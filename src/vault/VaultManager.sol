@@ -39,6 +39,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event NodeOperatorRegistryContractSet(
         address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
     );
+    event WithdrawOracleContractSet(address oldWithdrawOracleContractAddress, address _withdrawOracleContractAddress);
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
 
     error PermissionDenied();
     error InvalidParameter();
@@ -336,8 +339,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256[] memory ratios;
         (rewardAddresses, ratios) = nodeOperatorRegistryContract.getNodeOperatorRewardSetting(_operatorId);
         if (rewardAddresses.length == 0) revert InvalidRewardAddr();
-        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
-        uint256[] memory rewards = new uint256[] (rewardAddresses.length);
+        uint256[] memory rewardAmounts = new uint256[] (rewardAddresses.length);
         uint256 totalAmount = 0;
         uint256 totalRatios = 0;
         for (uint256 i = 0; i < rewardAddresses.length; ++i) {
@@ -346,17 +348,17 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
             // If it is the last reward address, calculate by subtraction
             if (i == rewardAddresses.length - 1) {
-                rewards[i] = operatorRewards - totalAmount;
+                rewardAmounts[i] = operatorRewards - totalAmount;
             } else {
                 uint256 reward = operatorRewards * ratio / 100;
-                rewards[i] = reward;
+                rewardAmounts[i] = reward;
                 totalAmount += reward;
             }
         }
 
         if (totalRatios != 100) revert InvalidRewardRatio();
 
-        liquidStakingContract.claimRewardsOfOperator(_operatorId, rewardAddresses, rewards);
+        liquidStakingContract.claimRewardsOfOperator(_operatorId, rewardAddresses, rewardAmounts);
         emit OperatorClaimRewards(_operatorId, operatorRewards);
     }
 
@@ -384,5 +386,33 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
         emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    }
+
+    /**
+     * @notice Set new withdrawOracleContract address
+     * @param _withdrawOracleContractAddress new withdrawOracleContract address
+     */
+    function setWithdrawOracleContractAddress(address _withdrawOracleContractAddress) external onlyDao {
+        emit WithdrawOracleContractSet(withdrawOracleContractAddress, _withdrawOracleContractAddress);
+        withdrawOracleContractAddress = _withdrawOracleContractAddress;
+    }
+
+    /**
+     * @notice Set new operatorSlashContract address
+     * @param _operatorSlashContract new operatorSlashContract address
+     */
+    function setOperatorSlashContract(address _operatorSlashContract) external onlyDao {
+        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContract);
+        operatorSlashContract = IOperatorSlash(_operatorSlashContract);
+    }
+
+    /**
+     * @notice set dao address
+     * @param _dao new dao address
+     */
+    function setDaoAddress(address _dao) external onlyOwner {
+        if (_dao == address(0)) revert InvalidParameter();
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
     }
 }

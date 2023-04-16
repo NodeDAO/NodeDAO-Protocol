@@ -168,13 +168,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         withdrawalRequest = new WithdrawalRequest();
         withdrawalRequest.initialize(
-            _dao,
-            address(liquidStaking),
-            address(vnft),
-            address(neth),
-            address(operatorRegistry),
-            address(withdrawalRequest),
-            address(vaultManager)
+            _dao, address(liquidStaking), address(vnft), address(neth), address(operatorRegistry), address(vaultManager)
         );
 
         operatorSlash = new OperatorSlash();
@@ -273,7 +267,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vm.prank(address(20));
         vm.deal(address(20), 330 ether);
         vm.roll(10000);
-
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1 wei);
         liquidStaking.stakeNFT{value: 320 ether}(1, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc);
         assertEq(10, vnft.balanceOf(address(20)));
 
@@ -367,6 +361,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         vm.deal(address(21), 32 ether);
         vm.prank(address(21));
+         vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1 wei);
         liquidStaking.stakeNFT{value: 32 ether}(1, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc);
         assertEq(1, vnft.balanceOf(address(21)));
         assertEq(0, neth.balanceOf(address(21)));
@@ -383,6 +378,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         vm.deal(address(22), 32 ether);
         vm.prank(address(22));
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1 wei);
         liquidStaking.stakeNFT{value: 32 ether}(1, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc);
         assertEq(1, vnft.balanceOf(address(22)));
         assertEq(0, neth.balanceOf(address(22)));
@@ -462,6 +458,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         vm.deal(address(24), 32 ether);
         vm.prank(address(24));
+        vm.deal(0x00dFaaE92ed72A05bC61262aA164f38B5626e106, 1 wei);
         liquidStaking.stakeNFT{value: 32 ether}(1, 0x00dFaaE92ed72A05bC61262aA164f38B5626e106);
         assertEq(1, vnft.balanceOf(address(24)));
         assertEq(0, neth.balanceOf(address(24)));
@@ -925,6 +922,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         // UserNft
         vm.deal(address(74), 32 ether);
         vm.prank(address(74));
+        vm.deal(0xB553A401FBC2427777d05ec21Dd37a03e1FA6894, 1 wei);
         liquidStaking.stakeNFT{value: 32 ether}(operatorId, 0xB553A401FBC2427777d05ec21Dd37a03e1FA6894);
         assertEq(1, vnft.balanceOf(address(74)));
         assertEq(0, neth.balanceOf(address(74)));
@@ -1119,6 +1117,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         vm.deal(address(24), 32 ether);
         vm.prank(address(24));
+        vm.deal(0x00dFaaE92ed72A05bC61262aA164f38B5626e106, 1 wei);
         liquidStaking.stakeNFT{value: 32 ether}(1, 0x00dFaaE92ed72A05bC61262aA164f38B5626e106);
         assertEq(1, vnft.balanceOf(address(24)));
         assertEq(0, neth.balanceOf(address(24)));
@@ -1364,6 +1363,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     function testUnstakeNFT() public {
         vm.deal(address(21), 32 ether);
         vm.prank(address(21));
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1 wei);
         liquidStaking.stakeNFT{value: 32 ether}(1, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc);
         assertEq(1, vnft.balanceOf(address(21)));
         assertEq(0, neth.balanceOf(address(21)));
@@ -1406,6 +1406,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         vm.deal(address(74), 32 ether);
         vm.prank(address(74));
+        vm.deal(0xB553A401FBC2427777d05ec21Dd37a03e1FA6894, 1 wei);
         liquidStaking.stakeNFT{value: 32 ether}(opId, 0xB553A401FBC2427777d05ec21Dd37a03e1FA6894);
         assertEq(1, vnft.balanceOf(address(74)));
         assertEq(0, neth.balanceOf(address(74)));
@@ -1508,6 +1509,31 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         operatorRegistry.resetOperatorVaultContract(resetOperatorIds);
         operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(opId);
         console.log("========testResetOperatorVaultContract==========", operatorVaultAddr);
+    }
+
+    function testGetNextValidatorWithdrawalCredential() public {
+        vm.deal(address(74), 32 ether);
+        vm.prank(address(74));
+        vm.deal(0xB553A401FBC2427777d05ec21Dd37a03e1FA6894, 1 wei);
+        liquidStaking.stakeNFT{value: 32 ether}(1, 0xB553A401FBC2427777d05ec21Dd37a03e1FA6894);
+        assertEq(1, vnft.balanceOf(address(74)));
+        assertEq(0, neth.balanceOf(address(74)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(32 ether, liquidStaking.operatorNftPoolBalances(1));
+
+        bytes memory w;
+        w = vnft.getNextValidatorWithdrawalCredential(1);
+        console.logBytes(w);
+
+        bytes[] memory w2;
+        w2 = vnft.getMultipleValidatorWithdrawalCredentials(1, 3);
+        console.logBytes(w2[0]);
+        console.logBytes(w2[1]);
+        w2 = vnft.getMultipleValidatorWithdrawalCredentials(1, 4);
+        assertEq(4, w2.length);
+        w2 = vnft.getMultipleValidatorWithdrawalCredentials(1, 5);
+        assertEq(5, w2.length);
     }
 
     // todo unstakeETH / unstakeNFT / requestLargeWithdrawals / claimLargeWithdrawals / reportConsensusData /

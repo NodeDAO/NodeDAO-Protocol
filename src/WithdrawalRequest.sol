@@ -24,7 +24,6 @@ contract WithdrawalRequest is
     INETH public nETHContract;
     INodeOperatorsRegistry public nodeOperatorRegistryContract;
     IVaultManager public vaultManagerContract;
-    address public withdrawOracleContractAddress;
     address public dao;
 
     // key is tokenId, value is nft unstake blocknumber
@@ -65,6 +64,12 @@ contract WithdrawalRequest is
     event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
     event WithdrawalsReceive(uint256 _operatorId, uint256 _amount);
     event LargeWithdrawalsClaim(address sender, uint256 totalPendingEthAmount);
+    event NodeOperatorRegistryContractSet(
+        address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
+    );
+    event VaultManagerContractSet(address _oldVaultManagerContractAddress, address _vaultManagerContract);
+    event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
+    event DaoAddressChanged(address oldDao, address _dao);
 
     error PermissionDenied();
     error InvalidParameter();
@@ -78,6 +83,11 @@ contract WithdrawalRequest is
         _;
     }
 
+    modifier onlyDao() {
+        if (msg.sender != dao) revert PermissionDenied();
+        _;
+    }
+
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function initialize(
@@ -86,7 +96,6 @@ contract WithdrawalRequest is
         address _nVNFTContractAddress,
         address _nETHContractAddress,
         address _nodeOperatorRegistryAddress,
-        address _withdrawOracleContractAddress,
         address _vaultManagerContract
     ) public initializer {
         __Ownable_init();
@@ -98,7 +107,6 @@ contract WithdrawalRequest is
         vNFTContract = IVNFT(_nVNFTContractAddress);
         nETHContract = INETH(_nETHContractAddress);
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryAddress);
-        withdrawOracleContractAddress = _withdrawOracleContractAddress;
         vaultManagerContract = IVaultManager(_vaultManagerContract);
         dao = _dao;
     }
@@ -328,5 +336,43 @@ contract WithdrawalRequest is
         totalPendingClaimedAmounts -= _amount;
         operatorPendingEthPoolBalance[_operatorId] += _amount;
         emit WithdrawalsReceive(_operatorId, _amount);
+    }
+
+    /**
+     * @notice Set new nodeOperatorRegistryContract address
+     * @param _nodeOperatorRegistryContract new withdrawalCredentials
+     */
+    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
+        emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
+        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    }
+
+    /**
+     * @notice Set new vaultManagerContractA address
+     * @param _vaultManagerContract new vaultManagerContract address
+     */
+    function setVaultManagerContract(address _vaultManagerContract) external onlyDao {
+        emit VaultManagerContractSet(address(vaultManagerContract), _vaultManagerContract);
+        vaultManagerContract = IVaultManager(_vaultManagerContract);
+    }
+
+    /**
+     * @notice Set proxy address of LiquidStaking
+     * @param _liquidStakingContractAddress proxy address of LiquidStaking
+     * @dev will only allow call of function by the address registered as the owner
+     */
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+    }
+
+    /**
+     * @notice set dao address
+     * @param _dao new dao address
+     */
+    function setDaoAddress(address _dao) external onlyOwner {
+        if (_dao == address(0)) revert InvalidParameter();
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
     }
 }

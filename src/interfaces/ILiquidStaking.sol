@@ -131,7 +131,7 @@ interface ILiquidStaking {
     event LiquidStakingWithdrawalCredentialsSet(
         bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
     );
-    event BeaconOracleContractSet(address _oldBeaconOracleContract, address _beaconOracleContractAddress);
+    event WithdrawOracleContractSet(address _oldWithdrawOracleContractSet, address _withdrawOracleContractSetAddress);
     event NodeOperatorRegistryContractSet(
         address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
     );
@@ -145,4 +145,5 @@ interface ILiquidStaking {
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
     event OperatorCanLoanAmountsSet(uint256 operatorCanLoanAmounts, uint256 _newCanloadAmounts);
     event WithdrawalRequestContractSet(address _withdrawalRequestContract, address _withdrawalRequestContractAddress);
+    event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
 }

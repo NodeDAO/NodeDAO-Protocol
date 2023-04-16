@@ -331,7 +331,6 @@ contract VNFT is
             operatorEmptyNfts[_operatorId].push(nextTokenId);
 
             if (_withdrawalCredentials.length == 0) revert WthdrawalCredentialsEmpty();
-            // todo If the user fills in the wrong address, this is an invalid address. How to deal with it and how to protect it?
             userNftWithdrawalCredentials[nextTokenId] = _withdrawalCredentials;
         } else {
             if (validatorRecords[_pubkey] != 0) revert PubkeyAlreadyUsed();
@@ -414,6 +413,34 @@ contract VNFT is
         }
 
         return bytes("");
+    }
+
+    function getMultipleValidatorWithdrawalCredentials(uint256 _operatorId, uint256 _number)
+        external
+        view
+        returns (bytes[] memory)
+    {
+        bytes[] memory withdrawalCredentials = new bytes[] (_number);
+        uint256 i = 0;
+        uint256[] memory emptyNfts = operatorEmptyNfts[_operatorId];
+        for (uint256 j = operatorEmptyNftIndex[_operatorId]; j < emptyNfts.length; ++j) {
+                uint256 tokenId = emptyNfts[j];
+                if (_ownershipAt(tokenId).burned) {
+                    continue;
+                }
+
+                withdrawalCredentials[i++] = userNftWithdrawalCredentials[tokenId];
+                if (i == _number - 1) {
+                    break;
+                }
+        }
+        
+        for (i; i < _number - 1; ++i) {
+        
+            withdrawalCredentials[i] = bytes("");
+        }
+
+        return withdrawalCredentials;
     }
 
     /**
