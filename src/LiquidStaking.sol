@@ -502,6 +502,8 @@ contract LiquidStaking is
      * @param _exitBlockNumbers exit block number
      */
     function nftExitHandle(uint256[] memory _tokenIds, uint256[] memory _exitBlockNumbers) external onlyVaultManager {
+        vNFTContract.setNftExitBlockNumbers(_tokenIds, _exitBlockNumbers);
+        
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
             if (vNFTContract.ownerOf(tokenId) == address(this)) {
@@ -509,7 +511,6 @@ contract LiquidStaking is
             }
         }
 
-        vNFTContract.setNftExitBlockNumbers(_tokenIds, _exitBlockNumbers);
         emit NftExitBlockNumberSet(_tokenIds, _exitBlockNumbers);
     }
 
