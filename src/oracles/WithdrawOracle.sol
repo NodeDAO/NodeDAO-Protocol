@@ -296,7 +296,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// preTotal = clVaultBalance + clBalances - lastClSettleAmount
     /// curTotal = _curClVaultBalance + _curClBalances
     /// culTotal < preTotal - totalBalanceTolerate
-    /// culTotal > preTotal + pendingBalances + preTotal * (curRefSlot - preRefSlot) * 10 / 100 / 365 / 7200
+    /// culTotal > preTotal + pendingBalances + preTotal * (curRefSlot - preRefSlot) * 10 / 100 / 365 / 7200 + totalBalanceTolerate
     function _checkTotalClBalance(uint256 _curRefSlot, uint256 _curClBalances, uint256 _curClVaultBalance)
         internal
         view
@@ -304,9 +304,10 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 preTotal = clVaultBalance + clBalances - lastClSettleAmount;
         uint256 curTotal = _curClVaultBalance + _curClBalances;
         uint256 minTotal = preTotal - totalBalanceTolerate;
-        uint256 maxTotal = preTotal + pendingBalances + preTotal * (_curRefSlot - lastRefSlot) * 10 / 100 / 365 / 7200;
+        uint256 maxTotal = preTotal + pendingBalances + preTotal * (_curRefSlot - lastRefSlot) * 10 / 100 / 365 / 7200
+            + totalBalanceTolerate;
 
-        if (curTotal < minTotal || (maxTotal != 0 && curTotal > maxTotal)) {
+        if (curTotal < minTotal || (maxTotal != 0 && maxTotal != pendingBalances && curTotal > maxTotal)) {
             revert InvalidTotalBalance(curTotal, minTotal, maxTotal);
         }
     }

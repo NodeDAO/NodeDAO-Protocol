@@ -22,7 +22,6 @@ interface IConsensusContract {
     function getFrameConfig() external view returns (uint256 initialEpoch, uint256 epochsPerFrame);
 
     function getInitialRefSlot() external view returns (uint256);
-
 }
 
 abstract contract BaseOracle is

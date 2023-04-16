@@ -327,8 +327,11 @@ contract MockOracleProvider is CommonConstantProvider {
         reportData.withdrawInfos = withdrawInfos;
     }
 
-    //----------------------------- Real ReportData mock  -----------------------------------
-    // The array is empty
+    ////////////////////////////////////////////////////////////////
+    //------------ Real ReportData mock --------------------
+    ////////////////////////////////////////////////////////////////
+
+    //----------------------------- ReportData for not exit  -----------------------------------
     function mockFinalReportData_1(uint256 refSlot)
         public
         pure
@@ -357,5 +360,176 @@ contract MockOracleProvider is CommonConstantProvider {
 
     function mockFinalReportDataHash_1(uint256 refSlot) public pure returns (bytes32 hash) {
         hash = keccak256(abi.encode(mockFinalReportData_1(refSlot)));
+    }
+
+    //----------------------------- ReportData for 3 validator exit  -----------------------------------
+    function mockFinalReportData_3validatorExit(uint256 refSlot)
+        public
+        pure
+        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+    {
+        reportData.consensusVersion = CONSENSUS_VERSION;
+        reportData.refSlot = refSlot;
+        reportData.clBalance = 0;
+        reportData.clVaultBalance = 3 * 32 ether;
+        reportData.clSettleAmount = 0;
+        reportData.reportExitedCount = 3;
+
+        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](1);
+        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: 0, clCapital: 0});
+        withdrawInfos[0] = withdrawInfo1;
+        reportData.withdrawInfos = withdrawInfos;
+
+        ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](3);
+        ExitValidatorInfo memory exitValidatorInfo1 =
+            ExitValidatorInfo({exitTokenId: 0, exitBlockNumber: 20100, slashAmount: 0});
+        ExitValidatorInfo memory exitValidatorInfo2 =
+            ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 20100, slashAmount: 0});
+        ExitValidatorInfo memory exitValidatorInfo3 =
+            ExitValidatorInfo({exitTokenId: 2, exitBlockNumber: 20100, slashAmount: 0});
+        exitValidatorInfos[0] = exitValidatorInfo1;
+        exitValidatorInfos[1] = exitValidatorInfo2;
+        exitValidatorInfos[2] = exitValidatorInfo3;
+        reportData.exitValidatorInfos = exitValidatorInfos;
+
+        uint256[] memory delayedExitTokenIds = new uint256[](0);
+        reportData.delayedExitTokenIds = delayedExitTokenIds;
+
+        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
+        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
+    }
+
+    function mockFinalReportData_3validatorExit_hash(uint256 refSlot) public pure returns (bytes32 hash) {
+        hash = keccak256(abi.encode(mockFinalReportData_3validatorExit(refSlot)));
+    }
+
+    //----------------------------- ReportData for 3 validator exit and 1 delayed  -----------------------------------
+    function mockFinalReportData_3validatorExit_1delayed(uint256 refSlot)
+        public
+        pure
+        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+    {
+        reportData.consensusVersion = CONSENSUS_VERSION;
+        reportData.refSlot = refSlot;
+        reportData.clBalance = 0;
+        reportData.clVaultBalance = 3 * 32 ether;
+        reportData.clSettleAmount = 0;
+        reportData.reportExitedCount = 3;
+
+        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](1);
+        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: 0, clCapital: 0});
+        withdrawInfos[0] = withdrawInfo1;
+        reportData.withdrawInfos = withdrawInfos;
+
+        ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](3);
+        ExitValidatorInfo memory exitValidatorInfo1 =
+            ExitValidatorInfo({exitTokenId: 0, exitBlockNumber: 20100, slashAmount: 0});
+        ExitValidatorInfo memory exitValidatorInfo2 =
+            ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 20100, slashAmount: 0});
+        ExitValidatorInfo memory exitValidatorInfo3 =
+            ExitValidatorInfo({exitTokenId: 2, exitBlockNumber: 28000, slashAmount: 0});
+        exitValidatorInfos[0] = exitValidatorInfo1;
+        exitValidatorInfos[1] = exitValidatorInfo2;
+        exitValidatorInfos[2] = exitValidatorInfo3;
+        reportData.exitValidatorInfos = exitValidatorInfos;
+
+        uint256[] memory delayedExitTokenIds = new uint256[](1);
+        delayedExitTokenIds[0] = 2;
+        reportData.delayedExitTokenIds = delayedExitTokenIds;
+
+        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
+        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
+    }
+
+    function mockFinalReportData_3validatorExit_1delayed_hash(uint256 refSlot) public pure returns (bytes32 hash) {
+        hash = keccak256(abi.encode(mockFinalReportData_3validatorExit_1delayed(refSlot)));
+    }
+
+    //----------------------------- ReportData for 3 NFT exit while 1 delayed; 1 largeExitRequest while 1 delayed  -----------------------------------
+    function mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed(uint256 refSlot)
+        public
+        pure
+        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+    {
+        reportData.consensusVersion = CONSENSUS_VERSION;
+        reportData.refSlot = refSlot;
+        reportData.clBalance = 0;
+        reportData.clVaultBalance = 3 * 32 ether;
+        reportData.clSettleAmount = 32 ether;
+        reportData.reportExitedCount = 4;
+
+        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](1);
+        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: 0, clCapital: 32 ether});
+        withdrawInfos[0] = withdrawInfo1;
+        reportData.withdrawInfos = withdrawInfos;
+
+        ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](4);
+        ExitValidatorInfo memory exitValidatorInfo1 =
+            ExitValidatorInfo({exitTokenId: 0, exitBlockNumber: 20100, slashAmount: 0});
+        ExitValidatorInfo memory exitValidatorInfo2 =
+            ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 20100, slashAmount: 0});
+        ExitValidatorInfo memory exitValidatorInfo3 =
+            ExitValidatorInfo({exitTokenId: 2, exitBlockNumber: 28000, slashAmount: 0});
+
+        ExitValidatorInfo memory exitValidatorInfo4 =
+            ExitValidatorInfo({exitTokenId: 3, exitBlockNumber: 28100, slashAmount: 0});
+        exitValidatorInfos[0] = exitValidatorInfo1;
+        exitValidatorInfos[1] = exitValidatorInfo2;
+        exitValidatorInfos[2] = exitValidatorInfo3;
+        exitValidatorInfos[3] = exitValidatorInfo4;
+        reportData.exitValidatorInfos = exitValidatorInfos;
+
+        uint256[] memory delayedExitTokenIds = new uint256[](1);
+        delayedExitTokenIds[0] = 2;
+        reportData.delayedExitTokenIds = delayedExitTokenIds;
+
+        uint256[] memory largeExitDelayedRequestIds = new uint256[](1);
+        largeExitDelayedRequestIds[0] = 0;
+        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
+    }
+
+    function mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed_hash(uint256 refSlot)
+        public
+        pure
+        returns (bytes32 hash)
+    {
+        hash = keccak256(abi.encode(mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed(refSlot)));
+    }
+
+    //----------------------------- ReportData for OperatorReward  -----------------------------------
+    function mockFinalReportData_OperatorReward(uint256 refSlot)
+        public
+        pure
+        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+    {
+        reportData.consensusVersion = CONSENSUS_VERSION;
+        reportData.refSlot = refSlot;
+        reportData.clBalance = 35 ether;
+        reportData.clVaultBalance = 11 ether;
+        reportData.clSettleAmount = 11 ether;
+        reportData.reportExitedCount = 0;
+
+        uint256 clReward1 = 11 ether * 3 / 4;
+        uint256 clReward2 = 11 ether * 1 / 4;
+
+        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](2);
+        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: uint96(clReward1), clCapital: 0});
+        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 1, clReward: uint96(clReward2), clCapital: 0});
+        withdrawInfos[0] = withdrawInfo1;
+        withdrawInfos[1] = withdrawInfo2;
+        reportData.withdrawInfos = withdrawInfos;
+
+        ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](0);
+        reportData.exitValidatorInfos = exitValidatorInfos;
+
+        uint256[] memory delayedExitTokenIds = new uint256[](0);
+        reportData.delayedExitTokenIds = delayedExitTokenIds;
+
+        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
+        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
+    }
+
+    function mockFinalReportData_OperatorReward_hash(uint256 refSlot) public pure returns (bytes32 hash) {
+        hash = keccak256(abi.encode(mockFinalReportData_OperatorReward(refSlot)));
     }
 }

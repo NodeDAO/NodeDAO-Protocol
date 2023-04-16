@@ -361,7 +361,9 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         vm.deal(address(21), 32 ether);
         vm.prank(address(21));
-         vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1 wei);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1 wei);
+
+        // test stakeNFT
         liquidStaking.stakeNFT{value: 32 ether}(1, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc);
         assertEq(1, vnft.balanceOf(address(21)));
         assertEq(0, neth.balanceOf(address(21)));
@@ -391,6 +393,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(address(21).balance, 0);
         assertEq(address(22).balance, 0);
 
+        // vaultManager ElReward
         uint256[] memory operatorIds = new uint256[] (1);
         operatorIds[0] = 1;
         vaultManager.settleAndReinvestElReward(operatorIds);
