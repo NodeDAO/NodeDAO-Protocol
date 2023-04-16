@@ -193,7 +193,7 @@ contract WithdrawalRequest is
 
         for (uint256 i = 0; i < _requestIds.length; ++i) {
             uint256 id = _requestIds[i];
-            if (id >= withdrawalQueues.length) revert InvalidRequestId();
+            if (id > withdrawalQueues.length - 1) revert InvalidRequestId();
             WithdrawalInfo memory wInfo = withdrawalQueues[id];
             if (wInfo.owner != msg.sender) revert PermissionDenied();
             if (wInfo.isClaim) revert AlreadeClaimed();
@@ -227,7 +227,7 @@ contract WithdrawalRequest is
         uint256 j = 0;
         for (uint256 i = 0; i < tokenIds.length; ++i) {
             if (exitBlockNumbers[i] == 0) {
-                noExitNfts[j++] = i;
+                noExitNfts[j++] = tokenIds[i];
             }
         }
 
@@ -306,7 +306,7 @@ contract WithdrawalRequest is
         view
         returns (uint256, uint256, uint256, uint256, uint256, address, bool)
     {
-        if (_requestId >= withdrawalQueues.length - 1) revert InvalidParameter();
+        if (_requestId > withdrawalQueues.length - 1) revert InvalidParameter();
         WithdrawalInfo memory wInfo = withdrawalQueues[_requestId];
 
         return (
