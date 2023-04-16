@@ -221,7 +221,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         outstandingRewards = outstandingRewards - operatorReward - daoReward;
         uint256 averageRewards = outstandingRewards / operatorNftCounts;
         uint256 userNftCounts = vNFTContract.getUserActiveNftCountsOfOperator(operatorId);
-        uint256 reinvestRewards = averageRewards * (operatorNftCounts - userNftCounts);
+        uint256 reinvestRewards = outstandingRewards - averageRewards * userNftCounts;
 
         unclaimedRewardsMap[operatorId] += (outstandingRewards - reinvestRewards);
         if (cumArr.length == 0) {
@@ -291,7 +291,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         returns (uint256)
     {
         RewardMetadata[] memory cumArr = settleCumArrMap[_operatorId];
-        if (cumArr.length == 0) revert NeverSettled();
+        if (cumArr.length == 0) {
+            return 0;
+        }
+
         uint256 low = 0;
         uint256 high = cumArr.length;
         while (low < high) {
