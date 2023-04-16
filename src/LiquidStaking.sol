@@ -539,9 +539,12 @@ contract LiquidStaking is
      * @notice According to the reported results of the oracle machine, the income of the consensus layer is re-invested
      * @param _operatorIds operator id
      * @param _amounts reinvest amounts
+     * @param _totalAmount totalAmount
      */
-    function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external onlyVaultManager {
+    function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts, uint256 _totalAmount) external onlyVaultManager {
         if (_operatorIds.length != _amounts.length) revert InvalidParameter();
+        consensusVaultContract.reinvestment(_totalAmount);
+
         uint256 totalReinvestRewards = 0;
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
@@ -572,7 +575,7 @@ contract LiquidStaking is
             }
         }
 
-        consensusVaultContract.reinvestment(totalReinvestRewards);
+        if (_totalAmount != totalReinvestRewards) revert InvalidParameter();
     }
 
     /**

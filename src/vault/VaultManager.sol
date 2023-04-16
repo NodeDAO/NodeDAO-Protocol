@@ -152,7 +152,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             revert SlashAmountCheckFailed();
         }
 
-        liquidStakingContract.reinvestClRewards(operatorIds, amouts);
+        liquidStakingContract.reinvestClRewards(operatorIds, amouts, totalAmount);
 
         if (exitTokenIds.length != 0 || slashAmounts.length != 0) {
             operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
