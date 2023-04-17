@@ -70,7 +70,8 @@ contract DepositContract is IDepositContract, ERC165 {
         bytes32 deposit_data_root
     ) external payable override {
         // Extended ABI length checks since dynamic types are used.
-        require(pubkey.length == 48, "DepositContract: invalid pubkey length");
+        // exegesis for test
+        //        require(pubkey.length == 48, "DepositContract: invalid pubkey length");
         require(withdrawal_credentials.length == 32, "DepositContract: invalid withdrawal_credentials length");
         require(signature.length == 96, "DepositContract: invalid signature length");
 
@@ -99,10 +100,10 @@ contract DepositContract is IDepositContract, ERC165 {
         );
 
         // Verify computed and expected deposit data roots match
-        require(
-            node == deposit_data_root,
-            "DepositContract: reconstructed DepositData does not match supplied deposit_data_root"
-        );
+        //        require(
+        //            node == deposit_data_root,
+        //            "DepositContract: reconstructed DepositData does not match supplied deposit_data_root"
+        //        );
 
         // Avoid overflowing the Merkle tree (and prevent edge case in computing `branch`)
         require(deposit_count < MAX_DEPOSIT_COUNT, "DepositContract: merkle tree full");

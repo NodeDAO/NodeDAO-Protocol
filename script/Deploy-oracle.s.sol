@@ -186,7 +186,7 @@ contract DeployGoerliOracleScript is Script, BaseContract, GoerliHelperContract 
 // forge script script/Deploy-oracle.s.sol:UpgradeWithdrawOracleScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify --retries 10 --delay 30
 contract UpgradeWithdrawOracleScript is Script {
     WithdrawOracle withdrawOracle;
-    address withdrawOracleProxy = address(0x6bB86fd121e43772A9607438C55b07A33CF53B17);
+    address withdrawOracleProxy = address(0x682997ff9D94739bFe52232AEeC82A9Ddd56694C);
 
     function setUp() public {}
 
