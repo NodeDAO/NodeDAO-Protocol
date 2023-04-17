@@ -269,7 +269,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             uint256 tokenId = _tokenIds[i];
             if (owner != vNFTContract.ownerOf(tokenId)) revert PermissionDenied();
             if (operatorId != vNFTContract.operatorOf(tokenId)) revert MustSameOperator();
-            uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
+            uint256 nftRewards = _rewards(operatorId, gasHeights[i], exitBlockNumbers[i]);
             amounts[i] = nftRewards;
             totalNftRewards += nftRewards;
         }
@@ -297,7 +297,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
             if (operatorId != vNFTContract.operatorOf(tokenId)) revert MustSameOperator();
-            uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
+            uint256 nftRewards = _rewards(operatorId, gasHeights[i], exitBlockNumbers[i]);
             totalNftRewards += nftRewards;
         }
 
