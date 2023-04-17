@@ -26,7 +26,7 @@ interface IWithdrawalRequest {
      * @notice Get information about operator's withdrawal request
      * @param  _operatorId operator Id
      */
-    function getOperatorLargeWitdrawalPendingInfo(uint256 _operatorId) external view returns (uint256, uint256);
+    function getOperatorLargeWithdrawalPendingInfo(uint256 _operatorId) external view returns (uint256, uint256);
 
     /**
      * @notice receive eth for withdrawals

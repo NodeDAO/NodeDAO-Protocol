@@ -68,8 +68,8 @@ contract VNFT is
     error TokenNotBurned();
     error ExceedMaxSupply();
     error PubkeyAlreadyUsed();
-    error WthdrawalCredentialsEmpty();
-    error WthdrawalCredentialsMismatch();
+    error WithdrawalCredentialsEmpty();
+    error WithdrawalCredentialsMismatch();
     error TokenAlreadyReport();
     error InvalidBlockHeight();
     error NotBelongUserNft();
@@ -375,7 +375,7 @@ contract VNFT is
             emptyNftCounts += 1;
             operatorEmptyNfts[_operatorId].push(nextTokenId);
 
-            if (_withdrawalCredentials.length == 0) revert WthdrawalCredentialsEmpty();
+            if (_withdrawalCredentials.length == 0) revert WithdrawalCredentialsEmpty();
             userNftWithdrawalCredentials[nextTokenId] = _withdrawalCredentials;
         } else {
             if (validatorRecords[_pubkey] != 0) revert PubkeyAlreadyUsed();
@@ -390,7 +390,7 @@ contract VNFT is
                 }
                 // check withdrawal credentials before filling
                 if (keccak256(userNftWithdrawalCredentials[tokenId]) != keccak256(_withdrawalCredentials)) {
-                    revert WthdrawalCredentialsMismatch();
+                    revert WithdrawalCredentialsMismatch();
                 }
 
                 operatorEmptyNftIndex[_operatorId] = i + 1;

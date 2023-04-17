@@ -88,14 +88,14 @@ contract NodeOperatorRegistry is
     IOperatorSlash public operatorSlashContract;
 
     mapping(uint256 => uint256) public operatorSlashAmountOwed;
-    mapping(uint256 => uint256) internal operatorComissionRate;
-    uint256 public constant DEFAULT_COMISSION = 700;
+    mapping(uint256 => uint256) internal operatorCommissionRate;
+    uint256 public defaultOperatorCommission;
 
     error PermissionDenied();
     error InvalidAddr();
     error InvalidParameter();
     error OperatorNotFound();
-    error InvalidComission();
+    error InvalidCommission();
     error InsufficientAmount();
     error ContraollerAddrUsed();
     error OperatorHasArrears();
@@ -157,6 +157,7 @@ contract NodeOperatorRegistry is
         vNFTContract = IVNFT(_nVNFTContractAddress);
         registrationFee = 0.1 ether;
         permissionlessBlockNumber = 0;
+        defaultOperatorCommission = 2000;
     }
 
     /**
@@ -776,20 +777,30 @@ contract NodeOperatorRegistry is
     }
 
     /**
-     * @notice get operator comission rate
+     * @notice get operator commission rate
      * @param _operatorIds operator id
      */
-    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
-        uint256[] memory comissions = new uint256[] (_operatorIds.length);
+    function getOperatorCommissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory) {
+        uint256[] memory commissions = new uint256[] (_operatorIds.length);
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
-            if (operatorComissionRate[_operatorIds[i]] == 0) {
-                comissions[i] = DEFAULT_COMISSION;
+            if (operatorCommissionRate[_operatorIds[i]] == 0) {
+                commissions[i] = defaultOperatorCommission;
             } else {
-                comissions[i] = operatorComissionRate[i];
+                commissions[i] = operatorCommissionRate[i];
             }
         }
 
-        return comissions;
+        return commissions;
+    }
+
+    /**
+     * @notice set operator default comission rate
+     * @param _defaultOperatorCommission default operator commission
+     */
+    function setDefaultOperatorCommissionRate(uint256 _defaultOperatorCommission) external onlyDao {
+        if (_defaultOperatorCommission >= 5000) revert InvalidCommission();
+        emit DefaultOperatorCommissionRateChanged(defaultOperatorCommission, _defaultOperatorCommission);
+        defaultOperatorCommission = _defaultOperatorCommission;
     }
 
     /**
@@ -797,13 +808,12 @@ contract NodeOperatorRegistry is
      * @param _operatorId operator id
      * @param _rate _rate
      */
-    function setOperatorComissionRate(uint256 _operatorId, uint256 _rate) external {
+    function setOperatorCommissionRate(uint256 _operatorId, uint256 _rate) external onlyDao {
         NodeOperator memory operator = operators[_operatorId];
-        if (operator.owner != msg.sender && msg.sender != dao) revert PermissionDenied();
-        if (_rate >= 5000) revert InvalidComission();
-        uint256 comissionRate = operatorComissionRate[_operatorId];
-        emit ComissionRateChanged(comissionRate == 0 ? DEFAULT_COMISSION : comissionRate, _rate);
-        operatorComissionRate[_operatorId] = _rate;
+        if (_rate >= 5000) revert InvalidCommission();
+        uint256 commissionRate = operatorCommissionRate[_operatorId];
+        emit CommissionRateChanged(commissionRate == 0 ? defaultOperatorCommission : commissionRate, _rate);
+        operatorCommissionRate[_operatorId] = _rate;
     }
 
     /**

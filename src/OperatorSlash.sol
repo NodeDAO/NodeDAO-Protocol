@@ -177,11 +177,11 @@ contract OperatorSlash is
             if (vNFTContract.ownerOf(tokenId) == address(liquidStakingContract)) {
                 liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
             } else {
-                uint256 requirAmount = _requireAmounts[i];
+                uint256 requireAmount = _requireAmounts[i];
                 uint256 slashAmount = _slashAmounts[i];
-                if (requirAmount < slashAmount) revert InvalidParameter();
-                if (requirAmount != slashAmount) {
-                    nftWillCompensated[tokenId] += requirAmount - slashAmount;
+                if (requireAmount < slashAmount) revert InvalidParameter();
+                if (requireAmount != slashAmount) {
+                    nftWillCompensated[tokenId] += requireAmount - slashAmount;
                     operatorSlashArrears[operatorId].push(tokenId);
                 }
                 nftHasCompensated[tokenId] += slashAmount;
