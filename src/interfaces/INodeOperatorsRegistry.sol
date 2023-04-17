@@ -122,7 +122,7 @@ interface INodeOperatorsRegistry {
      * @notice get operator comission rate
      * @param _operatorIds operator id
      */
-    function getOperatorComissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory);
+    function getOperatorCommissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory);
     /**
      * @notice Get operator owner address
      * @param _id operator id
@@ -195,10 +195,13 @@ interface INodeOperatorsRegistry {
     event PermissionlessBlockNumberSet(uint256 _blockNumber);
     event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
-    event ComissionRateChanged(uint256 _oldRate, uint256 _rate);
+    event CommissionRateChanged(uint256 _oldRate, uint256 _rate);
     event OperatorArrearsReduce(uint256 _operatorId, uint256 value);
     event OperatorArrearsIncrease(uint256 _operatorId, uint256 value);
     event VaultFactorContractSet(address _vaultFactoryContract, address _vaultFactoryContractAddress);
     event OperatorVaultContractReset(address _oldVaultContractAddress, address _vaultContractAddress);
     event OperatorSlashContractSet(address _oldOperatorSlashContract, address _operatorSlashContractAddress);
+    event DefaultOperatorCommissionRateChanged(
+        uint256 _oldDefaultOperatorCommission, uint256 _defaultOperatorCommission
+    );
 }

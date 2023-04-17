@@ -561,7 +561,7 @@ contract LiquidStaking is
             uint256 operatorPendingRequestAmount;
             uint256 operatorPendingPool;
             (operatorPendingRequestAmount, operatorPendingPool) =
-                withdrawalRequestContract.getOperatorLargeWitdrawalPendingInfo(operatorId);
+                withdrawalRequestContract.getOperatorLargeWithdrawalPendingInfo(operatorId);
             if (operatorPendingPool < operatorPendingRequestAmount) {
                 uint256 withdrawalAmounts = 0;
                 if (operatorPendingPool + _amount >= operatorPendingRequestAmount) {
@@ -886,12 +886,12 @@ contract LiquidStaking is
 
     /**
      * @notice Set new operatorCanLoanAmounts
-     * @param _newCanloadAmounts new _newCanloadAmounts
+     * @param _newCanLoanAmounts new _newCanloadAmounts
      */
-    function setOperatorCanLoanAmounts(uint256 _newCanloadAmounts) public onlyDao {
-        if (_newCanloadAmounts > 1000 ether) revert InvalidParameter();
-        emit OperatorCanLoanAmountsSet(operatorCanLoanAmounts, _newCanloadAmounts);
-        operatorCanLoanAmounts = _newCanloadAmounts;
+    function setOperatorCanLoanAmounts(uint256 _newCanLoanAmounts) public onlyDao {
+        if (_newCanLoanAmounts > 1000 ether) revert InvalidParameter();
+        emit OperatorCanLoanAmountsSet(operatorCanLoanAmounts, _newCanLoanAmounts);
+        operatorCanLoanAmounts = _newCanLoanAmounts;
     }
 
     /**

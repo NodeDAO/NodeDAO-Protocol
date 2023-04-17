@@ -160,7 +160,11 @@ contract OperatorSlash is
     }
 
     /**
-     * @notice Receive slash fund, Because the operator may have insufficient margin, _slashAmounts may be less than or equal to _requireAmounts
+     * @notice Receive slash fund, Because the operator may have insufficient margin, 
+     *  The penalty for the operator's delayed exit from the validator, 
+     *  as well as the penalty for the slash consensus penalty on eth2, 
+     *  will be received through this function.
+     *  _slashAmounts may be less than or equal to _requireAmounts
      * @param _exitTokenIds exit tokenIds
      * @param _slashAmounts slash amount
      * @param _requireAmounts require slas amount
@@ -177,11 +181,11 @@ contract OperatorSlash is
             if (vNFTContract.ownerOf(tokenId) == address(liquidStakingContract)) {
                 liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
             } else {
-                uint256 requirAmount = _requireAmounts[i];
+                uint256 requireAmount = _requireAmounts[i];
                 uint256 slashAmount = _slashAmounts[i];
-                if (requirAmount < slashAmount) revert InvalidParameter();
-                if (requirAmount != slashAmount) {
-                    nftWillCompensated[tokenId] += requirAmount - slashAmount;
+                if (requireAmount < slashAmount) revert InvalidParameter();
+                if (requireAmount != slashAmount) {
+                    nftWillCompensated[tokenId] += requireAmount - slashAmount;
                     operatorSlashArrears[operatorId].push(tokenId);
                 }
                 nftHasCompensated[tokenId] += slashAmount;

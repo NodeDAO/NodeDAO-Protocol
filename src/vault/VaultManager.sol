@@ -25,7 +25,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256 height;
     }
 
-    uint256 public daoElComissionRate;
+    uint256 public daoElCommissionRate;
     mapping(uint256 => RewardMetadata[]) public settleCumArrMap;
     mapping(uint256 => uint256) public unclaimedRewardsMap;
     mapping(uint256 => uint256) public operatorRewardsMap;
@@ -42,6 +42,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event WithdrawOracleContractSet(address oldWithdrawOracleContractAddress, address _withdrawOracleContractAddress);
     event DaoAddressChanged(address _oldDao, address _dao);
     event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
+    event DaoElCommissionRateSet(uint256 oldDaoElCommissionRate, uint256 _daoElCommissionRate);
+    event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
 
     error PermissionDenied();
     error InvalidParameter();
@@ -84,7 +86,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         operatorSlashContract = IOperatorSlash(_operatorSlashContract);
 
         dao = _dao;
-        daoElComissionRate = 300;
+        daoElCommissionRate = 1000;
     }
 
     /**
@@ -116,7 +118,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256 _thisTotalWithdrawAmount
     ) external onlyWithdrawOracle {
         uint256[] memory operatorIds = new uint256[](_withdrawInfo.length);
-        uint256[] memory amouts = new uint256[](_withdrawInfo.length);
+        uint256[] memory amounts = new uint256[](_withdrawInfo.length);
         uint256 totalAmount = 0;
         uint256 systemTotalExitCapital = 0;
         for (uint256 i = 0; i < _withdrawInfo.length; ++i) {
@@ -124,7 +126,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             operatorIds[i] = wInfo.operatorId;
             uint256 exitClCapital = wInfo.clCapital;
             uint256 _amount = wInfo.clReward + exitClCapital;
-            amouts[i] = _amount;
+            amounts[i] = _amount;
             totalAmount += _amount;
             systemTotalExitCapital += exitClCapital;
         }
@@ -152,7 +154,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             revert SlashAmountCheckFailed();
         }
 
-        liquidStakingContract.reinvestClRewards(operatorIds, amouts, totalAmount);
+        liquidStakingContract.reinvestClRewards(operatorIds, amounts, totalAmount);
 
         if (exitTokenIds.length != 0 || slashAmounts.length != 0) {
             operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
@@ -190,15 +192,15 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
     function _elSettle(uint256[] memory _operatorIds) internal returns (uint256[] memory, bool) {
         uint256[] memory reinvestAmounts = new uint256[] (_operatorIds.length);
-        uint256[] memory operatorElComissionRate;
-        operatorElComissionRate = nodeOperatorRegistryContract.getOperatorComissionRate(_operatorIds);
+        uint256[] memory operatorElCommissionRate;
+        operatorElCommissionRate = nodeOperatorRegistryContract.getOperatorCommissionRate(_operatorIds);
 
         bool isSettle = false;
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
 
-            uint256 _reinvest = _settle(operatorId, vaultContractAddress, operatorElComissionRate[i]);
+            uint256 _reinvest = _settle(operatorId, vaultContractAddress, operatorElCommissionRate[i]);
             if (_reinvest > 0) {
                 isSettle = true;
             }
@@ -208,7 +210,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         return (reinvestAmounts, isSettle);
     }
 
-    function _settle(uint256 operatorId, address vaultContractAddress, uint256 comissionRate)
+    function _settle(uint256 operatorId, address vaultContractAddress, uint256 commissionRate)
         internal
         returns (uint256)
     {
@@ -224,9 +226,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             return 0;
         }
 
-        uint256 operatorReward = (outstandingRewards * comissionRate) / 10000;
+        uint256 operatorReward = (outstandingRewards * commissionRate) / 10000;
 
-        uint256 daoReward = (outstandingRewards * daoElComissionRate) / 10000;
+        uint256 daoReward = (outstandingRewards * daoElCommissionRate) / 10000;
         operatorRewardsMap[operatorId] += operatorReward;
         daoRewardsMap[operatorId] += daoReward;
         outstandingRewards = outstandingRewards - operatorReward - daoReward;
@@ -268,7 +270,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             uint256 tokenId = _tokenIds[i];
             if (owner != vNFTContract.ownerOf(tokenId)) revert PermissionDenied();
             if (operatorId != vNFTContract.operatorOf(tokenId)) revert MustSameOperator();
-            uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
+            uint256 nftRewards = _rewards(operatorId, gasHeights[i], exitBlockNumbers[i]);
             amounts[i] = nftRewards;
             totalNftRewards += nftRewards;
         }
@@ -296,7 +298,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
             if (operatorId != vNFTContract.operatorOf(tokenId)) revert MustSameOperator();
-            uint256 nftRewards = _rewards(operatorId, gasHeights[0], exitBlockNumbers[i]);
+            uint256 nftRewards = _rewards(operatorId, gasHeights[i], exitBlockNumbers[i]);
             totalNftRewards += nftRewards;
         }
 
@@ -428,6 +430,16 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     }
 
     /**
+     * @notice Set proxy address of LiquidStaking
+     * @param _liquidStakingContractAddress proxy address of LiquidStaking
+     * @dev will only allow call of function by the address registered as the owner
+     */
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+    }
+
+    /**
      * @notice set dao address
      * @param _dao new dao address
      */
@@ -435,5 +447,16 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         if (_dao == address(0)) revert InvalidParameter();
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
+    }
+
+    /**
+     * @notice set  daoElCommissionRate
+     * @param _daoElCommissionRate new _daoElCommissionRate
+     */
+    function setDaoElCommissionRate(uint256 _daoElCommissionRate) external onlyDao {
+        if (_daoElCommissionRate > 5000) revert InvalidParameter();
+        emit DaoElCommissionRateSet(daoElCommissionRate, _daoElCommissionRate);
+
+        daoElCommissionRate = _daoElCommissionRate;
     }
 }
