@@ -74,7 +74,7 @@ contract WithdrawalRequest is
     error PermissionDenied();
     error InvalidParameter();
     error InvalidRequestId();
-    error AlreadeClaimed();
+    error AlreadyClaimed();
     error AlreadyUnstake();
     error NethTransferFailed();
 
@@ -196,7 +196,7 @@ contract WithdrawalRequest is
             if (id >= withdrawalQueues.length) revert InvalidRequestId();
             WithdrawalInfo memory wInfo = withdrawalQueues[id];
             if (wInfo.owner != msg.sender) revert PermissionDenied();
-            if (wInfo.isClaim) revert AlreadeClaimed();
+            if (wInfo.isClaim) revert AlreadyClaimed();
             withdrawalQueues[id].isClaim = true;
             totalRequestNethAmount += wInfo.withdrawNethAmount;
             totalPendingEthAmount += wInfo.claimEthAmount;
@@ -293,7 +293,7 @@ contract WithdrawalRequest is
      * @notice Get information about operator's withdrawal request
      * @param  _operatorId operator Id
      */
-    function getOperatorLargeWitdrawalPendingInfo(uint256 _operatorId) external view returns (uint256, uint256) {
+    function getOperatorLargeWithdrawalPendingInfo(uint256 _operatorId) external view returns (uint256, uint256) {
         return (operatorPendingEthRequestAmount[_operatorId], operatorPendingEthPoolBalance[_operatorId]);
     }
 
