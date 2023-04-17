@@ -2156,5 +2156,4 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         (balance,) = operatorRegistry.getPledgeInfoOfOperator(1);
         assertEq(1 ether - slashAmount * 2, balance);
     }
-
 }
