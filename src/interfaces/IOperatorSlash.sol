@@ -57,4 +57,5 @@ interface IOperatorSlash {
     );
     event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
     event DaoAddressChanged(address oldDao, address _dao);
+    event CompensatedClaimed(address _owner, uint256 _totalCompensated);
 }

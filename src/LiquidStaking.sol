@@ -503,7 +503,7 @@ contract LiquidStaking is
      */
     function nftExitHandle(uint256[] memory _tokenIds, uint256[] memory _exitBlockNumbers) external onlyVaultManager {
         vNFTContract.setNftExitBlockNumbers(_tokenIds, _exitBlockNumbers);
-        
+
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
             if (vNFTContract.ownerOf(tokenId) == address(this)) {
@@ -542,7 +542,10 @@ contract LiquidStaking is
      * @param _amounts reinvest amounts
      * @param _totalAmount totalAmount
      */
-    function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts, uint256 _totalAmount) external onlyVaultManager {
+    function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts, uint256 _totalAmount)
+        external
+        onlyVaultManager
+    {
         if (_operatorIds.length != _amounts.length) revert InvalidParameter();
         consensusVaultContract.reinvestment(_totalAmount);
 
@@ -684,7 +687,7 @@ contract LiquidStaking is
         if (_tokenIds.length == 0 || _gasHeight > block.number) revert InvalidParameter();
 
         uint256[] memory exitBlockNumbers = vNFTContract.getNftExitBlockNumbers(_tokenIds);
-        uint256 totalCompensated = operatorSlashContract.claimCompensated(_tokenIds, _owner);
+
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
 
@@ -698,7 +701,7 @@ contract LiquidStaking is
         address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
         IELVault(vaultContractAddress).transfer(_totalNftRewards, _owner);
 
-        emit UserClaimRewards(_operatorId, _tokenIds, _totalNftRewards + totalCompensated);
+        emit UserClaimRewards(_operatorId, _tokenIds, _totalNftRewards);
     }
 
     /**
