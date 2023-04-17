@@ -43,6 +43,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event DaoAddressChanged(address _oldDao, address _dao);
     event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
     event DaoElCommissionRateSet(uint256 oldDaoElCommissionRate, uint256 _daoElCommissionRate);
+    event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
 
     error PermissionDenied();
     error InvalidParameter();
@@ -426,6 +427,16 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     function setOperatorSlashContract(address _operatorSlashContract) external onlyDao {
         emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContract);
         operatorSlashContract = IOperatorSlash(_operatorSlashContract);
+    }
+
+    /**
+     * @notice Set proxy address of LiquidStaking
+     * @param _liquidStakingContractAddress proxy address of LiquidStaking
+     * @dev will only allow call of function by the address registered as the owner
+     */
+    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
+        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
     }
 
     /**
