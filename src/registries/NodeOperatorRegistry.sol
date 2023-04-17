@@ -97,7 +97,7 @@ contract NodeOperatorRegistry is
     error OperatorNotFound();
     error InvalidCommission();
     error InsufficientAmount();
-    error ContraollerAddrUsed();
+    error ControllerAddrUsed();
     error OperatorHasArrears();
     error OperatorHasBlacklisted();
     error InsufficientMargin();
@@ -179,7 +179,7 @@ contract NodeOperatorRegistry is
     ) external payable nonReentrant validAddress(_controllerAddress) validAddress(_owner) returns (uint256 id) {
         if (bytes(_name).length > 32) revert InvalidParameter();
         if (msg.value < BASIC_PLEDGE + registrationFee) revert InsufficientAmount();
-        if (usedControllerAddress[_controllerAddress]) revert ContraollerAddrUsed();
+        if (usedControllerAddress[_controllerAddress]) revert ControllerAddrUsed();
         id = totalOperators + 1;
 
         totalOperators = id;
@@ -403,7 +403,7 @@ contract NodeOperatorRegistry is
      */
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
         // The same address can only be used once
-        if (usedControllerAddress[_controllerAddress]) revert ContraollerAddrUsed();
+        if (usedControllerAddress[_controllerAddress]) revert ControllerAddrUsed();
 
         NodeOperator memory operator = operators[_id];
 
