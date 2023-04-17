@@ -117,6 +117,8 @@ contract OperatorSlash is
         external
         onlyVaultManager
     {
+        uint256[] memory nftExitHeight = vNFTContract.getNftExitBlockNumbers(_nftExitDelayedTokenIds);
+
         for (uint256 i = 0; i < _nftExitDelayedTokenIds.length; ++i) {
             uint256 tokenId = _nftExitDelayedTokenIds[i];
             uint256 startNumber = withdrawalRequestContract.getNftUnstakeBlockNumber(tokenId);
@@ -128,7 +130,7 @@ contract OperatorSlash is
             nftExitDelayedSlashRecords[tokenId] = block.number;
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
 
-            _delaySlash(operatorId, startNumber, 1);
+            _delaySlash(operatorId, startNumber, nftExitHeight[i] == 0 ? block.number : nftExitHeight[i], 1);
         }
 
         for (uint256 i = 0; i < _largeExitDelayedRequestIds.length; ++i) {
@@ -143,12 +145,15 @@ contract OperatorSlash is
                 startNumber = largeExitDelayedSlashRecords[requestId];
             }
             largeExitDelayedSlashRecords[requestId] = block.number;
-            _delaySlash(operatorId, startNumber, claimEthAmount % 32 ether);
+
+            _delaySlash(operatorId, startNumber, block.number, (claimEthAmount - claimEthAmount % 32 ether) / 32 ether);
         }
     }
 
-    function _delaySlash(uint256 _operatorId, uint256 _startNumber, uint256 validatorNumber) internal {
-        uint256 slashNumber = block.number - _startNumber;
+    function _delaySlash(uint256 _operatorId, uint256 _startNumber, uint256 _endNumber, uint256 validatorNumber)
+        internal
+    {
+        uint256 slashNumber = _endNumber - _startNumber;
         if (slashNumber < delayedExitSlashStandard) revert NoSlashNeeded();
         uint256 _amount = slashNumber * slashAmountPerBlockPerValidator * validatorNumber;
         nodeOperatorRegistryContract.slashOfExitDelayed(_operatorId, _amount);
@@ -169,7 +174,7 @@ contract OperatorSlash is
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
-            if (vNFTContract.ownerOf(tokenId) == address(this)) {
+            if (vNFTContract.ownerOf(tokenId) == address(liquidStakingContract)) {
                 liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
             } else {
                 uint256 requirAmount = _requireAmounts[i];
@@ -198,13 +203,13 @@ contract OperatorSlash is
         uint256 compensatedIndex = operatorCompensatedIndex;
         while (
             operatorSlashArrears[_operatorId].length != 0
-                && operatorSlashArrears[_operatorId].length - 1 != compensatedIndex
+                && operatorSlashArrears[_operatorId].length - 1 >= compensatedIndex
         ) {
             uint256 tokenId = operatorSlashArrears[_operatorId][compensatedIndex];
             uint256 arrears = nftWillCompensated[tokenId];
             if (_amount >= arrears) {
                 nftWillCompensated[tokenId] = 0;
-                nftHasCompensated[tokenId] += _amount;
+                nftHasCompensated[tokenId] += arrears;
                 compensatedIndex += 1;
                 _amount -= arrears;
             } else {
@@ -214,9 +219,12 @@ contract OperatorSlash is
             }
 
             if (_amount == 0) {
-                operatorCompensatedIndex = compensatedIndex;
                 break;
             }
+        }
+
+        if (compensatedIndex != 0 && compensatedIndex != operatorCompensatedIndex) {
+            operatorCompensatedIndex = compensatedIndex;
         }
 
         if (_amount != 0) {
@@ -229,11 +237,7 @@ contract OperatorSlash is
      * @param _tokenIds tokens Id
      * @param _owner owner address
      */
-    function claimCompensated(uint256[] memory _tokenIds, address _owner)
-        external
-        onlyLiquidStaking
-        returns (uint256)
-    {
+    function claimCompensated(uint256[] memory _tokenIds, address _owner) external onlyVaultManager returns (uint256) {
         uint256 totalCompensated;
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
@@ -245,6 +249,8 @@ contract OperatorSlash is
         if (totalCompensated != 0) {
             payable(_owner).transfer(totalCompensated);
         }
+
+        emit CompensatedClaimed(_owner, totalCompensated);
         return totalCompensated;
     }
 

@@ -182,7 +182,7 @@ contract HashConsensusTest is Test, MockOracleProvider {
     function testUpdateInitialEpoch() public {
         uint256 initEpoch = 3;
         vm.startPrank(DAO);
-        consensus.setTime(100);
+        consensus.setTime(GENESIS_TIME);
         consensus.updateInitialEpoch(initEpoch);
         vm.stopPrank();
 

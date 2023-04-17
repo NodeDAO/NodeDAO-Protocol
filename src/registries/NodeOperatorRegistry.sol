@@ -598,11 +598,11 @@ contract NodeOperatorRegistry is
         uint256 amountOwed = operatorSlashAmountOwed[_operatorId];
         if (amountOwed > 0) {
             if (amountOwed > msg.value) {
-                operatorSlashContract.slashArrearsReceive{value: msg.value}(msg.value, _operatorId);
+                operatorSlashContract.slashArrearsReceive{value: msg.value}(_operatorId, msg.value);
                 operatorSlashAmountOwed[_operatorId] -= msg.value;
                 emit OperatorArrearsReduce(_operatorId, msg.value);
             } else {
-                operatorSlashContract.slashArrearsReceive{value: amountOwed}(amountOwed, _operatorId);
+                operatorSlashContract.slashArrearsReceive{value: amountOwed}(_operatorId, amountOwed);
                 operatorSlashAmountOwed[_operatorId] = 0;
                 operatorPledgeVaultBalances[_operatorId] += msg.value - amountOwed;
                 emit OperatorArrearsReduce(_operatorId, amountOwed);
@@ -622,7 +622,7 @@ contract NodeOperatorRegistry is
     function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyOperatorSlash {
         uint256 slashAmount = _slash(_operatorId, _amount);
         if (slashAmount > 0) {
-            operatorSlashContract.slashArrearsReceive{value: slashAmount}(slashAmount, _operatorId);
+            operatorSlashContract.slashArrearsReceive{value: slashAmount}(_operatorId, slashAmount);
         }
     }
 

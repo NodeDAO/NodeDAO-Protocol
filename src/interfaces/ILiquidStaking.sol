@@ -37,8 +37,10 @@ interface ILiquidStaking {
      * @notice According to the reported results of the oracle machine, the income of the consensus layer is re-invested
      * @param _operatorIds operator id
      * @param _amounts reinvest amounts
+     * @param _totalAmount totalAmount
      */
-    function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
+    function reinvestClRewards(uint256[] memory _operatorIds, uint256[] memory _amounts, uint256 _totalAmount)
+        external;
 
     /**
      * @notice nETH to ETH exchange rate

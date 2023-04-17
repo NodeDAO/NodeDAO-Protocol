@@ -92,7 +92,18 @@ contract VNFT is
     /**
      * @notice Returns the validators that are active (may contain validator that are yet active on beacon chain)
      */
+    function activeValidatorOfUser() external view returns (bytes[] memory) {
+        return _activeValidator(true);
+    }
+
+    /**
+     * @notice Returns the validators that are active (may contain validator that are yet active on beacon chain)
+     */
     function activeValidatorsOfStakingPool() external view returns (bytes[] memory) {
+        return _activeValidator(false);
+    }
+
+    function _activeValidator(bool isUser) internal view returns (bytes[] memory) {
         uint256 total = _nextTokenId();
         uint256 activeCounts = 0;
         TokenOwnership memory ownership;
@@ -107,8 +118,14 @@ contract VNFT is
                 continue;
             }
 
-            if (userNftWithdrawalCredentials[i].length != 0) {
-                continue;
+            if (isUser) {
+                if (userNftWithdrawalCredentials[i].length == 0) {
+                    continue;
+                }
+            } else {
+                if (userNftWithdrawalCredentials[i].length != 0) {
+                    continue;
+                }
             }
 
             activeCounts += 1;
@@ -126,8 +143,14 @@ contract VNFT is
                 continue;
             }
 
-            if (userNftWithdrawalCredentials[i].length != 0) {
-                continue;
+            if (isUser) {
+                if (userNftWithdrawalCredentials[i].length == 0) {
+                    continue;
+                }
+            } else {
+                if (userNftWithdrawalCredentials[i].length != 0) {
+                    continue;
+                }
             }
 
             _validators[tokenIdsIdx++] = validators[i].pubkey;
@@ -139,7 +162,18 @@ contract VNFT is
     /**
      * @notice Returns the tokenId that are active (may contain validator that are yet active on beacon chain)
      */
+    function activeNftsOfUser() external view returns (uint256[] memory) {
+        return _activeNfts(true);
+    }
+
+    /**
+     * @notice Returns the tokenId that are active (may contain validator that are yet active on beacon chain)
+     */
     function activeNftsOfStakingPool() external view returns (uint256[] memory) {
+        return _activeNfts(false);
+    }
+
+    function _activeNfts(bool isUser) internal view returns (uint256[] memory) {
         uint256 total = _nextTokenId();
         uint256 activeCounts = 0;
         TokenOwnership memory ownership;
@@ -153,9 +187,14 @@ contract VNFT is
             if (keccak256(validators[i].pubkey) == keccak256(bytes(""))) {
                 continue;
             }
-
-            if (userNftWithdrawalCredentials[i].length != 0) {
-                continue;
+            if (isUser) {
+                if (userNftWithdrawalCredentials[i].length == 0) {
+                    continue;
+                }
+            } else {
+                if (userNftWithdrawalCredentials[i].length != 0) {
+                    continue;
+                }
             }
 
             activeCounts += 1;
@@ -173,8 +212,14 @@ contract VNFT is
                 continue;
             }
 
-            if (userNftWithdrawalCredentials[i].length != 0) {
-                continue;
+            if (isUser) {
+                if (userNftWithdrawalCredentials[i].length == 0) {
+                    continue;
+                }
+            } else {
+                if (userNftWithdrawalCredentials[i].length != 0) {
+                    continue;
+                }
             }
 
             _nfts[tokenIdsIdx++] = i;
@@ -424,19 +469,18 @@ contract VNFT is
         uint256 i = 0;
         uint256[] memory emptyNfts = operatorEmptyNfts[_operatorId];
         for (uint256 j = operatorEmptyNftIndex[_operatorId]; j < emptyNfts.length; ++j) {
-                uint256 tokenId = emptyNfts[j];
-                if (_ownershipAt(tokenId).burned) {
-                    continue;
-                }
+            uint256 tokenId = emptyNfts[j];
+            if (_ownershipAt(tokenId).burned) {
+                continue;
+            }
 
-                withdrawalCredentials[i++] = userNftWithdrawalCredentials[tokenId];
-                if (i == _number - 1) {
-                    break;
-                }
+            withdrawalCredentials[i++] = userNftWithdrawalCredentials[tokenId];
+            if (i == _number - 1) {
+                break;
+            }
         }
-        
+
         for (i; i < _number - 1; ++i) {
-        
             withdrawalCredentials[i] = bytes("");
         }
 

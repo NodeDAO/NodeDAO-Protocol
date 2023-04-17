@@ -227,7 +227,7 @@ contract WithdrawalRequest is
         uint256 j = 0;
         for (uint256 i = 0; i < tokenIds.length; ++i) {
             if (exitBlockNumbers[i] == 0) {
-                noExitNfts[j++] = i;
+                noExitNfts[j++] = tokenIds[i];
             }
         }
 
@@ -306,7 +306,7 @@ contract WithdrawalRequest is
         view
         returns (uint256, uint256, uint256, uint256, uint256, address, bool)
     {
-        if (_requestId >= withdrawalQueues.length - 1) revert InvalidParameter();
+        if (_requestId >= withdrawalQueues.length) revert InvalidParameter();
         WithdrawalInfo memory wInfo = withdrawalQueues[_requestId];
 
         return (
