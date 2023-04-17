@@ -96,7 +96,7 @@ contract DeployNewContractScript is Script {
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
     VaultManager vaultManager;
-    address operatorSlashProxy = 0x0f14e0381bBBc2cF3602262Dbd175f2A8fD9A145 ;
+    address operatorSlashProxy = 0x0f14e0381bBBc2cF3602262Dbd175f2A8fD9A145;
     address withdrawalRequestProxy;
     address withdrawOracleProxy = 0x28fbAe8c1A4c04209eb4452907F85560055bC675;
     address vaultManagerProxy;

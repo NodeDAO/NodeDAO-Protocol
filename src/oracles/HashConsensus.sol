@@ -459,16 +459,6 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         }
     }
 
-    /// @notice Returns the last reported slot
-    function getLastReportingRefSlotState()
-        external
-        view
-        returns (uint256 lastReportRefSlot, uint256 lastConsensusRefSlot)
-    {
-        lastReportRefSlot = reportingState.lastReportRefSlot;
-        lastConsensusRefSlot = reportingState.lastConsensusRefSlot;
-    }
-
     struct MemberConsensusState {
         /// @notice Current frame's reference slot.
         uint256 currentFrameRefSlot;
