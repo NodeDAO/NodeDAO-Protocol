@@ -446,20 +446,20 @@ contract NodeOperatorRegistry is
         view
         operatorExists(_id)
         returns (
-            bool trusted,
-            string memory name,
-            address owner,
-            address controllerAddress,
-            address vaultContractAddress
+            bool _trusted,
+            string memory _name,
+            address _owner,
+            address _controllerAddress,
+            address _vaultContractAddress
         )
     {
         NodeOperator memory operator = operators[_id];
 
-        trusted = operator.trusted;
-        name = _fullInfo ? operator.name : "";
-        owner = operator.owner;
-        controllerAddress = operator.controllerAddress;
-        vaultContractAddress = operator.vaultContractAddress;
+        _trusted = operator.trusted;
+        _name = _fullInfo ? operator.name : "";
+        _owner = operator.owner;
+        _controllerAddress = operator.controllerAddress;
+        _vaultContractAddress = operator.vaultContractAddress;
     }
 
     /**
@@ -729,8 +729,7 @@ contract NodeOperatorRegistry is
      * @notice Start the permissionless phase, Cannot be changed once started
      * @param _blockNumber The block height at the start of the permissionless phase must be greater than the current block
      */
-
-    function setpermissionlessBlockNumber(uint256 _blockNumber) external onlyDao {
+    function setPermissionlessBlockNumber(uint256 _blockNumber) external onlyDao {
         if (permissionlessBlockNumber != 0) revert PermissionlessPhaseStart();
         if (_blockNumber <= block.number) revert InvalidParameter();
         permissionlessBlockNumber = _blockNumber;
@@ -786,7 +785,7 @@ contract NodeOperatorRegistry is
             if (operatorCommissionRate[_operatorIds[i]] == 0) {
                 commissions[i] = defaultOperatorCommission;
             } else {
-                commissions[i] = operatorCommissionRate[i];
+                commissions[i] = operatorCommissionRate[_operatorIds[i]];
             }
         }
 
@@ -809,7 +808,6 @@ contract NodeOperatorRegistry is
      * @param _rate _rate
      */
     function setOperatorCommissionRate(uint256 _operatorId, uint256 _rate) external onlyDao {
-        NodeOperator memory operator = operators[_operatorId];
         if (_rate >= 5000) revert InvalidCommission();
         uint256 commissionRate = operatorCommissionRate[_operatorId];
         emit CommissionRateChanged(commissionRate == 0 ? defaultOperatorCommission : commissionRate, _rate);
