@@ -20,6 +20,8 @@ import "src/WithdrawalRequest.sol";
 
 // forge test --match-path  test/oracles/WithdrawOracleTest.sol
 contract WithdrawOracleTest is Test, MockOracleProvider {
+    using SafeCast for uint256;
+
     HashConsensusWithTimer consensus;
     WithdrawOracleWithTimer withdrawOracle;
 
@@ -45,8 +47,8 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     address _dao = DAO;
     address _daoValutAddress = address(2);
     address _rewardAddress = address(3);
-    address _controllerAddress = address(4);
-    address _controllerAddress2 = address(34);
+    address _controllerAddress = address(1000);
+    address _controllerAddress2 = address(1001);
     address[] _rewardAddresses = new address[] (1);
     uint256[] _ratios = new uint256[] (1);
 
@@ -765,5 +767,255 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
 
         vm.prank(MEMBER_1);
         withdrawOracle.submitReportData(mockFinalReportData_OperatorReward(refSlot), CONSENSUS_VERSION);
+    }
+
+    ////////////////////////////////////////////////////////////////
+    //------------ Batch ReportData submit test and Gas test -------
+    ////////////////////////////////////////////////////////////////
+
+    function toBytes(uint256 x) public returns (bytes memory b) {
+        b = new bytes(32);
+        assembly {
+            mstore(add(b, 32), x)
+        }
+    }
+
+    //--------------------------stake 100 Nft To 100 Operator per 1--------------------------------------
+    function stake100NftTo100Operator() public {
+        // set block number to 10000
+        vm.roll(10000);
+
+        // stake for 4 validator
+        vm.deal(USER_1, 20000 ether);
+
+        for (uint256 i = 2; i < 102; ++i) {
+            address controller = address(uint160(i));
+
+            operatorRegistry.registerOperator{value: 1.1 ether}(
+                "batch100", controller, address(4), _rewardAddresses, _ratios
+            );
+            vm.prank(_dao);
+            operatorRegistry.setTrustedOperator(i);
+
+            bytes[] memory pubkeys = new bytes[](1);
+            bytes[] memory signatures = new bytes[](1);
+            bytes32[] memory depositDataRoots = new bytes32[](1);
+
+            bytes memory pubkey = toBytes(i);
+            bytes memory sign = bytes(
+                hex"8775133c30d529d2d38845bf4701594ced41f641dd91c29a72f649cc2917d96a8adcbf8479d1ab03253545f65e6b168c0e6989ac41c6c18044292fbb5f1bb9168b4c9767df5c6b28c2d72870411700c3cb7ceb590e5a33ab26619198944f4c70"
+            );
+            bytes32 root = bytes32(hex"18e5418f6fedb34d25a7edda2ffeb71816dd6a63eee6ddb0acbcd126ebb4c20a");
+            pubkeys[0] = pubkey;
+            signatures[0] = sign;
+            depositDataRoots[0] = root;
+
+            vm.prank(USER_1);
+            liquidStaking.stakeNFT{value: 32 ether}(i, USER_1);
+
+            vm.prank(controller);
+            liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+        }
+    }
+
+    //--------------------------stake 100 Nft To 50 Operator per 2--------------------------------------
+    function stake100NftTo50Operator() public {
+        // set block number to 10000
+        vm.roll(10000);
+
+        // stake for 4 validator
+        vm.deal(USER_1, 20000 ether);
+
+        for (uint256 i = 2; i < 52; ++i) {
+            address controller = address(uint160(i));
+
+            operatorRegistry.registerOperator{value: 1.1 ether}(
+                "batch50", controller, address(4), _rewardAddresses, _ratios
+            );
+            vm.prank(_dao);
+            operatorRegistry.setTrustedOperator(i);
+
+            bytes[] memory pubkeys = new bytes[](2);
+            bytes[] memory signatures = new bytes[](2);
+            bytes32[] memory depositDataRoots = new bytes32[](2);
+
+            bytes memory pubkey = toBytes(i);
+            bytes memory sign = bytes(
+                hex"8775133c30d529d2d38845bf4701594ced41f641dd91c29a72f649cc2917d96a8adcbf8479d1ab03253545f65e6b168c0e6989ac41c6c18044292fbb5f1bb9168b4c9767df5c6b28c2d72870411700c3cb7ceb590e5a33ab26619198944f4c70"
+            );
+            bytes32 root = bytes32(hex"18e5418f6fedb34d25a7edda2ffeb71816dd6a63eee6ddb0acbcd126ebb4c20a");
+            pubkeys[0] = pubkey;
+            signatures[0] = sign;
+            depositDataRoots[0] = root;
+
+            bytes memory pubkey2 = toBytes(i + 100);
+            pubkeys[1] = pubkey2;
+            signatures[1] = sign;
+            depositDataRoots[1] = root;
+
+            vm.prank(USER_1);
+            liquidStaking.stakeNFT{value: 64 ether}(i, USER_1);
+
+            vm.prank(controller);
+            liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+        }
+    }
+
+    function stake20NftTo20Operator() public {
+        // set block number to 10000
+        vm.roll(10000);
+
+        // stake for 4 validator
+        vm.deal(USER_1, 20000 ether);
+
+        for (uint256 i = 2; i < 22; ++i) {
+            address controller = address(uint160(i));
+
+            operatorRegistry.registerOperator{value: 1.1 ether}(
+                "batch100", controller, address(4), _rewardAddresses, _ratios
+            );
+            vm.prank(_dao);
+            operatorRegistry.setTrustedOperator(i);
+
+            bytes[] memory pubkeys = new bytes[](1);
+            bytes[] memory signatures = new bytes[](1);
+            bytes32[] memory depositDataRoots = new bytes32[](1);
+
+            bytes memory pubkey = toBytes(i);
+            bytes memory sign = bytes(
+                hex"8775133c30d529d2d38845bf4701594ced41f641dd91c29a72f649cc2917d96a8adcbf8479d1ab03253545f65e6b168c0e6989ac41c6c18044292fbb5f1bb9168b4c9767df5c6b28c2d72870411700c3cb7ceb590e5a33ab26619198944f4c70"
+            );
+            bytes32 root = bytes32(hex"18e5418f6fedb34d25a7edda2ffeb71816dd6a63eee6ddb0acbcd126ebb4c20a");
+            pubkeys[0] = pubkey;
+            signatures[0] = sign;
+            depositDataRoots[0] = root;
+
+            vm.prank(USER_1);
+            liquidStaking.stakeNFT{value: 32 ether}(i, USER_1);
+
+            vm.prank(controller);
+            liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////
+    // case:
+    // 1. 100 operator reward for 20 ether
+    // 2. 100 validator exit
+    // 3. 50 validator delayed exit
+    ////////////////////////////////////////////////////////////////
+    // step:
+    // 1. register 100 Operator and set Trusted
+    // 2. user stakeNFT 100 to 100 Operator
+    // 3. register 100 pubkey for 100 Operator
+    // 4. add block number;
+    // 4.1 add clVault reward for 20 ether
+    // 4.2 unstakeNFT
+    // 5. ConsensusReached
+    // 6. Report
+    ////////////////////////////////////////////////////////////////
+    // see gas: 13246237
+    // forge test -vvvv --match-test testReportData_nft_batch100
+    function testReportData_nft_batch100() public {
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        // set block number to 15000
+        vm.roll(15000);
+        // set clVault reward
+        vm.deal(address(consensusVaultContract), 20 ether);
+
+        stake100NftTo100Operator();
+
+        vm.startPrank(USER_1);
+        // VNFT unstake
+        uint256[] memory needUnstakeTokenIds = new uint256[](100);
+        for (uint256 i = 0; i < 100; ++i) {
+            needUnstakeTokenIds[i] = i;
+        }
+        withdrawalRequest.unstakeNFT(needUnstakeTokenIds);
+        vm.stopPrank();
+
+        // set clVault reward
+        vm.deal(address(consensusVaultContract), 20 ether);
+
+        bytes32 hash = mockFinalReportData_batch100_hash(refSlot);
+        reportDataConsensusReached(hash);
+
+        vm.roll(30000);
+
+        vm.prank(MEMBER_1);
+        withdrawOracle.submitReportData(mockFinalReportData_batch100(refSlot), CONSENSUS_VERSION);
+    }
+
+    ////////////////////////////////////////////////////////////////
+    // case:
+    // 1. 50 operator reward for 20 ether
+    // 2. 100 validator exit for 50 operator per 2
+    ////////////////////////////////////////////////////////////////
+    // see gas: 6447008
+    // reportConsensusData: 6177961
+    // forge test -vvvv --match-test testReportData_nft_batch_normal
+    function testReportData_nft_batch_normal() public {
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        // set block number to 15000
+        vm.roll(15000);
+        // set clVault reward
+        vm.deal(address(consensusVaultContract), 20 ether);
+
+        stake100NftTo50Operator();
+
+        vm.startPrank(USER_1);
+        // VNFT unstake
+        uint256[] memory needUnstakeTokenIds = new uint256[](100);
+        for (uint256 i = 0; i < 100; ++i) {
+            needUnstakeTokenIds[i] = i;
+        }
+        withdrawalRequest.unstakeNFT(needUnstakeTokenIds);
+        vm.stopPrank();
+
+        // set clVault reward
+        vm.deal(address(consensusVaultContract), 20 ether);
+
+        bytes32 hash = mockFinalReportData_batch100_normal_hash(refSlot);
+        reportDataConsensusReached(hash);
+
+        vm.roll(30000);
+
+        vm.prank(MEMBER_1);
+        withdrawOracle.submitReportData(mockFinalReportData_batch100_normal(refSlot), CONSENSUS_VERSION);
+    }
+
+    // see gas: 1875255
+    // forge test -vvvv --match-test testReportData_20Nft_20Operator
+    function testReportData_20Nft_20Operator() public {
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        // set block number to 15000
+        vm.roll(15000);
+        // set clVault reward
+        vm.deal(address(consensusVaultContract), 20 ether);
+
+        stake20NftTo20Operator();
+
+        vm.startPrank(USER_1);
+        // VNFT unstake
+        uint256[] memory needUnstakeTokenIds = new uint256[](20);
+        for (uint256 i = 0; i < 20; ++i) {
+            needUnstakeTokenIds[i] = i;
+        }
+        withdrawalRequest.unstakeNFT(needUnstakeTokenIds);
+        vm.stopPrank();
+
+        // set clVault reward
+        vm.deal(address(consensusVaultContract), 20 ether);
+
+        bytes32 hash = mockFinalReportData_20Nft_20Operator_hash(refSlot);
+        reportDataConsensusReached(hash);
+
+        vm.roll(30000);
+
+        vm.prank(MEMBER_1);
+        withdrawOracle.submitReportData(mockFinalReportData_20Nft_20Operator(refSlot), CONSENSUS_VERSION);
     }
 }
