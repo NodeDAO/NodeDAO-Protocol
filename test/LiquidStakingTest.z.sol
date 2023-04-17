@@ -13,6 +13,7 @@ import "src/oracles/WithdrawOracle.sol";
 import "forge-std/console.sol";
 import "src/vault/ELVaultFactory.sol";
 import "src/vault/ConsensusVault.sol";
+import "src/vault/NodeDaoTreasury.sol";
 import "test/helpers/oracles/HashConsensusWithTimer.sol";
 import "test/helpers/oracles/MockOracleProvider.sol";
 import "test/helpers/oracles/WithdrawOracleWithTimer.sol";
@@ -84,11 +85,11 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     address payable consensusVaultContractAddr;
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
-
+    NodeDaoTreasury nodeDaoTreasury;
     HashConsensusWithTimer consensus;
 
     address _dao = DAO;
-    address _daoValutAddress = address(2);
+    address _daoValutAddress;
     address _rewardAddress = address(3);
     address _controllerAddress = address(4);
     address _oracleMember1 = address(11);
@@ -107,6 +108,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         consensusVaultContract = new ConsensusVault();
         consensusVaultContract.initialize(_dao, address(liquidStaking));
         consensusVaultContractAddr = payable(consensusVaultContract);
+
+        nodeDaoTreasury = new NodeDaoTreasury();
+        nodeDaoTreasury.initialize(_dao);
+        _daoValutAddress = address(nodeDaoTreasury);
 
         neth = new NETH();
         neth.setLiquidStaking(address(liquidStaking));
@@ -157,6 +162,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
         );
 
+        assertEq(0.1 ether, _daoValutAddress.balance);
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
 
