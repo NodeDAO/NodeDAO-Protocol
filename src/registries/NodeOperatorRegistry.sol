@@ -164,15 +164,17 @@ contract NodeOperatorRegistry is
      * @param _vaultFactoryContractAddress new vault factory contract address
      * @param _resetVaultOperatorIds reset vault contract
      */
-    function initializeV2(address _vaultFactoryContractAddress, uint256[] memory _resetVaultOperatorIds)
-        public
-        reinitializer(2)
-        onlyDao
-    {
+    function initializeV2(
+        address _vaultFactoryContractAddress,
+        address _operatorSlashContractAddress,
+        uint256[] memory _resetVaultOperatorIds
+    ) public reinitializer(2) onlyDao {
         defaultOperatorCommission = 2000;
         emit VaultFactorContractSet(address(vaultFactoryContract), _vaultFactoryContractAddress);
         vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
 
+        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContractAddress);
+        operatorSlashContract = IOperatorSlash(_operatorSlashContractAddress);
         for (uint256 i = 0; i < _resetVaultOperatorIds.length; ++i) {
             _resetOperatorVaultContract(_resetVaultOperatorIds[i]);
         }
@@ -664,25 +666,31 @@ contract NodeOperatorRegistry is
             return pledgeAmounts;
         }
     }
+
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
      * @param _exitTokenIds tokenid id
      * @param _amounts slash amount
      */
-
     function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyOperatorSlash {
         uint256 totalSlashAmounts = 0;
         uint256[] memory slashAmounts = new uint256[] (_exitTokenIds.length);
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
+            uint256 amount = _amounts[i];
+            if (amount == 0) {
+                continue;
+            }
+
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
-            uint256 amount = _amounts[i];
             uint256 slashAmount = _slash(operatorId, amount);
             slashAmounts[i] = slashAmount;
             totalSlashAmounts += slashAmount;
         }
 
-        operatorSlashContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
+        if (totalSlashAmounts != 0) {
+            operatorSlashContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
+        }
     }
 
     /**

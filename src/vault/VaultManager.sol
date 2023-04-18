@@ -156,7 +156,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         liquidStakingContract.reinvestClRewards(operatorIds, amounts, totalAmount);
 
-        if (exitTokenIds.length != 0 || slashAmounts.length != 0) {
+        if (exitTokenIds.length != 0 && exitTokenIds.length == slashAmounts.length) {
             operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
         }
 
@@ -165,7 +165,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         }
 
         // nft exit
-        if (exitTokenIds.length != 0 || exitBlockNumbers.length != 0) {
+        if (exitTokenIds.length != 0 && exitTokenIds.length == exitBlockNumbers.length) {
             liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
         }
 
