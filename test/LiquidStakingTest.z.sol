@@ -155,9 +155,6 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             address(depositContract)
         );
 
-        vm.prank(_dao);
-        liquidStaking.setOperatorCanLoanAmounts(32 ether);
-
         operatorRegistry.registerOperator{value: 1.1 ether}(
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
         );
@@ -2204,23 +2201,26 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(liquidStaking.operatorCanLoanAmounts(), 100 ether);
 
         vm.prank(_dao);
-        liquidStaking.setNodeOperatorRegistryContract(address(1000));
+        liquidStaking.setDepositFeeRate(500);
+        assertEq(liquidStaking.depositFeeRate(), 500);
+
+        liquidStaking.setDaoAddress(address(1000));
+        assertEq(address(liquidStaking.dao()), address(1000));
+        _dao = address(1000);
+
+        vm.prank(_dao);
+        liquidStaking.changeCountractSetting(
+            address(1000), address(1000), address(1000), address(1000), address(1000), address(1000)
+        );
+
         assertEq(address(liquidStaking.nodeOperatorRegistryContract()), address(1000));
 
-        vm.prank(_dao);
-        liquidStaking.setWithdrawOracleContract(address(1000));
         assertEq(address(liquidStaking.withdrawOracleContract()), address(1000));
 
-        vm.prank(_dao);
-        liquidStaking.setOperatorSlashContract(address(1000));
         assertEq(address(liquidStaking.operatorSlashContract()), address(1000));
 
-        vm.prank(_dao);
-        liquidStaking.setWithdrawalRequestContract(address(1000));
         assertEq(address(liquidStaking.withdrawalRequestContract()), address(1000));
 
-        vm.prank(_dao);
-        liquidStaking.setVaultManagerContract(address(1000));
         assertEq(address(liquidStaking.vaultManagerContractAddress()), address(1000));
 
         liquidStaking.setLiquidStakingWithdrawalCredentials(
@@ -2231,17 +2231,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             bytes(hex"010000000000000000000000b553a401fbc2427777d05ec21dd37a03e1fa6894")
         );
 
-        vm.prank(_dao);
-        liquidStaking.setDepositFeeRate(500);
-        assertEq(liquidStaking.depositFeeRate(), 500);
-
-        vm.prank(_dao);
-        liquidStaking.setDaoVaultAddress(address(1000));
         assertEq(address(liquidStaking.daoVaultAddress()), address(1000));
-
-        liquidStaking.setDaoAddress(address(1000));
-        assertEq(address(liquidStaking.dao()), address(1000));
-        _dao = address(1000);
     }
 
     function testOperatorSlash() public {
