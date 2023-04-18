@@ -810,35 +810,6 @@ contract LiquidStaking is
     }
 
     /**
-     * @notice set dao address
-     * @param _dao new dao address
-     */
-    function setDaoAddress(address _dao) external onlyOwner {
-        if (_dao == address(0)) revert InvalidParameter();
-        emit DaoAddressChanged(dao, _dao);
-        dao = _dao;
-    }
-
-    /**
-     * @notice set dao vault address
-     * @param _daoVaultAddress new dao vault address
-     */
-    function setDaoVaultAddress(address _daoVaultAddress) external onlyDao {
-        emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
-        daoVaultAddress = _daoVaultAddress;
-    }
-
-    /**
-     * @notice Set staking fee rate
-     * @param _feeRate new stake fee rate
-     */
-    function setDepositFeeRate(uint256 _feeRate) external onlyDao {
-        if (_feeRate > 1000) revert InvalidParameter();
-        emit DepositFeeRateSet(depositFeeRate, _feeRate);
-        depositFeeRate = _feeRate;
-    }
-
-    /**
      * @notice Set LiquidStaking contract withdrawalCredentials
      * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
      */
@@ -853,48 +824,66 @@ contract LiquidStaking is
     }
 
     /**
-     * @notice Set new vaultManagerContractA address
+     * @notice set dao address
+     * @param _dao new dao address
+     */
+    function setDaoAddress(address _dao) external onlyOwner {
+        if (_dao == address(0)) revert InvalidParameter();
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
+    }
+
+    /**
+     * @notice change liquidStaking contract setting
+     * @param _daoVaultAddress new dao vault address
+     * @param _nodeOperatorRegistryContract new nodeOperatorRegistryContract
+     * @param _withdrawOracleContractAddress new withdrawOracleContract address
+     * @param _operatorSlashContract new operatorSlashContract address
+     * @param _withdrawalRequestContractAddress new withdrawalRequestContract address
      * @param _vaultManagerContract new vaultManagerContract address
      */
-    function setVaultManagerContract(address _vaultManagerContract) external onlyDao {
-        emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
-        vaultManagerContractAddress = _vaultManagerContract;
+    function changeCountractSetting(
+        address _daoVaultAddress,
+        address _nodeOperatorRegistryContract,
+        address _withdrawOracleContractAddress,
+        address _operatorSlashContract,
+        address _withdrawalRequestContractAddress,
+        address _vaultManagerContract
+    ) external onlyDao {
+        if (_daoVaultAddress != address(0)) {
+            emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
+            daoVaultAddress = _daoVaultAddress;
+        }
+        if (_nodeOperatorRegistryContract != address(0)) {
+            emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
+            nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+        }
+        if (_withdrawOracleContractAddress != address(0)) {
+            emit WithdrawOracleContractSet(address(withdrawOracleContract), _withdrawOracleContractAddress);
+            withdrawOracleContract = IWithdrawOracle(_withdrawOracleContractAddress);
+        }
+        if (_operatorSlashContract != address(0)) {
+            emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContract);
+            operatorSlashContract = IOperatorSlash(_operatorSlashContract);
+        }
+        if (_withdrawalRequestContractAddress != address(0)) {
+            emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
+            withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
+        }
+        if (_vaultManagerContract != address(0)) {
+            emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
+            vaultManagerContractAddress = _vaultManagerContract;
+        }
     }
 
     /**
-     * @notice Set new withdrawalRequestContract address
-     * @param _withdrawalRequestContractAddress new withdrawalRequestContract address
+     * @notice Set staking fee rate
+     * @param _feeRate new stake fee rate
      */
-    function setWithdrawalRequestContract(address _withdrawalRequestContractAddress) external onlyDao {
-        emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
-        withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
-    }
-
-    /**
-     * @notice Set new operatorSlashContract address
-     * @param _operatorSlashContract new operatorSlashContract address
-     */
-    function setOperatorSlashContract(address _operatorSlashContract) external onlyDao {
-        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContract);
-        operatorSlashContract = IOperatorSlash(_operatorSlashContract);
-    }
-
-    /**
-     * @notice Set new withdrawOracleContract address
-     * @param _withdrawOracleContractAddress new withdrawOracleContract address
-     */
-    function setWithdrawOracleContract(address _withdrawOracleContractAddress) external onlyDao {
-        emit WithdrawOracleContractSet(address(withdrawOracleContract), _withdrawOracleContractAddress);
-        withdrawOracleContract = IWithdrawOracle(_withdrawOracleContractAddress);
-    }
-
-    /**
-     * @notice Set new nodeOperatorRegistryContract address
-     * @param _nodeOperatorRegistryContract new withdrawalCredentials
-     */
-    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
-        emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
-        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+    function setDepositFeeRate(uint256 _feeRate) external onlyDao {
+        if (_feeRate > 1000) revert InvalidParameter();
+        emit DepositFeeRateSet(depositFeeRate, _feeRate);
+        depositFeeRate = _feeRate;
     }
 
     /**
