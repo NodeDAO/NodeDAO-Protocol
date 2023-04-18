@@ -2,15 +2,13 @@
 
 pragma solidity 0.8.8;
 
-import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
-import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "openzeppelin-contracts/access/Ownable.sol";
+import "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title Treasury
  */
-contract NodeDaoTreasury is Initializable, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract NodeDaoTreasury is Ownable, ReentrancyGuard {
     address public dao;
 
     event DaoAddressChanged(address _oldDao, address _dao);
@@ -24,19 +22,9 @@ contract NodeDaoTreasury is Initializable, UUPSUpgradeable, OwnableUpgradeable, 
         _;
     }
 
-    /**
-     * @notice Initializes the DaoVault
-     * @dev initializer - A modifier that defines a protected initializer function that can be invoked at most once
-     * @param _dao dao address
-     */
-    function initialize(address _dao) public initializer {
-        __Ownable_init();
-        __UUPSUpgradeable_init();
-        __ReentrancyGuard_init();
+    constructor(address _dao) {
         dao = _dao;
     }
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /**
      * @notice transfer ETH
