@@ -86,6 +86,64 @@ abstract contract MainnetHelperContractV2 {
     uint256 public constant PENDING_BALANCE = 0;
 }
 
+contract GoerliDeployVaultFactorysScript is Script, GoerliHelperContractV2 {
+    ELVault vaultContract;
+    ELVaultFactory vaultFactoryContract;
+    address vaultFactoryContractProxy;
+
+    function setUp() public {}
+
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        // deploy ELVault implement
+        vaultContract = new ELVault();
+
+        // deploy ELVaultFactory implement
+        vaultFactoryContract = new ELVaultFactory();
+
+        // deploy ELVaultFactory proxy
+        vaultFactoryContractProxy = deployer.deploy(address(vaultFactoryContract));
+
+        ELVaultFactory(vaultFactoryContractProxy).initialize(address(vaultContract), liquidStakingProxy, _daoEOA);
+        ELVaultFactory(vaultFactoryContractProxy).setNodeOperatorRegistry(operatorRegistryProxy);
+        console.log("===============vaultFactoryContractProxy=================", address(vaultFactoryContractProxy));
+
+        vm.stopBroadcast();
+    }
+}
+
+contract MainnetDeployVaultFactorysScript is Script, MainnetHelperContractV2 {
+    ELVault vaultContract;
+    ELVaultFactory vaultFactoryContract;
+    address vaultFactoryContractProxy;
+
+    function setUp() public {}
+
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        // deploy ELVault implement
+        vaultContract = new ELVault();
+
+        // deploy ELVaultFactory implement
+        vaultFactoryContract = new ELVaultFactory();
+
+        // deploy ELVaultFactory proxy
+        vaultFactoryContractProxy = deployer.deploy(address(vaultFactoryContract));
+
+        ELVaultFactory(vaultFactoryContractProxy).initialize(
+            address(vaultContract), liquidStakingProxy, _daoMultisigContract
+        );
+        ELVaultFactory(vaultFactoryContractProxy).setNodeOperatorRegistry(operatorRegistryProxy);
+        console.log("===============vaultFactoryContractProxy=================", address(vaultFactoryContractProxy));
+
+        vm.stopBroadcast();
+    }
+}
+
 abstract contract BaseContract {
     uint256 public constant SLOTS_PER_EPOCH = 32;
     uint256 public constant SECONDS_PER_SLOT = 12;

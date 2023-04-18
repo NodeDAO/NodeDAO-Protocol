@@ -60,7 +60,6 @@ contract GoerliDeployNodeDaoTreasury is Script {
 
 contract MainnetDeployNodeDaoTreasury is Script {
     NodeDaoTreasury nodeDaoTreasury;
-    address payable nodeDaoTreasuryProxy;
     address _daoMultisigContract = 0x718b7885FEC8511DC8F2A378D3045c90e82d6A1d;
     address timelock = 0x16F692525f3b8c8a96F8c945D365Da958Fb5735B;
 
@@ -73,7 +72,7 @@ contract MainnetDeployNodeDaoTreasury is Script {
         nodeDaoTreasury = new NodeDaoTreasury(_daoMultisigContract);
         console.log("===============nodeDaoTreasury=================", address(nodeDaoTreasury));
 
-        NodeDaoTreasury(nodeDaoTreasuryProxy).transferOwnership(address(timelock));
+        nodeDaoTreasury.transferOwnership(address(timelock));
 
         vm.stopBroadcast();
     }
