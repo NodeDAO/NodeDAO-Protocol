@@ -13,6 +13,7 @@ import "src/oracles/WithdrawOracle.sol";
 import "forge-std/console.sol";
 import "src/vault/ELVaultFactory.sol";
 import "src/vault/ConsensusVault.sol";
+import "src/vault/NodeDaoTreasury.sol";
 import "test/helpers/oracles/HashConsensusWithTimer.sol";
 import "test/helpers/oracles/MockOracleProvider.sol";
 import "test/helpers/oracles/WithdrawOracleWithTimer.sol";
@@ -84,11 +85,11 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     address payable consensusVaultContractAddr;
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
-
+    NodeDaoTreasury nodeDaoTreasury;
     HashConsensusWithTimer consensus;
 
     address _dao = DAO;
-    address _daoValutAddress = address(2);
+    address _daoValutAddress;
     address _rewardAddress = address(3);
     address _controllerAddress = address(4);
     address _oracleMember1 = address(11);
@@ -107,6 +108,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         consensusVaultContract = new ConsensusVault();
         consensusVaultContract.initialize(_dao, address(liquidStaking));
         consensusVaultContractAddr = payable(consensusVaultContract);
+
+        nodeDaoTreasury = new NodeDaoTreasury();
+        nodeDaoTreasury.initialize(_dao);
+        _daoValutAddress = address(nodeDaoTreasury);
 
         neth = new NETH();
         neth.setLiquidStaking(address(liquidStaking));
@@ -157,6 +162,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             "one", _controllerAddress, address(4), _rewardAddresses, _ratios
         );
 
+        assertEq(0.1 ether, _daoValutAddress.balance);
         vm.prank(_dao);
         operatorRegistry.setTrustedOperator(1);
 
@@ -192,7 +198,8 @@ contract LiquidStakingTest is Test, MockOracleProvider {
             address(consensusVaultContract),
             address(vaultManager),
             address(withdrawalRequest),
-            address(operatorSlash)
+            address(operatorSlash),
+            address(withdrawOracle)
         );
 
         vaultManager.initialize(
@@ -205,8 +212,22 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         );
         vm.prank(_dao);
         vaultManager.setDaoElCommissionRate(300);
+
+        uint256[] memory _resetVaultOperatorIds = new uint256[] (1);
+        _resetVaultOperatorIds[0] = 1;
+
+        assertEq(operatorRegistry.defaultOperatorCommission(), 0);
+        address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
+        console.log("========operatorRegistry.initializeV2==========", operatorVaultAddr);
+        vm.prank(_dao);
+        operatorRegistry.initializeV2(address(vaultFactoryContract), _resetVaultOperatorIds);
+        operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
+        console.log("========operatorRegistry.initializeV2==========", operatorVaultAddr);
+        assertEq(operatorRegistry.defaultOperatorCommission(), 2000);
+
         vm.prank(_dao);
         operatorRegistry.setDefaultOperatorCommissionRate(700);
+        assertEq(operatorRegistry.defaultOperatorCommission(), 700);
     }
 
     function testStakeETH() public {
@@ -980,7 +1001,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(vaultManager.operatorRewardsMap(operatorId), 0.7 ether);
         uint256[] memory tokenIds = new uint256[] (1);
         tokenIds[0] = 2;
-        assertEq(3 ether, vaultManager.rewards(tokenIds));
+        assertEq(3 ether, vaultManager.rewards(tokenIds)[0]);
 
         vaultManager.claimRewardsOfOperator(operatorId);
         vaultManager.claimRewardsOfDao(operatorIds);
@@ -1011,7 +1032,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(vaultManager.daoRewardsMap(operatorId), 0.3 ether);
         assertEq(vaultManager.operatorRewardsMap(operatorId), 0.7 ether);
 
-        assertEq(3 ether, vaultManager.rewards(tokenIds));
+        assertEq(3 ether, vaultManager.rewards(tokenIds)[0]);
 
         vaultManager.claimRewardsOfOperator(operatorId);
         vaultManager.claimRewardsOfDao(operatorIds);

@@ -185,6 +185,7 @@ contract LiquidStaking is
      * @param _vaultManagerContractAddress vaultManagerContract address
      * @param _withdrawalRequestContractAddress withdrawalRequestContract address
      * @param _operatorSlashContractAddress operatorSlashContract address
+     * @param _withdrawOracleContractAddress withdrawOracleContract address
      */
     function initializeV2(
         uint256[] memory _operatorIds,
@@ -193,7 +194,8 @@ contract LiquidStaking is
         address _consensusVaultContractAddress,
         address _vaultManagerContractAddress,
         address _withdrawalRequestContractAddress,
-        address _operatorSlashContractAddress
+        address _operatorSlashContractAddress,
+        address _withdrawOracleContractAddress
     ) public reinitializer(2) onlyDao {
         // merge already stake data to StakeRecords
         if (_operatorIds.length != _users.length && _nethAmounts.length != _users.length) revert InvalidParameter();
@@ -206,12 +208,23 @@ contract LiquidStaking is
             _withdrawalRequestContractAddress == address(0) || _operatorSlashContractAddress == address(0)
                 || _vaultManagerContractAddress == address(0) || _consensusVaultContractAddress == address(0)
         ) revert InvalidParameter();
-        withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
-        operatorSlashContract = IOperatorSlash(_operatorSlashContractAddress);
-        vaultManagerContractAddress = _vaultManagerContractAddress;
-        consensusVaultContract = IConsensusVault(_consensusVaultContractAddress);
 
         operatorCanLoanAmounts = 32 ether;
+
+        emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
+        withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
+
+        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContractAddress);
+        operatorSlashContract = IOperatorSlash(_operatorSlashContractAddress);
+
+        emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContractAddress);
+        vaultManagerContractAddress = _vaultManagerContractAddress;
+
+        emit ConsensusVaultContractSet(address(consensusVaultContract), _consensusVaultContractAddress);
+        consensusVaultContract = IConsensusVault(_consensusVaultContractAddress);
+
+        emit WithdrawOracleContractSet(address(withdrawOracleContract), _withdrawOracleContractAddress);
+        withdrawOracleContract = IWithdrawOracle(_withdrawOracleContractAddress);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}

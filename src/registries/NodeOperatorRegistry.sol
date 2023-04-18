@@ -136,7 +136,7 @@ contract NodeOperatorRegistry is
     constructor() {}
 
     /**
-     * @notice initialize LiquidStaking Contract
+     * @notice initialize NodeOperatorRegistry Contract
      * @param _dao Dao contract address
      * @param _daoVaultAddress Dao Vault Address
      * @param _vaultFactoryContractAddress vault factory contract address
@@ -157,7 +157,25 @@ contract NodeOperatorRegistry is
         vNFTContract = IVNFT(_nVNFTContractAddress);
         registrationFee = 0.1 ether;
         permissionlessBlockNumber = 0;
+    }
+
+    /**
+     * @notice initializeV2 NodeOperatorRegistry Contract
+     * @param _vaultFactoryContractAddress new vault factory contract address
+     * @param _resetVaultOperatorIds reset vault contract
+     */
+    function initializeV2(address _vaultFactoryContractAddress, uint256[] memory _resetVaultOperatorIds)
+        public
+        reinitializer(2)
+        onlyDao
+    {
         defaultOperatorCommission = 2000;
+        emit VaultFactorContractSet(address(vaultFactoryContract), _vaultFactoryContractAddress);
+        vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
+
+        for (uint256 i = 0; i < _resetVaultOperatorIds.length; ++i) {
+            _resetOperatorVaultContract(_resetVaultOperatorIds[i]);
+        }
     }
 
     /**
@@ -756,10 +774,14 @@ contract NodeOperatorRegistry is
     function resetOperatorVaultContract(uint256[] calldata _operatorIds) external onlyDao {
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
-            address vaultContractAddress = vaultFactoryContract.create(operatorId);
-            emit OperatorVaultContractReset(operators[operatorId].vaultContractAddress, vaultContractAddress);
-            operators[operatorId].vaultContractAddress = vaultContractAddress;
+            _resetOperatorVaultContract(operatorId);
         }
+    }
+
+    function _resetOperatorVaultContract(uint256 _operatorId) internal {
+        address vaultContractAddress = vaultFactoryContract.create(_operatorId);
+        emit OperatorVaultContractReset(operators[_operatorId].vaultContractAddress, vaultContractAddress);
+        operators[_operatorId].vaultContractAddress = vaultContractAddress;
     }
 
     /**

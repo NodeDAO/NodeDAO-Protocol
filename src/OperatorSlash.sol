@@ -160,9 +160,9 @@ contract OperatorSlash is
     }
 
     /**
-     * @notice Receive slash fund, Because the operator may have insufficient margin, 
-     *  The penalty for the operator's delayed exit from the validator, 
-     *  as well as the penalty for the slash consensus penalty on eth2, 
+     * @notice Receive slash fund, Because the operator may have insufficient margin,
+     *  The penalty for the operator's delayed exit from the validator,
+     *  as well as the penalty for the slash consensus penalty on eth2,
      *  will be received through this function.
      *  _slashAmounts may be less than or equal to _requireAmounts
      * @param _exitTokenIds exit tokenIds
