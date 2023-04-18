@@ -262,11 +262,16 @@ contract GoerliDeployNewContractScript is Script, GoerliHelperContractV2, BaseCo
     function setUp() public {}
 
     function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
         deployContracts(deployer);
         initializeOracleContract(_daoEOA, _genesisTime, CL_BALANCE, PENDING_BALANCE);
         initializeOtherContract(_daoMultisigContract, liquidStakingProxy, vnftProxy, operatorRegistryProxy, neth, 7200);
         setContractSettings(memberArray, liquidStakingProxy, vaultManagerProxy, QUORUM);
         transferOwnerToTimelock(timelock);
+
+        vm.stopBroadcast();
     }
 }
 
@@ -274,11 +279,16 @@ contract MainnetDeployNewContractScript is Script, MainnetHelperContractV2, Base
     function setUp() public {}
 
     function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
         deployContracts(deployer);
         initializeOracleContract(_daoEOA, _genesisTime, CL_BALANCE, PENDING_BALANCE);
         initializeOtherContract(_daoMultisigContract, liquidStakingProxy, vnftProxy, operatorRegistryProxy, neth, 50400);
         setContractSettings(memberArray, liquidStakingProxy, vaultManagerProxy, QUORUM);
         transferDaoToMultisig(_daoMultisigContract);
         transferOwnerToTimelock(timelock);
+
+        vm.stopBroadcast();
     }
 }
