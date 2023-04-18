@@ -133,7 +133,8 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
             address(consensusVaultContract),
             address(vaultManager),
             address(withdrawalRequest),
-            address(operatorSlash)
+            address(operatorSlash),
+            address(withdrawOracle)
         );
 
         vaultManager.initialize(
