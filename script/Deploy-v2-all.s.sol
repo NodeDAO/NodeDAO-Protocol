@@ -86,52 +86,6 @@ abstract contract MainnetHelperContractV2 {
     uint256 public constant PENDING_BALANCE = 0;
 }
 
-contract GoerliDeployNodeDaoTreasury is Script, GoerliHelperContractV2 {
-    NodeDaoTreasury nodeDaoTreasury;
-    address payable nodeDaoTreasuryProxy;
-
-    function setUp() public {}
-
-    function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
-
-        nodeDaoTreasury = new NodeDaoTreasury();
-        console.log("===============nodeDaoTreasury=================", address(nodeDaoTreasury));
-
-        nodeDaoTreasuryProxy = payable(deployer.deploy(address(nodeDaoTreasury)));
-        console.log("===============nodeDaoTreasuryProxy=================", address(nodeDaoTreasuryProxy));
-
-        NodeDaoTreasury(nodeDaoTreasuryProxy).initialize(_daoMultisigContract);
-        NodeDaoTreasury(nodeDaoTreasuryProxy).transferOwnership(address(timelock));
-
-        vm.stopBroadcast();
-    }
-}
-
-contract MainnetDeployNodeDaoTreasury is Script, MainnetHelperContractV2 {
-    NodeDaoTreasury nodeDaoTreasury;
-    address payable nodeDaoTreasuryProxy;
-
-    function setUp() public {}
-
-    function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
-
-        nodeDaoTreasury = new NodeDaoTreasury();
-        console.log("===============nodeDaoTreasury=================", address(nodeDaoTreasury));
-
-        nodeDaoTreasuryProxy = payable(deployer.deploy(address(nodeDaoTreasury)));
-        console.log("===============nodeDaoTreasuryProxy=================", address(nodeDaoTreasuryProxy));
-
-        NodeDaoTreasury(nodeDaoTreasuryProxy).initialize(_daoMultisigContract);
-        NodeDaoTreasury(nodeDaoTreasuryProxy).transferOwnership(address(timelock));
-
-        vm.stopBroadcast();
-    }
-}
-
 abstract contract BaseContract {
     uint256 public constant SLOTS_PER_EPOCH = 32;
     uint256 public constant SECONDS_PER_SLOT = 12;

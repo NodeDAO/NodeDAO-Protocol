@@ -105,7 +105,6 @@ contract DeployNewContractScript is Script {
     address withdrawalRequestProxy;
     address withdrawOracleProxy;
     address vaultManagerProxy;
-    address nodeDaoTreasuryProxy;
 
     function setUp() public {}
 
@@ -116,7 +115,7 @@ contract DeployNewContractScript is Script {
         DeployProxy deployer = new DeployProxy();
         deployer.setType("uups");
 
-        nodeDaoTreasury = new NodeDaoTreasury();
+        nodeDaoTreasury = new NodeDaoTreasury(dao);
         console.log("===============nodeDaoTreasury=================", address(nodeDaoTreasury));
         operatorSlash = new OperatorSlash();
         console.log("===============operatorSlash=================", address(operatorSlash));
@@ -124,9 +123,6 @@ contract DeployNewContractScript is Script {
         console.log("===============withdrawalRequest=================", address(withdrawalRequest));
         vaultManager = new VaultManager();
         console.log("===============vaultManager=================", address(vaultManager));
-
-        nodeDaoTreasuryProxy = deployer.deploy(address(nodeDaoTreasury));
-        console.log("===============nodeDaoTreasuryProxy=================", address(nodeDaoTreasuryProxy));
 
         operatorSlashProxy = deployer.deploy(address(operatorSlash));
         console.log("===============operatorSlashProxy=================", address(operatorSlashProxy));

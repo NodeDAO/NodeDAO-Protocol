@@ -49,11 +49,31 @@ contract GoerliDeployNodeDaoTreasury is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        nodeDaoTreasury = new NodeDaoTreasury();
+        nodeDaoTreasury = new NodeDaoTreasury(_daoEOA);
         console.log("===============nodeDaoTreasury=================", address(nodeDaoTreasury));
 
-        nodeDaoTreasury.initialize(_daoEOA);
         nodeDaoTreasury.transferOwnership(address(timelock));
+
+        vm.stopBroadcast();
+    }
+}
+
+contract MainnetDeployNodeDaoTreasury is Script {
+    NodeDaoTreasury nodeDaoTreasury;
+    address payable nodeDaoTreasuryProxy;
+    address _daoMultisigContract = 0x718b7885FEC8511DC8F2A378D3045c90e82d6A1d;
+    address timelock = 0x16F692525f3b8c8a96F8c945D365Da958Fb5735B;
+
+    function setUp() public {}
+
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        nodeDaoTreasury = new NodeDaoTreasury(_daoMultisigContract);
+        console.log("===============nodeDaoTreasury=================", address(nodeDaoTreasury));
+
+        NodeDaoTreasury(nodeDaoTreasuryProxy).transferOwnership(address(timelock));
 
         vm.stopBroadcast();
     }
