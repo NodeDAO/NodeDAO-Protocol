@@ -15,6 +15,7 @@ import "src/OperatorSlash.sol";
 import "src/WithdrawalRequest.sol";
 import "src/oracles/WithdrawOracle.sol";
 import "src/vault/VaultManager.sol";
+import "src/vault/NodeDaoTreasury.sol";
 
 // goerli delete --with-gas-price 30000000000
 // forge script script/Upgrade-goerli.sol:DeployUpgradeImplementScript --rpc-url $GOERLI_RPC_URL --broadcast --verify --with-gas-price 30000000000 --retries 10 --delay 30
@@ -42,6 +43,9 @@ contract DeployUpgradeImplementScript is Script {
         // deploy LiquidStakingimplement
         liquidStaking = new LiquidStaking();
         console.log("===============liquidStaking impl=================", address(liquidStaking));
+
+        consensusVault = new ConsensusVault();
+        console.log("===============consensusVault impl=================", address(consensusVault));
 
         vm.stopBroadcast();
     }
@@ -96,11 +100,12 @@ contract DeployNewContractScript is Script {
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
     VaultManager vaultManager;
+    NodeDaoTreasury nodeDaoTreasury;
     address operatorSlashProxy = 0x0f14e0381bBBc2cF3602262Dbd175f2A8fD9A145;
     address withdrawalRequestProxy;
     address withdrawOracleProxy = 0x28fbAe8c1A4c04209eb4452907F85560055bC675;
     address vaultManagerProxy;
-
+    address nodeDaoTreasuryProxy;
     function setUp() public {}
 
     function run() public {
@@ -110,12 +115,17 @@ contract DeployNewContractScript is Script {
         DeployProxy deployer = new DeployProxy();
         deployer.setType("uups");
 
+        nodeDaoTreasury = new NodeDaoTreasury();
+        console.log("===============nodeDaoTreasury=================", address(nodeDaoTreasury));
         operatorSlash = new OperatorSlash();
         console.log("===============operatorSlash=================", address(operatorSlash));
         withdrawalRequest = new WithdrawalRequest();
         console.log("===============withdrawalRequest=================", address(withdrawalRequest));
         vaultManager = new VaultManager();
         console.log("===============vaultManager=================", address(vaultManager));
+
+        nodeDaoTreasuryProxy = deployer.deploy(address(nodeDaoTreasury));
+        console.log("===============nodeDaoTreasuryProxy=================", address(nodeDaoTreasuryProxy));
 
         operatorSlashProxy = deployer.deploy(address(operatorSlash));
         console.log("===============operatorSlashProxy=================", address(operatorSlashProxy));
