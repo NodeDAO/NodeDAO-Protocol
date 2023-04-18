@@ -289,20 +289,24 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      * @notice Computes the reward a nft has
      * @param _tokenIds - tokenId of the validator nft
      */
-    function rewards(uint256[] memory _tokenIds) external view returns (uint256) {
+    function rewards(uint256[] memory _tokenIds) external view returns (uint256[] memory) {
         uint256 operatorId = vNFTContract.operatorOf(_tokenIds[0]);
         uint256[] memory gasHeights = vNFTContract.getUserNftGasHeight(_tokenIds);
         uint256[] memory exitBlockNumbers = vNFTContract.getNftExitBlockNumbers(_tokenIds);
-
-        uint256 totalNftRewards = 0;
+        uint256[] memory tokenIdRewards = new uint256[] (_tokenIds.length);
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
+            if (vNFTContract.ownerOf(tokenId) == address(liquidStakingContract)) {
+                tokenIdRewards[i] = 0;
+                continue;
+            }
+
             if (operatorId != vNFTContract.operatorOf(tokenId)) revert MustSameOperator();
             uint256 nftRewards = _rewards(operatorId, gasHeights[i], exitBlockNumbers[i]);
-            totalNftRewards += nftRewards;
+            tokenIdRewards[i] = nftRewards;
         }
 
-        return totalNftRewards;
+        return tokenIdRewards;
     }
 
     function _rewards(uint256 _operatorId, uint256 gasHeight, uint256 exitBlockNumber)
