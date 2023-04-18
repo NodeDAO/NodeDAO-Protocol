@@ -97,7 +97,7 @@ contract NodeOperatorRegistry is
     error OperatorNotFound();
     error InvalidCommission();
     error InsufficientAmount();
-    error ContraollerAddrUsed();
+    error ControllerAddrUsed();
     error OperatorHasArrears();
     error OperatorHasBlacklisted();
     error InsufficientMargin();
@@ -136,7 +136,7 @@ contract NodeOperatorRegistry is
     constructor() {}
 
     /**
-     * @notice initialize LiquidStaking Contract
+     * @notice initialize NodeOperatorRegistry Contract
      * @param _dao Dao contract address
      * @param _daoVaultAddress Dao Vault Address
      * @param _vaultFactoryContractAddress vault factory contract address
@@ -157,7 +157,27 @@ contract NodeOperatorRegistry is
         vNFTContract = IVNFT(_nVNFTContractAddress);
         registrationFee = 0.1 ether;
         permissionlessBlockNumber = 0;
+    }
+
+    /**
+     * @notice initializeV2 NodeOperatorRegistry Contract
+     * @param _vaultFactoryContractAddress new vault factory contract address
+     * @param _resetVaultOperatorIds reset vault contract
+     */
+    function initializeV2(
+        address _vaultFactoryContractAddress,
+        address _operatorSlashContractAddress,
+        uint256[] memory _resetVaultOperatorIds
+    ) public reinitializer(2) onlyDao {
         defaultOperatorCommission = 2000;
+        emit VaultFactorContractSet(address(vaultFactoryContract), _vaultFactoryContractAddress);
+        vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
+
+        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContractAddress);
+        operatorSlashContract = IOperatorSlash(_operatorSlashContractAddress);
+        for (uint256 i = 0; i < _resetVaultOperatorIds.length; ++i) {
+            _resetOperatorVaultContract(_resetVaultOperatorIds[i]);
+        }
     }
 
     /**
@@ -179,7 +199,7 @@ contract NodeOperatorRegistry is
     ) external payable nonReentrant validAddress(_controllerAddress) validAddress(_owner) returns (uint256 id) {
         if (bytes(_name).length > 32) revert InvalidParameter();
         if (msg.value < BASIC_PLEDGE + registrationFee) revert InsufficientAmount();
-        if (usedControllerAddress[_controllerAddress]) revert ContraollerAddrUsed();
+        if (usedControllerAddress[_controllerAddress]) revert ControllerAddrUsed();
         id = totalOperators + 1;
 
         totalOperators = id;
@@ -403,7 +423,7 @@ contract NodeOperatorRegistry is
      */
     function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
         // The same address can only be used once
-        if (usedControllerAddress[_controllerAddress]) revert ContraollerAddrUsed();
+        if (usedControllerAddress[_controllerAddress]) revert ControllerAddrUsed();
 
         NodeOperator memory operator = operators[_id];
 
@@ -646,25 +666,31 @@ contract NodeOperatorRegistry is
             return pledgeAmounts;
         }
     }
+
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
      * @param _exitTokenIds tokenid id
      * @param _amounts slash amount
      */
-
     function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyOperatorSlash {
         uint256 totalSlashAmounts = 0;
         uint256[] memory slashAmounts = new uint256[] (_exitTokenIds.length);
         for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
+            uint256 amount = _amounts[i];
+            if (amount == 0) {
+                continue;
+            }
+
             uint256 tokenId = _exitTokenIds[i];
             uint256 operatorId = vNFTContract.operatorOf(tokenId);
-            uint256 amount = _amounts[i];
             uint256 slashAmount = _slash(operatorId, amount);
             slashAmounts[i] = slashAmount;
             totalSlashAmounts += slashAmount;
         }
 
-        operatorSlashContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
+        if (totalSlashAmounts != 0) {
+            operatorSlashContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
+        }
     }
 
     /**
@@ -756,10 +782,14 @@ contract NodeOperatorRegistry is
     function resetOperatorVaultContract(uint256[] calldata _operatorIds) external onlyDao {
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
-            address vaultContractAddress = vaultFactoryContract.create(operatorId);
-            emit OperatorVaultContractReset(operators[operatorId].vaultContractAddress, vaultContractAddress);
-            operators[operatorId].vaultContractAddress = vaultContractAddress;
+            _resetOperatorVaultContract(operatorId);
         }
+    }
+
+    function _resetOperatorVaultContract(uint256 _operatorId) internal {
+        address vaultContractAddress = vaultFactoryContract.create(_operatorId);
+        emit OperatorVaultContractReset(operators[_operatorId].vaultContractAddress, vaultContractAddress);
+        operators[_operatorId].vaultContractAddress = vaultContractAddress;
     }
 
     /**

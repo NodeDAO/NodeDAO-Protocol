@@ -133,7 +133,8 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
             address(consensusVaultContract),
             address(vaultManager),
             address(withdrawalRequest),
-            address(operatorSlash)
+            address(operatorSlash),
+            address(withdrawOracle)
         );
 
         vaultManager.initialize(
@@ -1017,5 +1018,36 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
 
         vm.prank(MEMBER_1);
         withdrawOracle.submitReportData(mockFinalReportData_20Nft_20Operator(refSlot), CONSENSUS_VERSION);
+    }
+
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    //------------ ReportData settle test --------------------
+    ////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////////////////////////////////////
+    // ReportData for 3 NFT exit; 1 largeExitRequest while delayed
+    // testReportData_3validatorExit_1delayed_1largeExitRequest_1delayed()
+    ///
+    // case:
+    // 1. operator pledgeBalance
+    // 2.
+    ////////////////////////////////////////////////////////////////
+    // forge test -vvvv --match-test testReportData_Settle_3validatorExit_1delayed_1largeExitRequest_1delayed
+    function testReportData_Settle_3validatorExit_1delayed_1largeExitRequest_1delayed() public {
+        (uint256 pledgeBalance,) = operatorRegistry.getPledgeInfoOfOperator(1);
+
+        // report and settle
+        testReportData_3validatorExit_1delayed_1largeExitRequest_1delayed();
+
+        uint256 slashPerBlock = operatorSlash.slashAmountPerBlockPerValidator();
+        // delayedExitSlashStandard = 7200    res = 800 + 900
+        uint256 slashBlock = 28000 + 28100 - (20000 + operatorSlash.delayedExitSlashStandard()) * 2;
+        uint256 pledgeBalanceReduce = slashPerBlock * slashBlock;
+
+        // test settle data
+        (uint256 pledgeBalanceReport,) = operatorRegistry.getPledgeInfoOfOperator(1);
+        //        assertEq(pledgeBalanceReport, pledgeBalance - pledgeBalanceReduce);
     }
 }

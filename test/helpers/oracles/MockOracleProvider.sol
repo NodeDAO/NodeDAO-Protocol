@@ -623,9 +623,9 @@ contract MockOracleProvider is CommonConstantProvider {
     }
 
     function mockFinalReportData_20Nft_20Operator(uint256 refSlot)
-    public
-    pure
-    returns (WithdrawOracleWithTimer.ReportData memory reportData)
+        public
+        pure
+        returns (WithdrawOracleWithTimer.ReportData memory reportData)
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
@@ -641,13 +641,13 @@ contract MockOracleProvider is CommonConstantProvider {
 
         for (uint256 i = 0; i < 20; ++i) {
             WithdrawInfo memory withdrawInfo1 =
-            WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(clReward1), clCapital: 0});
+                WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(clReward1), clCapital: 0});
             withdrawInfos[i] = withdrawInfo1;
         }
 
         for (uint256 i = 0; i < 20; ++i) {
             ExitValidatorInfo memory exitValidatorInfo1 =
-            ExitValidatorInfo({exitTokenId: uint64(i), exitBlockNumber: 28100, slashAmount: 0});
+                ExitValidatorInfo({exitTokenId: uint64(i), exitBlockNumber: 28100, slashAmount: 0});
             exitValidatorInfos[i] = exitValidatorInfo1;
         }
 
