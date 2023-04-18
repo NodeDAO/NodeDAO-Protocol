@@ -109,8 +109,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         consensusVaultContract.initialize(_dao, address(liquidStaking));
         consensusVaultContractAddr = payable(consensusVaultContract);
 
-        nodeDaoTreasury = new NodeDaoTreasury();
-        nodeDaoTreasury.initialize(_dao);
+        nodeDaoTreasury = new NodeDaoTreasury(_dao);
         _daoValutAddress = address(nodeDaoTreasury);
 
         neth = new NETH();
