@@ -54,9 +54,9 @@ contract DeployUpgradeImplementScript is Script {
 // goerli delete --with-gas-price 30000000000
 // forge script script/Upgrade-goerli.sol:DeployVaultFactorysScript --rpc-url $GOERLI_RPC_URL --broadcast --verify --with-gas-price 30000000000 --retries 10 --delay 30
 contract DeployVaultFactorysScript is Script {
-    address payable liquidStakingProxy = payable(0xa8256fD3A31648D49D0f3551e6e45Db6f5f91d53);
-    address payable operatorRegistryProxy = payable(0xD9d87abAd8651e1E69799416AEc54fCCdd1dAAcE);
-    address payable dao = payable(0xc214f4fBb7C9348eF98CC09c83d528E3be2b63A5);
+    address payable liquidStakingProxy = payable(0x949AC43bb71F8710B0F1193880b338f0323DeB1a);
+    address payable operatorRegistryProxy = payable(0x20C43025E44984375c4dC882bFF2016C6E601f0A);
+    address payable dao = payable(0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0);
 
     ELVault vaultContract;
     ELVaultFactory vaultFactoryContract;
@@ -91,21 +91,22 @@ contract DeployVaultFactorysScript is Script {
 // goerli delete --with-gas-price 30000000000
 // forge script script/Upgrade-goerli.sol:DeployNewContractScript --rpc-url $GOERLI_RPC_URL --broadcast --verify --with-gas-price 30000000000 --retries 10 --delay 30
 contract DeployNewContractScript is Script {
-    address payable liquidStakingProxy = payable(0xa8256fD3A31648D49D0f3551e6e45Db6f5f91d53);
-    address payable operatorRegistryProxy = payable(0xD9d87abAd8651e1E69799416AEc54fCCdd1dAAcE);
-    address payable dao = payable(0xc214f4fBb7C9348eF98CC09c83d528E3be2b63A5);
-    address payable vnftProxy = payable(0xe3CE494D51Cb9806187b5Deca1B4B06c97e52EFc);
-    address payable neth = payable(0x78ef0463ae6BbF05969ef38B4cF90Ca03537a86e);
+    address payable liquidStakingProxy = payable(0x949AC43bb71F8710B0F1193880b338f0323DeB1a);
+    address payable operatorRegistryProxy = payable(0x20C43025E44984375c4dC882bFF2016C6E601f0A);
+    address payable dao = payable(0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0);
+    address payable vnftProxy = payable(0x3CB42bb75Cf1BcC077010ac1E3d3Be22D13326FA);
+    address payable neth = payable(0x408F53a38db844B167B66f001fDc49613E25eC78);
 
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
     VaultManager vaultManager;
     NodeDaoTreasury nodeDaoTreasury;
-    address operatorSlashProxy = 0x0f14e0381bBBc2cF3602262Dbd175f2A8fD9A145;
+    address operatorSlashProxy;
     address withdrawalRequestProxy;
-    address withdrawOracleProxy = 0x28fbAe8c1A4c04209eb4452907F85560055bC675;
+    address withdrawOracleProxy;
     address vaultManagerProxy;
     address nodeDaoTreasuryProxy;
+
     function setUp() public {}
 
     function run() public {

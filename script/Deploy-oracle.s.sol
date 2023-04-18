@@ -33,9 +33,9 @@ abstract contract GoerliHelperContract {
 
     address timelock = address(0x558dfCfE91E2fF9BA83DA6190f7cCC8bc66c2cCb);
 
-    address liquidStakingProxy = address(0xa8256fD3A31648D49D0f3551e6e45Db6f5f91d53);
+    address liquidStakingProxy = address(0x949AC43bb71F8710B0F1193880b338f0323DeB1a);
 
-    address vaultManagerProxy = address(0xb9fBa348D4f02EA62496EC972e85Ab7A3F9918dC);
+    address vaultManagerProxy = address(0xb5bE48AE75b1085CBA8d4c16157050d4C9a80Aa0);
 }
 
 abstract contract BaseContract {
@@ -53,8 +53,8 @@ abstract contract BaseContract {
     uint256 public constant EXIT_REQUEST_LIMIT = 100;
     uint256 public constant CL_VAULT_MIN_SETTLE_LIMIT = 1e19;
 
-    uint256 public constant CL_BALANCE = 416110825088000000000;
-    uint256 public constant PENDING_BALANCE = 192000000000000000000;
+    uint256 public constant CL_BALANCE = 0;
+    uint256 public constant PENDING_BALANCE = 96000000000000000000;
 
     WithdrawOracle withdrawOracle;
 
