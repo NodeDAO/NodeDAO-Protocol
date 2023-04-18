@@ -500,7 +500,7 @@ contract LiquidStaking is
 
         uint256 tokenId = vNFTContract.whiteListMint(_pubkey, _withdrawalCredential, address(this), _operatorId);
 
-        emit ValidatorRegistered(_operatorId, tokenId);
+        emit ValidatorRegistered(_operatorId, tokenId, _pubkey);
 
         if (nextValidatorWithdrawalCredential.length != 0) {
             return 1;

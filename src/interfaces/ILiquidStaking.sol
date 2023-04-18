@@ -124,7 +124,7 @@ interface ILiquidStaking {
         uint256 indexed _operatorId, uint256 targetOperatorId, address ender, uint256 _amounts, uint256 amountOut
     );
     event NftStake(uint256 indexed _operatorId, address indexed _from, uint256 _count);
-    event ValidatorRegistered(uint256 indexed _operatorId, uint256 _tokenId);
+    event ValidatorRegistered(uint256 indexed _operatorId, uint256 _tokenId, bytes _pubkey);
     event UserClaimRewards(uint256 _operatorId, uint256[] _tokenIds, uint256 _rewards);
     event Transferred(address _to, uint256 _amount);
     event OperatorReinvestClRewards(uint256 _operatorId, uint256 _rewards);
