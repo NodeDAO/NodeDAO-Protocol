@@ -20,7 +20,7 @@ abstract contract GoerliHelperContractV2 {
 
     address _daoMultisigContract = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
 
-    address timelock = 0x558dfCfE91E2fF9BA83DA6190f7cCC8bc66c2cCb ;
+    address timelock = 0x558dfCfE91E2fF9BA83DA6190f7cCC8bc66c2cCb;
 }
 
 // Mainnet settings

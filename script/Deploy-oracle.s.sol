@@ -7,6 +7,42 @@ import "forge-std/Script.sol";
 import "./utils/DeployProxy.sol";
 
 // Goerli settings
+abstract contract MainnetHelperContract {
+    // _daoEOA is sender
+    address _daoEOA = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
+
+    // ==================== Oracle ====================
+
+    // goerli: 1616508000
+    // mainnet: 1606824023
+    uint64 _genesisTime = 1606824023;
+
+    uint256 public constant CL_BALANCE = 0;
+    uint256 public constant PENDING_BALANCE = 0;
+
+    // oracle member
+    address[] memberArray;
+    //        address[] memberArray = [
+    //            0x143848A303d424FD75995e5827358ba6d30a1801
+    //        ];
+    uint256 public constant QUORUM = 3;
+
+    // ==================== timelock ====================
+
+    uint256 delayTime = 150;
+    address[] proposersArray = [_daoEOA, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc];
+    address[] executorsArray = [_daoEOA];
+
+    // ==================== contract set ====================
+
+    address timelock = address(0);
+
+    address liquidStakingProxy = address(0);
+
+    address vaultManagerProxy = address(0);
+}
+
+// Goerli settings
 abstract contract GoerliHelperContract {
     // _daoEOA is sender
     address _daoEOA = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
@@ -22,6 +58,9 @@ abstract contract GoerliHelperContract {
         0x3357c09eCf74C281B6f9CCfAf4D894979349AC4B,
         0x143848A303d424FD75995e5827358ba6d30a1801
     ];
+    uint256 public constant QUORUM = 2;
+    uint256 public constant CL_BALANCE = 416110825088000000000;
+    uint256 public constant PENDING_BALANCE = 192000000000000000000;
 
     // ==================== timelock ====================
 
@@ -29,7 +68,7 @@ abstract contract GoerliHelperContract {
     address[] proposersArray = [_daoEOA, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc];
     address[] executorsArray = [_daoEOA];
 
-    // ==================== contract ====================
+    // ==================== contract set ====================
 
     address timelock = address(0x558dfCfE91E2fF9BA83DA6190f7cCC8bc66c2cCb);
 
@@ -41,7 +80,7 @@ abstract contract GoerliHelperContract {
 abstract contract BaseContract {
     uint256 public constant SLOTS_PER_EPOCH = 32;
     uint256 public constant SECONDS_PER_SLOT = 12;
-    uint256 public constant EPOCHS_PER_FRAME = 20;
+    uint256 public constant EPOCHS_PER_FRAME = 225;
     uint256 public constant INITIAL_FAST_LANE_LENGTH_SLOTS = 0;
 
     uint256 public constant SECONDS_PER_EPOCH = SLOTS_PER_EPOCH * SECONDS_PER_SLOT;
@@ -52,9 +91,6 @@ abstract contract BaseContract {
 
     uint256 public constant EXIT_REQUEST_LIMIT = 100;
     uint256 public constant CL_VAULT_MIN_SETTLE_LIMIT = 1e19;
-
-    uint256 public constant CL_BALANCE = 416110825088000000000;
-    uint256 public constant PENDING_BALANCE = 192000000000000000000;
 
     WithdrawOracle withdrawOracle;
 
@@ -91,7 +127,9 @@ abstract contract BaseContract {
         console.log("========withdrawOracleProxy: ", withdrawOracleProxy);
     }
 
-    function initializeContract(address _daoEOA, uint256 _genesisTime) public {
+    function initializeContract(address _daoEOA, uint256 _genesisTime, uint256 _clBalance, uint256 _pendingBalance)
+        public
+    {
         // =============================================
         // initialize contract
         // =============================================
@@ -117,14 +155,17 @@ abstract contract BaseContract {
             _daoEOA,
             EXIT_REQUEST_LIMIT,
             CL_VAULT_MIN_SETTLE_LIMIT,
-            CL_BALANCE,
-            PENDING_BALANCE
+            _clBalance,
+            _pendingBalance
         );
     }
 
-    function setContractSettings(address[] memory memberArray, address _liquidStakingProxy, address _vaultManagerProxy)
-        public
-    {
+    function setContractSettings(
+        address[] memory memberArray,
+        address _liquidStakingProxy,
+        address _vaultManagerProxy,
+        uint256 _quorum
+    ) public {
         // =============================================
         // configure contract settings
         // =============================================
@@ -139,7 +180,7 @@ abstract contract BaseContract {
 
         // hashConsensusProxy addOracleMember
         for (uint256 i = 0; i < memberArray.length; ++i) {
-            HashConsensus(hashConsensusProxy).addMember(memberArray[i], 2);
+            HashConsensus(hashConsensusProxy).addMember(memberArray[i], _quorum);
         }
     }
 
@@ -175,8 +216,26 @@ contract DeployGoerliOracleScript is Script, BaseContract, GoerliHelperContract 
         vm.startBroadcast(deployerPrivateKey);
 
         deployContracts();
-        initializeContract(_daoEOA, _genesisTime);
-        setContractSettings(memberArray, liquidStakingProxy, vaultManagerProxy);
+        initializeContract(_daoEOA, _genesisTime, CL_BALANCE, PENDING_BALANCE);
+        setContractSettings(memberArray, liquidStakingProxy, vaultManagerProxy, QUORUM);
+        transferOwnerToTimelock(timelock);
+
+        vm.stopBroadcast();
+    }
+}
+
+// export GOERLI_RPC_URL=""
+// export PRIVATE_KEY=""
+// export ETHERSCAN_API_KEY=""
+// forge script script/Deploy-oracle.s.sol:DeployMainnetOracleScript  --rpc-url $GOERLI_RPC_URL --broadcast --with-gas-price 30000000000 --verify --retries 10 --delay 30
+contract DeployMainnetOracleScript is Script, BaseContract, MainnetHelperContract {
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        deployContracts();
+        initializeContract(_daoEOA, _genesisTime, CL_BALANCE, PENDING_BALANCE);
+        setContractSettings(memberArray, liquidStakingProxy, vaultManagerProxy, QUORUM);
         transferOwnerToTimelock(timelock);
 
         vm.stopBroadcast();

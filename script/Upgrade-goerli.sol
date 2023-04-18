@@ -106,6 +106,7 @@ contract DeployNewContractScript is Script {
     address withdrawOracleProxy = 0x28fbAe8c1A4c04209eb4452907F85560055bC675;
     address vaultManagerProxy;
     address nodeDaoTreasuryProxy;
+
     function setUp() public {}
 
     function run() public {
