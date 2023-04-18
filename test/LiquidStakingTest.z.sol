@@ -217,7 +217,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
         console.log("========operatorRegistry.initializeV2==========", operatorVaultAddr);
         vm.prank(_dao);
-        operatorRegistry.initializeV2(address(vaultFactoryContract), _resetVaultOperatorIds);
+        operatorRegistry.initializeV2(address(vaultFactoryContract), address(operatorSlash), _resetVaultOperatorIds);
         operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
         console.log("========operatorRegistry.initializeV2==========", operatorVaultAddr);
         assertEq(operatorRegistry.defaultOperatorCommission(), 2000);
