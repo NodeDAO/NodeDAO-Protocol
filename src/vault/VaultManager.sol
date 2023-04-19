@@ -199,7 +199,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(operatorId);
 
             uint256 _reinvest = _settle(operatorId, vaultContractAddress, operatorElCommissionRate[i]);
-            if (_reinvest > 0) {
+            if (!isSettle && _reinvest > 0) {
                 isSettle = true;
             }
             reinvestAmounts[i] = _reinvest;
