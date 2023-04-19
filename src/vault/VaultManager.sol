@@ -156,16 +156,14 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         liquidStakingContract.reinvestClRewards(operatorIds, amounts, totalAmount);
 
-        if (exitTokenIds.length != 0 && exitTokenIds.length == slashAmounts.length) {
-            operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
-        }
-
         if (_userNftExitDelayedTokenIds.length != 0 || _largeExitDelayedRequestIds.length != 0) {
             operatorSlashContract.slashOfExitDelayed(_userNftExitDelayedTokenIds, _largeExitDelayedRequestIds);
         }
 
-        // nft exit
-        if (exitTokenIds.length != 0 && exitTokenIds.length == exitBlockNumbers.length) {
+        if (exitTokenIds.length != 0) {
+            // eth2 slash
+            operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
+            // nft exit
             liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
         }
 
