@@ -501,7 +501,7 @@ contract VNFT is
             uint256 tokenId = _tokenIds[i];
             if (userNftExitBlockNumbers[tokenId] != 0) revert TokenAlreadyReport();
             uint256 number = _exitBlockNumbers[i];
-            if (number > block.number) revert InvalidBlockHeight();
+            if (number > block.number || number == 0) revert InvalidBlockHeight();
             userNftExitBlockNumbers[tokenId] = number;
             operatorExitButNoBurnNftCounts[validators[tokenId].operatorId] += 1;
             totalExitButNoBurnNftCounts += 1;
