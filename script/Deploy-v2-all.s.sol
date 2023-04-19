@@ -222,8 +222,6 @@ abstract contract BaseContract {
             _daoEOA,
             withdrawOracleProxy
         );
-        console.log("======initializeOracleContract=======", _daoEOA);
-        console.log("======hashConsensusProxy=======", HashConsensus(hashConsensusProxy).dao());
 
         // initialize WithdrawOracle
         WithdrawOracle(withdrawOracleProxy).initialize(
