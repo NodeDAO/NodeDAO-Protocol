@@ -268,7 +268,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
     function _handleConsensusReportData(ReportData calldata data) internal {
         if (data.exitValidatorInfos.length != data.reportExitedCount) revert InvalidRequestsDataLength();
-        if (data.clVaultBalance < exitRequestLimit) revert ClVaultBalanceNotMinSettleLimit();
+        if (data.reportExitedCount > exitRequestLimit) revert UnexpectedRequestsDataLength();
 
         // TotalClBalance check
         _checkTotalClBalance(data.refSlot, data.clBalance, data.clVaultBalance);
