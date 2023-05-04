@@ -2452,4 +2452,30 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         vnft.setLiquidStaking(address(1000));
         assertEq(address(vnft.liquidStakingContractAddress()), address(1000));
     }
+
+    function testNftGetActiveNftCountsOfOperator() public {
+        vm.roll(100);
+        vm.deal(address(74), 32 ether);
+        vm.prank(address(74));
+        vm.deal(0xB553A401FBC2427777d05ec21Dd37a03e1FA6894, 1 wei);
+        liquidStaking.stakeNFT{value: 32 ether}(1, 0xB553A401FBC2427777d05ec21Dd37a03e1FA6894);
+        assertEq(1, vnft.balanceOf(address(74)));
+        assertEq(0, neth.balanceOf(address(74)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(32 ether, liquidStaking.operatorNftPoolBalances(1));
+        assertEq(1, vnft.getEmptyNftCounts());
+
+        assertEq(0, vnft.getActiveNftCountsOfOperator(1));
+
+        uint256[] memory tokenids = new uint256[] (1);
+        tokenids[0] = 0;
+        vm.prank(address(74));
+        withdrawalRequest.unstakeNFT(tokenids);
+
+        assertEq(0, vnft.balanceOf(address(74)));
+        assertEq(32 ether, address(74).balance);
+
+        assertEq(0, vnft.getActiveNftCountsOfOperator(1));
+    }
 }
