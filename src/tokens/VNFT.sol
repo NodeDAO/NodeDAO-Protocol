@@ -57,6 +57,8 @@ contract VNFT is
 
     uint256 public totalExitButNoBurnNftCounts;
 
+    mapping(uint256 => uint256) public operatorEmptyNftCounts;
+
     event NFTMinted(uint256 _tokenId, bytes withdrawalCredentials);
     event NFTBurned(uint256 _tokenId);
     event BaseURIChanged(string _before, string _after);
@@ -373,6 +375,7 @@ contract VNFT is
         uint256 nextTokenId = _nextTokenId();
         if (_pubkey.length == 0) {
             emptyNftCounts += 1;
+            operatorEmptyNftCounts[_operatorId] += 1;
             operatorEmptyNfts[_operatorId].push(nextTokenId);
 
             if (_withdrawalCredentials.length == 0) revert WithdrawalCredentialsEmpty();
@@ -396,6 +399,7 @@ contract VNFT is
                 operatorEmptyNftIndex[_operatorId] = i + 1;
                 validators[tokenId].pubkey = _pubkey;
                 emptyNftCounts -= 1;
+                operatorEmptyNftCounts[_operatorId] -= 1;
                 userNftGasHeights[tokenId] = block.number;
                 userActiceNftCounts[_operatorId] += 1;
 
@@ -424,6 +428,7 @@ contract VNFT is
 
         if (keccak256(validators[_tokenId].pubkey) == keccak256(bytes(""))) {
             emptyNftCounts -= 1;
+            operatorEmptyNftCounts[validators[_tokenId].operatorId] -= 1;
         }
 
         if (userNftExitBlockNumbers[_tokenId] != 0) {
@@ -532,7 +537,6 @@ contract VNFT is
      * @param _tokenId - tokenId
      * @param _number - gas height
      */
-
     function setUserNftGasHeight(uint256 _tokenId, uint256 _number) external onlyLiquidStaking {
         if (userNftGasHeights[_tokenId] == 0) revert NotBelongUserNft();
         userNftGasHeights[_tokenId] = _number;
@@ -561,11 +565,11 @@ contract VNFT is
      */
     function getActiveNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
         return operatorRecords[_operatorId] - operatorExitButNoBurnNftCounts[_operatorId]
-            - (operatorEmptyNfts[_operatorId].length - operatorEmptyNftIndex[_operatorId]);
+            - operatorEmptyNftCounts[_operatorId];
     }
 
     function getEmptyNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
-        return operatorEmptyNfts[_operatorId].length - operatorEmptyNftIndex[_operatorId];
+        return operatorEmptyNftCounts[_operatorId];
     }
 
     /**
