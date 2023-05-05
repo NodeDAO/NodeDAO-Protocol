@@ -660,7 +660,9 @@ contract NodeOperatorRegistry is
             emit Slashed(_operatorId, _amount);
             return _amount;
         } else {
-            operatorSlashAmountOwed[_operatorId] += _amount - pledgeAmounts;
+            uint256 slashAmountAdded = _amount - pledgeAmounts;
+            operatorSlashAmountOwed[_operatorId] += slashAmountAdded;
+            emit OperatorArrearsIncrease(_operatorId, slashAmountAdded);
             operatorPledgeVaultBalances[_operatorId] = 0;
             emit Slashed(_operatorId, pledgeAmounts);
             return pledgeAmounts;
