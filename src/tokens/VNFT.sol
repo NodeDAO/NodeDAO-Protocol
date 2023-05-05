@@ -53,7 +53,7 @@ contract VNFT is
     // key is tokenId, value is gasHeight
     mapping(uint256 => uint256) internal userNftGasHeights;
     // key is operatorId, value is nft counts
-    mapping(uint256 => uint256) internal userActiceNftCounts;
+    mapping(uint256 => uint256) internal userActiveNftCounts;
 
     uint256 public totalExitButNoBurnNftCounts;
 
@@ -401,7 +401,7 @@ contract VNFT is
                 emptyNftCounts -= 1;
                 operatorEmptyNftCounts[_operatorId] -= 1;
                 userNftGasHeights[tokenId] = block.number;
-                userActiceNftCounts[_operatorId] += 1;
+                userActiveNftCounts[_operatorId] += 1;
 
                 return tokenId;
             }
@@ -512,8 +512,8 @@ contract VNFT is
             totalExitButNoBurnNftCounts += 1;
 
             if (userNftWithdrawalCredentials[tokenId].length != 0) {
-                // The user's nft has exited, but there is no claim, userActiceNftCounts needs to be updated
-                userActiceNftCounts[validators[tokenId].operatorId] -= 1;
+                // The user's nft has exited, but there is no claim, userActiveNftCounts needs to be updated
+                userActiveNftCounts[validators[tokenId].operatorId] -= 1;
             }
         }
     }
@@ -577,7 +577,7 @@ contract VNFT is
      * @param _operatorId - operator id
      */
     function getUserActiveNftCountsOfOperator(uint256 _operatorId) external view returns (uint256) {
-        return userActiceNftCounts[_operatorId];
+        return userActiveNftCounts[_operatorId];
     }
 
     // // metadata URI
