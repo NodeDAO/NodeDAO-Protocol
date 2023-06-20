@@ -7,7 +7,7 @@ import "openzeppelin-contracts/proxy/beacon/BeaconProxy.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
-import "src/largeStaking/elReward.sol";
+import "src/largeStaking/ELReward.sol";
 import "src/interfaces/IELRewardFactory.sol";
 
 /**

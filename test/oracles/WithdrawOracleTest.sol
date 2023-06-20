@@ -17,9 +17,9 @@ import "src/vault/ELVaultFactory.sol";
 import "src/vault/ConsensusVault.sol";
 import "src/OperatorSlash.sol";
 import "src/WithdrawalRequest.sol";
-import "src/largeStaking/largeStaking.sol";
-import "src/largeStaking/elReward.sol";
-import "src/largeStaking/elRewardFactor.sol";
+import "src/largeStaking/LargeStaking.sol";
+import "src/largeStaking/ELReward.sol";
+import "src/largeStaking/ELRewardFactory.sol";
 
 // forge test --match-path  test/oracles/WithdrawOracleTest.sol
 contract WithdrawOracleTest is Test, MockOracleProvider {

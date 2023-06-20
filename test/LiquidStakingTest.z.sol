@@ -22,9 +22,9 @@ import "src/interfaces/ILiquidStaking.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 import "src/OperatorSlash.sol";
 import "src/WithdrawalRequest.sol";
-import "src/largeStaking/largeStaking.sol";
-import "src/largeStaking/elReward.sol";
-import "src/largeStaking/elRewardFactor.sol";
+import "src/largeStaking/LargeStaking.sol";
+import "src/largeStaking/ELReward.sol";
+import "src/largeStaking/ELRewardFactory.sol";
 
 contract LiquidStakingTest is Test, MockOracleProvider {
     error PermissionDenied();
