@@ -20,3 +20,17 @@ struct ExitValidatorInfo {
     // Amount of slash
     uint96 slashAmount;
 }
+
+// Validator quits reporting information
+struct CLStakingInfo {
+    uint128 stakingId;
+    // Must be an integer multiple of 32 ether, whether it is slashed or not
+    uint128 notReportedUnstakeAmount; 
+}
+
+// Verifier penalty reporting information
+struct CLStakingSlashInfo {
+    uint128 stakingId; 
+    // Trigger penalty on operator if slash occurs
+    uint128 slashAmount;
+}
