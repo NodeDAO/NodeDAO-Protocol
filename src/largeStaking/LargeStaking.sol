@@ -214,7 +214,10 @@ contract LargeStaking is
     function largeUnstake(uint256 _stakingId, uint256 _amount) public {
         if (_amount < 32 ether || _amount % 32 ether != 0) revert InvalidAmount();
         StakingInfo storage stakingInfo = largeStakingList[_stakingId];
-        if (_amount > stakingInfo.stakingAmount - stakingInfo.unstakeAmount) revert InvalidAmount();
+
+        if (msg.sender != stakingInfo.claimAddr) revert PermissionDenied();
+
+        if (_amount > stakingInfo.stakingAmount - stakingInfo.unstakeRequestAmount) revert InvalidAmount();
 
         uint256 _unstakeAmount = 0;
         if (stakingInfo.stakingAmount > stakingInfo.alreadyStakingAmount) {
