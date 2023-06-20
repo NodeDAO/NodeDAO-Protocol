@@ -33,7 +33,7 @@ contract LargeStaking is
         uint256 alreadyStakingAmount; // Amount deposited into Eth2
         uint256 unstakeRequestAmount; // The amount the user requested to withdraw
         uint256 unstakeAmount; // Amount the user has withdrawn
-        address claimAddr; // The owner of the staking order，used for claim execution layer reward
+        address owner; // The owner of the staking order，used for claim execution layer reward
         bytes withdrawCredentials; // Withdrawal certificate
         bool isELRewardSharing; // Whether to share the execution layer reward pool
     }
@@ -87,10 +87,10 @@ contract LargeStaking is
     error InvalidReport();
 
     event LargeStake(
-        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _claimAddr, bool _isELRewardSharing
+        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, bool _isELRewardSharing
     );
     event MigretaStake(
-        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _claimAddr, bool _isELRewardSharing
+        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, bool _isELRewardSharing
     );
     event AppendStake(uint256 _stakingId, uint256 _amount);
     event ValidatorRegistered(uint256 _operatorId, uint256 _stakeingId, bytes _pubKey);
@@ -161,7 +161,7 @@ contract LargeStaking is
         MIN_STAKE_AMOUNT = 320 ether;
     }
 
-    function largeStake(uint256 _operatorId, address _claimAddr, address _withdrawCredentials, bool _isELRewardSharing)
+    function largeStake(uint256 _operatorId, address _owner, address _withdrawCredentials, bool _isELRewardSharing)
         public
         payable
     {
@@ -176,19 +176,19 @@ contract LargeStaking is
         uint256 curStakingId;
         address elRewardAddr;
         (curStakingId, elRewardAddr) =
-            _stake(_operatorId, _claimAddr, _withdrawCredentials, _isELRewardSharing, msg.value, false);
+            _stake(_operatorId, _owner, _withdrawCredentials, _isELRewardSharing, msg.value, false);
         totalLargeStakeAmounts[_operatorId] += msg.value;
-        emit LargeStake(_operatorId, curStakingId, msg.value, _claimAddr, _isELRewardSharing);
+        emit LargeStake(_operatorId, curStakingId, msg.value, _owner, _isELRewardSharing);
     }
 
-    function appendLargeStake(uint256 _stakingId, address _claimAddr, address _withdrawCredentials) public payable {
+    function appendLargeStake(uint256 _stakingId, address _owner, address _withdrawCredentials) public payable {
         if (msg.value < 32 ether || msg.value % 32 ether != 0) revert InvalidAmount();
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
         bytes memory userWithdrawalCredentials =
             bytes.concat(hex"010000000000000000000000", abi.encodePacked(_withdrawCredentials));
 
         if (
-            stakingInfo.claimAddr != _claimAddr
+            stakingInfo.owner != _owner
                 || keccak256(stakingInfo.withdrawCredentials) != keccak256(userWithdrawalCredentials)
         ) {
             revert InvalidParameter();
@@ -215,7 +215,7 @@ contract LargeStaking is
         if (_amount < 32 ether || _amount % 32 ether != 0) revert InvalidAmount();
         StakingInfo storage stakingInfo = largeStakingList[_stakingId];
 
-        if (msg.sender != stakingInfo.claimAddr) revert PermissionDenied();
+        if (msg.sender != stakingInfo.owner) revert PermissionDenied();
 
         if (_amount > stakingInfo.stakingAmount - stakingInfo.unstakeRequestAmount) revert InvalidAmount();
 
@@ -228,7 +228,7 @@ contract LargeStaking is
                 _unstakeAmount = fastAmount;
             }
             stakingInfo.unstakeAmount += _unstakeAmount;
-            payable(stakingInfo.claimAddr).transfer(_unstakeAmount);
+            payable(stakingInfo.owner).transfer(_unstakeAmount);
             emit FastUnstake(_stakingId, _unstakeAmount);
         }
         if (_unstakeAmount != _amount) {
@@ -239,7 +239,7 @@ contract LargeStaking is
     }
 
     function migrateStake(
-        address _claimAddr,
+        address _owner,
         address _withdrawCredentials,
         bool _isELRewardSharing,
         bytes[] calldata _pubKeys
@@ -255,18 +255,18 @@ contract LargeStaking is
         address elRewardAddr;
         uint256 stakeAmounts = _pubKeys.length * 32 ether;
         (curStakingId, elRewardAddr) =
-            _stake(operatorId, _claimAddr, _withdrawCredentials, _isELRewardSharing, stakeAmounts, true);
+            _stake(operatorId, _owner, _withdrawCredentials, _isELRewardSharing, stakeAmounts, true);
         for (uint256 i = 0; i < _pubKeys.length; ++i) {
             validators[curStakingId].push(_pubKeys[i]);
         }
         totalLargeStakeAmounts[operatorId] += stakeAmounts;
 
-        emit MigretaStake(operatorId, curStakingId, stakeAmounts, _claimAddr, _isELRewardSharing);
+        emit MigretaStake(operatorId, curStakingId, stakeAmounts, _owner, _isELRewardSharing);
     }
 
     function appendMigrateStake(
         uint256 _stakingId,
-        address _claimAddr,
+        address _owner,
         address _withdrawCredentials,
         bytes[] calldata _pubKeys
     ) public {
@@ -275,7 +275,7 @@ contract LargeStaking is
             bytes.concat(hex"010000000000000000000000", abi.encodePacked(_withdrawCredentials));
 
         if (
-            stakingInfo.claimAddr != _claimAddr
+            stakingInfo.owner != _owner
                 || keccak256(stakingInfo.withdrawCredentials) != keccak256(userWithdrawalCredentials)
         ) {
             revert InvalidParameter();
@@ -302,12 +302,12 @@ contract LargeStaking is
             validators[_stakingId].push(_pubKeys[i]);
         }
 
-        emit MigretaStake(stakingInfo.operatorId, _stakingId, stakeAmounts, _claimAddr, stakingInfo.isELRewardSharing);
+        emit MigretaStake(stakingInfo.operatorId, _stakingId, stakeAmounts, _owner, stakingInfo.isELRewardSharing);
     }
 
     function _stake(
         uint256 _operatorId,
-        address _claimAddr,
+        address _owner,
         address _withdrawCredentials,
         bool _isELRewardSharing,
         uint256 _stakingAmount,
@@ -330,7 +330,7 @@ contract LargeStaking is
                 alreadyStakingAmount: isMigrate ? _stakingAmount : 0,
                 unstakeRequestAmount: 0,
                 unstakeAmount: 0,
-                claimAddr: _claimAddr,
+                owner: _owner,
                 withdrawCredentials: userWithdrawalCredentials,
                 isELRewardSharing: _isELRewardSharing
             })
@@ -534,7 +534,7 @@ contract LargeStaking is
 
     function claimRewardsOfUser(uint256 _stakingId, address beneficiary, uint256 rewards) public {
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        if (beneficiary == address(0) || msg.sender != stakingInfo.claimAddr) revert PermissionDenied();
+        if (beneficiary == address(0) || msg.sender != stakingInfo.owner) revert PermissionDenied();
 
         SettleInfo storage settleInfo = eLRewardSettleInfo[_stakingId];
 
