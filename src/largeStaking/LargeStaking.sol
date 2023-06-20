@@ -212,12 +212,13 @@ contract LargeStaking is
     }
 
     function largeUnstake(uint256 _stakingId, uint256 _amount) public {
-        if (_amount < 32 ether || _amount % 32 ether != 0) revert InvalidAmount();
         StakingInfo storage stakingInfo = largeStakingList[_stakingId];
+        if (
+            _amount < 32 ether || _amount % 32 ether != 0
+                || _amount > stakingInfo.stakingAmount - stakingInfo.unstakeRequestAmount
+        ) revert InvalidAmount();
 
         if (msg.sender != stakingInfo.owner) revert PermissionDenied();
-
-        if (_amount > stakingInfo.stakingAmount - stakingInfo.unstakeRequestAmount) revert InvalidAmount();
 
         uint256 _unstakeAmount = 0;
         if (stakingInfo.stakingAmount > stakingInfo.alreadyStakingAmount) {
@@ -313,8 +314,9 @@ contract LargeStaking is
         uint256 _stakingAmount,
         bool isMigrate
     ) internal returns (uint256, address) {
-        if (_withdrawCredentials == address(0)) revert InvalidWithdrawalCredentials();
-        if (_withdrawCredentials.balance < 1 wei) revert InvalidWithdrawalCredentials();
+        if (_withdrawCredentials == address(0) || _withdrawCredentials.balance < 1 wei) {
+            revert InvalidWithdrawalCredentials();
+        }
 
         uint256 curStakingId = totalLargeStakingCounts;
         totalLargeStakingCounts++;
@@ -683,8 +685,9 @@ contract LargeStaking is
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _clStakingInfo.length; ++i) {
             CLStakingInfo memory sInfo = _clStakingInfo[i];
-            if (sInfo.notReportedUnstakeAmount % 32 ether != 0) revert InvalidReport();
-            if (sInfo.stakingId > largeStakingList.length) revert InvalidReport();
+            if (sInfo.notReportedUnstakeAmount % 32 ether != 0 || sInfo.stakingId > largeStakingList.length) {
+                revert InvalidReport();
+            }
             stakingInfo = largeStakingList[sInfo.stakingId];
             if (stakingInfo.isELRewardSharing) {
                 settleElSharingReward(stakingInfo.operatorId);
@@ -720,6 +723,24 @@ contract LargeStaking is
 
     function getOperatorValidatorCounts(uint256 _operatorId) external view returns (uint256) {
         return totalLargeStakeAmounts[_operatorId] / 32 ether;
+    }
+
+    function getStakingInfoOfOwner(address _owner) public view returns (StakingInfo[] memory) {
+        uint256 number = 0;
+        for (uint256 i = 0; i < largeStakingList.length; ++i) {
+            if (largeStakingList[i].owner == _owner) {
+                number += 1;
+            }
+        }
+        StakingInfo[] memory userStakings = new StakingInfo[] (number);
+        uint256 index = 0;
+        for (uint256 i = 0; i < largeStakingList.length; ++i) {
+            if (largeStakingList[i].owner == _owner) {
+                userStakings[index++] = largeStakingList[i];
+            }
+        }
+
+        return userStakings;
     }
 
     function setLargeStakingSetting(
