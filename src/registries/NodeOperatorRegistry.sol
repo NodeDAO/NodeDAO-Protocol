@@ -12,6 +12,7 @@ import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/IVNFT.sol";
 import "src/interfaces/IELVault.sol";
 import "src/interfaces/IOperatorSlash.sol";
+import "src/interfaces/ILargeStaking.sol";
 
 /**
  * @title Node Operator registry
@@ -90,6 +91,9 @@ contract NodeOperatorRegistry is
     mapping(uint256 => uint256) public operatorSlashAmountOwed;
     mapping(uint256 => uint256) internal operatorCommissionRate;
     uint256 public defaultOperatorCommission;
+
+    // v3 storage
+    ILargeStaking public largeStakingContract;
 
     error PermissionDenied();
     error InvalidAddr();
@@ -180,6 +184,10 @@ contract NodeOperatorRegistry is
         }
     }
 
+    function initializeV3(address _largeStakingContractAddrss) public reinitializer(3) onlyDao {
+        largeStakingContract = ILargeStaking(_largeStakingContractAddrss);
+    }
+
     /**
      * @notice Add node operator named `name` with reward address `rewardAddress` and _owner
      * @param _name Human-readable name
@@ -259,7 +267,8 @@ contract NodeOperatorRegistry is
 
     function calcRequirePledgeBalance(uint256 _operatorId) internal view returns (uint256) {
         uint256 operatorNftCounts = vNFTContract.getActiveNftCountsOfOperator(_operatorId)
-            + vNFTContract.getEmptyNftCountsOfOperator(_operatorId);
+            + vNFTContract.getEmptyNftCountsOfOperator(_operatorId)
+            + largeStakingContract.getOperatorValidatorCounts(_operatorId);
         // Pledge the required funds based on the number of validators
         uint256 requireVault = 0;
         if (operatorNftCounts <= 100) {
@@ -363,36 +372,6 @@ contract NodeOperatorRegistry is
         }
     }
 
-    /**
-     * @notice Set the name of the operator
-     * @param _id operator id
-     * @param _name operator new name
-     */
-    function setNodeOperatorName(uint256 _id, string calldata _name) external operatorExists(_id) {
-        NodeOperator memory operator = operators[_id];
-        if (msg.sender != operator.owner) revert PermissionDenied();
-
-        operators[_id].name = _name;
-        emit NodeOperatorNameSet(_id, _name);
-    }
-
-    /**
-     * @notice Set the rewardAddress of the operator
-     * @param _id operator id
-     * @param _rewardAddresses Ethereum 1 address which receives ETH rewards for this operator
-     * @param _ratios reward ratios
-     */
-    function setNodeOperatorRewardAddress(uint256 _id, address[] calldata _rewardAddresses, uint256[] calldata _ratios)
-        external
-        operatorExists(_id)
-    {
-        NodeOperator memory operator = operators[_id];
-        if (msg.sender != operator.owner) revert PermissionDenied();
-
-        _setNodeOperatorRewardAddress(_id, _rewardAddresses, _ratios);
-        emit NodeOperatorRewardAddressSet(_id, _rewardAddresses, _ratios);
-    }
-
     function _setNodeOperatorRewardAddress(uint256 _id, address[] calldata _rewardAddresses, uint256[] calldata _ratios)
         internal
     {
@@ -414,46 +393,6 @@ contract NodeOperatorRegistry is
 
         // Ratio sum should be 100%
         if (totalRatio != 100) revert InvalidRewardRatio();
-    }
-
-    /**
-     * @notice Set the controllerAddress of the operator
-     * @param _id operator id
-     * @param _controllerAddress Ethereum 1 address for the operator's management authority
-     */
-    function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external operatorExists(_id) {
-        // The same address can only be used once
-        if (usedControllerAddress[_controllerAddress]) revert ControllerAddrUsed();
-
-        NodeOperator memory operator = operators[_id];
-
-        if (operator.owner != msg.sender) revert PermissionDenied();
-        if (trustedControllerAddress[operator.controllerAddress] == _id) {
-            trustedControllerAddress[operator.controllerAddress] = 0;
-            trustedControllerAddress[_controllerAddress] = _id;
-        }
-
-        // Update the control address set to ensure that the operatorid can be obtained according to the control address
-        controllerAddress[operator.controllerAddress] = 0;
-        controllerAddress[_controllerAddress] = _id;
-        operators[_id].controllerAddress = _controllerAddress;
-        usedControllerAddress[_controllerAddress] = true;
-
-        emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
-    }
-
-    /**
-     * @notice Change the owner of the operator
-     * @param _id operator id
-     * @param _owner Ethereum 1 address for the operator's owner authority
-     */
-    function setNodeOperatorOwnerAddress(uint256 _id, address _owner) external operatorExists(_id) {
-        NodeOperator memory operator = operators[_id];
-        if (operator.owner != msg.sender && msg.sender != dao) revert PermissionDenied();
-
-        operators[_id].owner = _owner;
-
-        emit NodeOperatorOwnerAddressSet(_id, operator.name, _owner);
     }
 
     /**
@@ -496,14 +435,6 @@ contract NodeOperatorRegistry is
     }
 
     /**
-     * @notice Get operator owner address
-     * @param _id operator id
-     */
-    function getNodeOperatorOwner(uint256 _id) external view operatorExists(_id) returns (address) {
-        return operators[_id].owner;
-    }
-
-    /**
      * @notice Get operator rewardSetting
      * @param _operatorId operator id
      */
@@ -521,31 +452,6 @@ contract NodeOperatorRegistry is
         }
 
         return (rewardAddresses, ratios);
-    }
-
-    /**
-     * @notice Returns total number of node operators
-     */
-    function getNodeOperatorsCount() external view returns (uint256) {
-        return totalOperators;
-    }
-
-    /**
-     * @notice Returns total number of trusted operators
-     */
-    function getTrustedOperatorsCount() external view returns (uint256) {
-        if (permissionlessBlockNumber != 0 && block.number >= permissionlessBlockNumber) {
-            return totalOperators;
-        }
-
-        return totalTrustedOperators;
-    }
-
-    /**
-     * @notice Returns total number of blacklist operators
-     */
-    function getBlacklistOperatorsCount() external view returns (uint256) {
-        return totalBlacklistOperators;
     }
 
     /**
@@ -671,27 +577,35 @@ contract NodeOperatorRegistry is
 
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
-     * @param _exitTokenIds tokenid id
+     * @param _slashType slashType
+     * @param _slashIds tokenId or stakingId
+     * @param _operatorIds operator id
      * @param _amounts slash amount
      */
-    function slash(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external nonReentrant onlyOperatorSlash {
+    function slash(
+        uint256 _slashType,
+        uint256[] memory _slashIds,
+        uint256[] memory _operatorIds,
+        uint256[] memory _amounts
+    ) external nonReentrant onlyOperatorSlash {
         uint256 totalSlashAmounts = 0;
-        uint256[] memory slashAmounts = new uint256[] (_exitTokenIds.length);
-        for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
+        uint256[] memory slashAmounts = new uint256[] (_operatorIds.length);
+        for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 amount = _amounts[i];
             if (amount == 0) {
                 continue;
             }
 
-            uint256 tokenId = _exitTokenIds[i];
-            uint256 operatorId = vNFTContract.operatorOf(tokenId);
+            uint256 operatorId = _operatorIds[i];
             uint256 slashAmount = _slash(operatorId, amount);
             slashAmounts[i] = slashAmount;
             totalSlashAmounts += slashAmount;
         }
 
         if (totalSlashAmounts != 0) {
-            operatorSlashContract.slashReceive{value: totalSlashAmounts}(_exitTokenIds, slashAmounts, _amounts);
+            operatorSlashContract.slashReceive{value: totalSlashAmounts}(
+                _slashType, _slashIds, _operatorIds, slashAmounts, _amounts
+            );
         }
     }
 
@@ -702,79 +616,6 @@ contract NodeOperatorRegistry is
     function getPledgeInfoOfOperator(uint256 _operatorId) external view returns (uint256, uint256) {
         uint256 requireBalance = calcRequirePledgeBalance(_operatorId);
         return (operatorPledgeVaultBalances[_operatorId], requireBalance);
-    }
-
-    /**
-     * @notice Determine whether the operator meets the pledge requirements
-     * @param _operatorId operator id
-     */
-    function isConformBasicPledge(uint256 _operatorId) external view returns (bool) {
-        return operatorPledgeVaultBalances[_operatorId] >= BASIC_PLEDGE;
-    }
-
-    /**
-     * @notice Set proxy address of LiquidStaking
-     * @param _liquidStakingContractAddress proxy address of LiquidStaking
-     * @dev will only allow call of function by the address registered as the owner
-     */
-    function setLiquidStaking(address _liquidStakingContractAddress)
-        external
-        onlyDao
-        validAddress(_liquidStakingContractAddress)
-    {
-        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
-        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
-    }
-
-    /**
-     * @notice set dao vault address
-     * @param  _dao new dao address
-     */
-    function setDaoAddress(address _dao) external onlyOwner validAddress(_dao) {
-        emit DaoAddressChanged(dao, _dao);
-        dao = _dao;
-    }
-
-    /**
-     * @notice set dao vault address
-     * @param _daoVaultAddress new dao vault address
-     */
-    function setDaoVaultAddress(address _daoVaultAddress) external onlyDao validAddress(_daoVaultAddress) {
-        emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
-        daoVaultAddress = _daoVaultAddress;
-    }
-
-    /**
-     * @notice set operator registration fee
-     * @param _fee new operator registration fee
-     */
-    function setRegistrationFee(uint256 _fee) external onlyDao {
-        emit RegistrationFeeChanged(registrationFee, _fee);
-        registrationFee = _fee;
-    }
-
-    /**
-     * @notice Start the permissionless phase, Cannot be changed once started
-     * @param _blockNumber The block height at the start of the permissionless phase must be greater than the current block
-     */
-    function setPermissionlessBlockNumber(uint256 _blockNumber) external onlyDao {
-        if (permissionlessBlockNumber != 0) revert PermissionlessPhaseStart();
-        if (_blockNumber <= block.number) revert InvalidParameter();
-        permissionlessBlockNumber = _blockNumber;
-        emit PermissionlessBlockNumberSet(_blockNumber);
-    }
-
-    /**
-     * @notice set a new vaultFactoryContract
-     * @param _vaultFactoryContractAddress new vaultFactoryContract address
-     */
-    function setVaultFactorContract(address _vaultFactoryContractAddress)
-        external
-        onlyDao
-        validAddress(_vaultFactoryContractAddress)
-    {
-        emit VaultFactorContractSet(address(vaultFactoryContract), _vaultFactoryContractAddress);
-        vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
     }
 
     /**
@@ -795,19 +636,6 @@ contract NodeOperatorRegistry is
     }
 
     /**
-     * @notice set operatorslashContract
-     * @param _operatorSlashContractAddress operatorSlashContract address
-     */
-    function setOperatorSlashContract(address _operatorSlashContractAddress)
-        external
-        onlyDao
-        validAddress(_operatorSlashContractAddress)
-    {
-        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContractAddress);
-        operatorSlashContract = IOperatorSlash(_operatorSlashContractAddress);
-    }
-
-    /**
      * @notice get operator commission rate
      * @param _operatorIds operator id
      */
@@ -825,16 +653,6 @@ contract NodeOperatorRegistry is
     }
 
     /**
-     * @notice set operator default comission rate
-     * @param _defaultOperatorCommission default operator commission
-     */
-    function setDefaultOperatorCommissionRate(uint256 _defaultOperatorCommission) external onlyDao {
-        if (_defaultOperatorCommission >= 5000) revert InvalidCommission();
-        emit DefaultOperatorCommissionRateChanged(defaultOperatorCommission, _defaultOperatorCommission);
-        defaultOperatorCommission = _defaultOperatorCommission;
-    }
-
-    /**
      * @notice set operator comission rate
      * @param _operatorId operator id
      * @param _rate _rate
@@ -844,6 +662,113 @@ contract NodeOperatorRegistry is
         uint256 commissionRate = operatorCommissionRate[_operatorId];
         emit CommissionRateChanged(commissionRate == 0 ? defaultOperatorCommission : commissionRate, _rate);
         operatorCommissionRate[_operatorId] = _rate;
+    }
+
+    /**
+     * @notice Change the owner of the operator
+     * @param _id operator id
+     * @param _owner Ethereum 1 address for the operator's owner authority
+     */
+    function setNodeOperatorOwnerAddress(uint256 _id, address _owner) external operatorExists(_id) {
+        NodeOperator memory operator = operators[_id];
+        if (operator.owner != msg.sender && msg.sender != dao) revert PermissionDenied();
+
+        operators[_id].owner = _owner;
+
+        emit NodeOperatorOwnerAddressSet(_id, operator.name, _owner);
+    }
+
+    function setOperatorSetting(
+        uint256 _id,
+        string calldata _name,
+        address _controllerAddress,
+        address[] calldata _rewardAddresses,
+        uint256[] calldata _ratios
+    ) public operatorExists(_id) {
+        NodeOperator memory operator = operators[_id];
+
+        if (msg.sender != operator.owner) revert PermissionDenied();
+
+        if (bytes(_name).length != 0) {
+            operators[_id].name = _name;
+            emit NodeOperatorNameSet(_id, _name);
+        }
+        if (_controllerAddress != address(0)) {
+            // The same address can only be used once
+            if (usedControllerAddress[_controllerAddress]) revert ControllerAddrUsed();
+
+            if (operator.owner != msg.sender) revert PermissionDenied();
+            if (trustedControllerAddress[operator.controllerAddress] == _id) {
+                trustedControllerAddress[operator.controllerAddress] = 0;
+                trustedControllerAddress[_controllerAddress] = _id;
+            }
+
+            // Update the control address set to ensure that the operatorid can be obtained according to the control address
+            controllerAddress[operator.controllerAddress] = 0;
+            controllerAddress[_controllerAddress] = _id;
+            operators[_id].controllerAddress = _controllerAddress;
+            usedControllerAddress[_controllerAddress] = true;
+
+            emit NodeOperatorControllerAddressSet(_id, operator.name, _controllerAddress);
+        }
+        if (_rewardAddresses.length != 0) {
+            _setNodeOperatorRewardAddress(_id, _rewardAddresses, _ratios);
+            emit NodeOperatorRewardAddressSet(_id, _rewardAddresses, _ratios);
+        }
+    }
+
+    function setNodeOperatorregistrySetting(
+        address _dao,
+        address _daoVaultAddress,
+        address _liquidStakingContractAddress,
+        address _operatorSlashContractAddress,
+        address _vaultFactoryContractAddress,
+        uint256 _defaultOperatorCommission,
+        uint256 _registrationFee,
+        uint256 _permissionlessBlockNumber
+    ) public onlyDao {
+        if (_dao != address(0)) {
+            emit DaoAddressChanged(dao, _dao);
+            dao = _dao;
+        }
+
+        if (_daoVaultAddress != address(0)) {
+            emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
+            daoVaultAddress = _daoVaultAddress;
+        }
+
+        if (_liquidStakingContractAddress != address(0)) {
+            emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+            liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+        }
+
+        if (_operatorSlashContractAddress != address(0)) {
+            emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContractAddress);
+            operatorSlashContract = IOperatorSlash(_operatorSlashContractAddress);
+        }
+
+        if (_vaultFactoryContractAddress != address(0)) {
+            emit VaultFactorContractSet(address(vaultFactoryContract), _vaultFactoryContractAddress);
+            vaultFactoryContract = IELVaultFactory(_vaultFactoryContractAddress);
+        }
+
+        if (_defaultOperatorCommission != 0) {
+            if (_defaultOperatorCommission >= 5000) revert InvalidCommission();
+            emit DefaultOperatorCommissionRateChanged(defaultOperatorCommission, _defaultOperatorCommission);
+            defaultOperatorCommission = _defaultOperatorCommission;
+        }
+
+        if (_registrationFee != 0) {
+            emit RegistrationFeeChanged(registrationFee, _registrationFee);
+            registrationFee = _registrationFee;
+        }
+
+        if (_permissionlessBlockNumber != 0) {
+            if (permissionlessBlockNumber != 0) revert PermissionlessPhaseStart();
+            if (_permissionlessBlockNumber <= block.number) revert InvalidParameter();
+            permissionlessBlockNumber = _permissionlessBlockNumber;
+            emit PermissionlessBlockNumberSet(_permissionlessBlockNumber);
+        }
     }
 
     /**
