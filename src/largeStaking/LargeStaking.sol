@@ -574,15 +574,15 @@ contract LargeStaking is
         operatorSlashContract.claimCompensatedOfLargeStaking(_stakingIds, beneficiary);
     }
 
-    function claimRewardsOfOperator(uint256[] memory _priPoolStakingIds, bool _claimSharePool, uint256 _operatorId)
+    function claimRewardsOfOperator(uint256[] memory _privatePoolStakingIds, bool _claimSharePool, uint256 _operatorId)
         external
     {
         StakingInfo memory stakingInfo;
         uint256 pledgeBalance = 0;
         uint256 requirBalance = 0;
 
-        for (uint256 i = 0; i < _priPoolStakingIds.length; ++i) {
-            uint256 stakingId = _priPoolStakingIds[i];
+        for (uint256 i = 0; i < _privatePoolStakingIds.length; ++i) {
+            uint256 stakingId = _privatePoolStakingIds[i];
             stakingInfo = largeStakingList[stakingId];
             if (stakingInfo.isELRewardSharing) {
                 continue;
@@ -648,10 +648,10 @@ contract LargeStaking is
         }
     }
 
-    function claimRewardsOfDao(uint256[] memory _priPoolStakingIds, uint256[] memory _operatorIds) external {
+    function claimRewardsOfDao(uint256[] memory _privatePoolStakingIds, uint256[] memory _operatorIds) external {
         StakingInfo memory stakingInfo;
-        for (uint256 i = 0; i < _priPoolStakingIds.length; ++i) {
-            uint256 stakingId = _priPoolStakingIds[i];
+        for (uint256 i = 0; i < _privatePoolStakingIds.length; ++i) {
+            uint256 stakingId = _privatePoolStakingIds[i];
             stakingInfo = largeStakingList[stakingId];
             if (stakingInfo.isELRewardSharing) {
                 continue;
