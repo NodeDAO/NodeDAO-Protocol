@@ -49,6 +49,20 @@ contract OperatorSlash is
     // key is requestId, value is blockNumber
     mapping(uint256 => uint256) public largeExitDelayedSlashRecords;
 
+    // v2.1 storage
+    address public largeStakingContractAddress;
+
+    uint256 public constant slashTypeOfNft = 1;
+    uint256 public constant slashTypeOfStakingId = 2;
+
+    mapping(uint256 => uint256) public stakingWillCompensated;
+    // Compensation already paid
+    mapping(uint256 => uint256) public stakingHasCompensated;
+    // Record the set of tokenids that the operator will compensate
+    mapping(uint256 => uint256[]) public stakingSlashArrears;
+    // The index of the compensation that has been completed is used for the distribution of compensation when replenishing the margin
+    uint256 public stakingCompensatedIndex;
+
     error PermissionDenied();
     error InvalidParameter();
     error NoSlashNeeded();
@@ -61,6 +75,11 @@ contract OperatorSlash is
 
     modifier onlyVaultManager() {
         if (msg.sender != vaultManagerContractAddress) revert PermissionDenied();
+        _;
+    }
+
+    modifier onlyLargeStaking() {
+        if (msg.sender != largeStakingContractAddress) revert PermissionDenied();
         _;
     }
 
@@ -105,7 +124,21 @@ contract OperatorSlash is
      */
     function slashOperator(uint256[] memory _exitTokenIds, uint256[] memory _amounts) external onlyVaultManager {
         if (_exitTokenIds.length != _amounts.length || _amounts.length == 0) revert InvalidParameter();
-        nodeOperatorRegistryContract.slash(_exitTokenIds, _amounts);
+        uint256[] memory _operatorIds = new uint256[] (_exitTokenIds.length);
+        for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
+            _operatorIds[i] = vNFTContract.operatorOf(_exitTokenIds[i]);
+        }
+
+        nodeOperatorRegistryContract.slash(slashTypeOfNft, _exitTokenIds, _operatorIds, _amounts);
+    }
+
+    function slashOperatorOfLargeStaking(
+        uint256[] memory _stakingIds,
+        uint256[] memory _operatorIds,
+        uint256[] memory _amounts
+    ) external onlyLargeStaking {
+        if (_stakingIds.length != _amounts.length || _amounts.length == 0) revert InvalidParameter();
+        nodeOperatorRegistryContract.slash(slashTypeOfStakingId, _stakingIds, _operatorIds, _amounts);
     }
 
     /**
@@ -165,33 +198,57 @@ contract OperatorSlash is
      *  as well as the penalty for the slash consensus penalty on eth2,
      *  will be received through this function.
      *  _slashAmounts may be less than or equal to _requireAmounts
-     * @param _exitTokenIds exit tokenIds
+     * @param _slashType slashType
+     * @param _slashIds exit tokenIds
      * @param _slashAmounts slash amount
      * @param _requireAmounts require slas amount
      */
     function slashReceive(
-        uint256[] memory _exitTokenIds,
+        uint256 _slashType,
+        uint256[] memory _slashIds,
+        uint256[] memory _operatorIds,
         uint256[] memory _slashAmounts,
         uint256[] memory _requireAmounts
     ) external payable {
         if (msg.sender != address(nodeOperatorRegistryContract)) revert PermissionDenied();
-        for (uint256 i = 0; i < _exitTokenIds.length; ++i) {
-            uint256 tokenId = _exitTokenIds[i];
-            uint256 operatorId = vNFTContract.operatorOf(tokenId);
-            if (vNFTContract.ownerOf(tokenId) == address(liquidStakingContract)) {
-                liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(operatorId, _slashAmounts[i]);
-            } else {
+
+        if (_slashType == slashTypeOfNft) {
+            for (uint256 i = 0; i < _slashIds.length; ++i) {
+                uint256 tokenId = _slashIds[i];
+                uint256 operatorId = _operatorIds[i];
+                if (vNFTContract.ownerOf(tokenId) == address(liquidStakingContract)) {
+                    liquidStakingContract.addPenaltyFundToStakePool{value: _slashAmounts[i]}(
+                        operatorId, _slashAmounts[i]
+                    );
+                } else {
+                    uint256 requireAmount = _requireAmounts[i];
+                    uint256 slashAmount = _slashAmounts[i];
+                    if (requireAmount < slashAmount) revert InvalidParameter();
+                    if (requireAmount != slashAmount) {
+                        nftWillCompensated[tokenId] += requireAmount - slashAmount;
+                        operatorSlashArrears[operatorId].push(tokenId);
+                    }
+                    nftHasCompensated[tokenId] += slashAmount;
+                }
+
+                emit SlashReceiveOfNft(operatorId, tokenId, _slashAmounts[i], _requireAmounts[i]);
+            }
+        } else {
+            if (_slashType != slashTypeOfStakingId) revert InvalidParameter();
+
+            for (uint256 i = 0; i < _slashIds.length; ++i) {
+                uint256 stakingId = _slashIds[i];
+                uint256 operatorId = _operatorIds[i];
                 uint256 requireAmount = _requireAmounts[i];
                 uint256 slashAmount = _slashAmounts[i];
                 if (requireAmount < slashAmount) revert InvalidParameter();
                 if (requireAmount != slashAmount) {
-                    nftWillCompensated[tokenId] += requireAmount - slashAmount;
-                    operatorSlashArrears[operatorId].push(tokenId);
+                    stakingWillCompensated[stakingId] += requireAmount - slashAmount;
+                    stakingSlashArrears[operatorId].push(stakingId);
                 }
-                nftHasCompensated[tokenId] += slashAmount;
+                stakingHasCompensated[stakingId] += slashAmount;
+                emit SlashReceiveOfLargeStaking(operatorId, stakingId, _slashAmounts[i], _requireAmounts[i]);
             }
-
-            emit SlashReceive(operatorId, tokenId, _slashAmounts[i], _requireAmounts[i]);
         }
     }
 
@@ -204,6 +261,7 @@ contract OperatorSlash is
         emit ArrearsReceiveOfSlash(_operatorId, _amount);
 
         if (msg.sender != address(nodeOperatorRegistryContract)) revert PermissionDenied();
+
         uint256 compensatedIndex = operatorCompensatedIndex;
         while (
             operatorSlashArrears[_operatorId].length != 0
@@ -231,6 +289,34 @@ contract OperatorSlash is
             operatorCompensatedIndex = compensatedIndex;
         }
 
+        // for large staking
+        compensatedIndex = stakingCompensatedIndex;
+        while (
+            stakingSlashArrears[_operatorId].length != 0
+                && stakingSlashArrears[_operatorId].length - 1 >= compensatedIndex
+        ) {
+            uint256 stakingId = stakingSlashArrears[_operatorId][compensatedIndex];
+            uint256 arrears = stakingWillCompensated[stakingId];
+            if (_amount >= arrears) {
+                stakingWillCompensated[stakingId] = 0;
+                stakingHasCompensated[stakingId] += arrears;
+                compensatedIndex += 1;
+                _amount -= arrears;
+            } else {
+                stakingWillCompensated[stakingId] -= _amount;
+                stakingHasCompensated[stakingId] += _amount;
+                _amount = 0;
+            }
+
+            if (_amount == 0) {
+                break;
+            }
+        }
+
+        if (compensatedIndex != 0 && compensatedIndex != stakingCompensatedIndex) {
+            stakingCompensatedIndex = compensatedIndex;
+        }
+
         if (_amount != 0) {
             liquidStakingContract.addPenaltyFundToStakePool{value: _amount}(_operatorId, _amount);
         }
@@ -252,9 +338,30 @@ contract OperatorSlash is
         }
         if (totalCompensated != 0) {
             payable(_owner).transfer(totalCompensated);
+            emit CompensatedClaimedOfNft(_owner, totalCompensated);
         }
 
-        emit CompensatedClaimed(_owner, totalCompensated);
+        return totalCompensated;
+    }
+
+    function claimCompensatedOfLargeStaking(uint256[] memory _stakingIds, address _owner)
+        external
+        onlyLargeStaking
+        returns (uint256)
+    {
+        uint256 totalCompensated;
+        for (uint256 i = 0; i < _stakingIds.length; ++i) {
+            uint256 stakingId = _stakingIds[i];
+            if (stakingHasCompensated[stakingId] != 0) {
+                totalCompensated += stakingHasCompensated[stakingId];
+                stakingHasCompensated[stakingId] = 0;
+            }
+        }
+        if (totalCompensated != 0) {
+            payable(_owner).transfer(totalCompensated);
+            emit CompensatedClaimedOfLargeStaking(_owner, totalCompensated);
+        }
+
         return totalCompensated;
     }
 

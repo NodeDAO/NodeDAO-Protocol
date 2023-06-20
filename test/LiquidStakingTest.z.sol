@@ -22,6 +22,9 @@ import "src/interfaces/ILiquidStaking.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 import "src/OperatorSlash.sol";
 import "src/WithdrawalRequest.sol";
+import "src/largeStaking/LargeStaking.sol";
+import "src/largeStaking/ELReward.sol";
+import "src/largeStaking/ELRewardFactory.sol";
 
 contract LiquidStakingTest is Test, MockOracleProvider {
     error PermissionDenied();
@@ -87,6 +90,9 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     WithdrawalRequest withdrawalRequest;
     NodeDaoTreasury nodeDaoTreasury;
     HashConsensusWithTimer consensus;
+    LargeStaking largeStaking;
+    ELReward elReward;
+    ELRewardFactory elRewardFactor;
 
     address _dao = DAO;
     address _daoValutAddress;
@@ -126,7 +132,9 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         operatorRegistry = new NodeOperatorRegistry();
         operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
-        operatorRegistry.setLiquidStaking(address(liquidStaking));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(liquidStaking), address(0), address(0), 0, 0, 0
+        );
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
 
         depositContract = new DepositContract();
@@ -185,7 +193,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         );
 
         vm.prank(_dao);
-        operatorRegistry.setOperatorSlashContract(address(operatorSlash));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(operatorSlash), address(0), 0, 0, 0
+        );
+
         vm.prank(_dao);
         liquidStaking.initializeV2(
             _operatorIds,
@@ -222,8 +233,27 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(operatorRegistry.defaultOperatorCommission(), 2000);
 
         vm.prank(_dao);
-        operatorRegistry.setDefaultOperatorCommissionRate(700);
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(0), address(0), 700, 0, 0
+        );
+
         assertEq(operatorRegistry.defaultOperatorCommission(), 700);
+
+        elReward = new ELReward();
+        elRewardFactor = new ELRewardFactory();
+        elRewardFactor.initialize(address(elReward), _dao);
+        largeStaking = new LargeStaking();
+        largeStaking.initialize(
+            _dao,
+            _daoValutAddress,
+            address(operatorRegistry),
+            address(withdrawOracle),
+            address(elRewardFactor),
+            address(depositContract),
+            address(operatorSlash)
+        );
+        vm.prank(_dao);
+        operatorRegistry.initializeV3(address(largeStaking));
     }
 
     function testStakeETH() public {
@@ -681,16 +711,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(true, operatorRegistry.isTrustedOperator(operatorId));
         assertEq(2, operatorRegistry.isTrustedOperatorOfControllerAddress(_controllerAddress));
 
-        assertEq(2, operatorRegistry.getNodeOperatorsCount());
-        assertEq(0, operatorRegistry.getBlacklistOperatorsCount());
-        assertEq(2, operatorRegistry.getTrustedOperatorsCount());
-
         vm.prank(_dao);
         operatorRegistry.setBlacklistOperator(operatorId);
         assertEq(false, operatorRegistry.isTrustedOperator(operatorId));
         assertEq(0, operatorRegistry.isTrustedOperatorOfControllerAddress(_controllerAddress));
-        assertEq(2, operatorRegistry.getNodeOperatorsCount());
-        assertEq(1, operatorRegistry.getBlacklistOperatorsCount());
 
         vm.prank(_dao);
         operatorRegistry.removeBlacklistOperator(operatorId);
@@ -705,8 +729,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(operatorId);
         assertEq(4 ether, pledgeBalance);
 
+        _rewardAddresses = new address[] (0);
+        _ratios = new uint256[] (0);
         vm.prank(_owner);
-        operatorRegistry.setNodeOperatorName(operatorId, "test2");
+        operatorRegistry.setOperatorSetting(operatorId, "test2", address(0), _rewardAddresses, _ratios);
         checkOperator(operatorId, true, "test2", address(40), _owner);
 
         _rewardAddresses2[0] = address(45);
@@ -717,7 +743,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         _ratios2[2] = 20;
 
         vm.prank(_owner);
-        operatorRegistry.setNodeOperatorRewardAddress(operatorId, _rewardAddresses2, _ratios2);
+        operatorRegistry.setOperatorSetting(operatorId, "", address(0), _rewardAddresses2, _ratios2);
         (address[] memory rewardAddresses3, uint256[] memory ratios3) =
             operatorRegistry.getNodeOperatorRewardSetting(operatorId);
         assertEq(rewardAddresses3[0], _rewardAddresses2[0]);
@@ -727,9 +753,8 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         assertEq(ratios3[1], _ratios2[1]);
         assertEq(ratios3[2], _ratios2[2]);
 
-        _controllerAddress = address(48);
         vm.prank(_owner);
-        operatorRegistry.setNodeOperatorControllerAddress(operatorId, _controllerAddress);
+        operatorRegistry.setOperatorSetting(operatorId, "", address(48), _rewardAddresses, _ratios);
         checkOperator(operatorId, true, "test2", address(48), _owner);
         assertEq(0, operatorRegistry.isTrustedOperatorOfControllerAddress(address(40)));
         assertEq(2, operatorRegistry.isTrustedOperatorOfControllerAddress(address(48)));
@@ -740,31 +765,37 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         checkOperator(operatorId, true, "test2", address(48), _owner);
 
         console.log("getNodeOperatorVaultContract", operatorRegistry.getNodeOperatorVaultContract(operatorId));
-        assertEq(address(49), operatorRegistry.getNodeOperatorOwner(operatorId));
 
-        assertEq(true, operatorRegistry.isConformBasicPledge(operatorId));
         vm.prank(_owner);
         operatorRegistry.withdrawOperator(operatorId, 3 ether, _to);
         (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(operatorId);
         assertEq(1 ether, pledgeBalance);
-        assertEq(true, operatorRegistry.isConformBasicPledge(operatorId));
         assertEq(_to.balance, 5 ether);
 
-        operatorRegistry.setDaoAddress(address(50));
+        vm.prank(_dao);
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(50), address(0), address(0), address(0), address(0), 0, 0, 0
+        );
         assertEq(operatorRegistry.dao(), address(50));
         _dao = address(50);
 
         vm.prank(_dao);
-        operatorRegistry.setDaoVaultAddress(address(51));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(51), address(0), address(0), address(0), 0, 0, 0
+        );
         assertEq(operatorRegistry.daoVaultAddress(), address(51));
 
         assertEq(operatorRegistry.registrationFee(), 0.1 ether);
         vm.prank(_dao);
-        operatorRegistry.setRegistrationFee(1 ether);
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(0), address(0), 0, 1 ether, 0
+        );
         assertEq(operatorRegistry.registrationFee(), 1 ether);
 
         vm.prank(_dao);
-        operatorRegistry.setPermissionlessBlockNumber(1000000);
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(0), address(0), 0, 0, 1000000
+        );
         assertEq(1000000, operatorRegistry.permissionlessBlockNumber());
 
         assertEq(true, operatorRegistry.isTrustedOperator(operatorId));
@@ -796,7 +827,10 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
     function testSetPermissionlessBlockNumber() public {
         vm.prank(_dao);
-        operatorRegistry.setPermissionlessBlockNumber(1000000);
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(0), address(0), 0, 0, 1000000
+        );
+
         assertEq(1000000, operatorRegistry.permissionlessBlockNumber());
     }
 
@@ -1525,7 +1559,9 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(opId);
         console.log("========testResetOperatorVaultContract==========", operatorVaultAddr);
         vm.prank(_dao);
-        operatorRegistry.setVaultFactorContract(address(vaultFactoryContract2));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(0), address(vaultFactoryContract2), 0, 0, 0
+        );
         uint256[] memory resetOperatorIds = new uint256[] (1);
         resetOperatorIds[0] = opId;
         vm.prank(_dao);
@@ -2300,21 +2336,30 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     }
 
     function testNodeOperatorRegistry2() public {
-        operatorRegistry.setDaoAddress(address(1000));
+        vm.prank(_dao);
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(1000), address(0), address(0), address(0), address(0), 0, 0, 0
+        );
         assertEq(address(operatorRegistry.dao()), address(1000));
 
         _dao = address(1000);
 
         vm.prank(_dao);
-        operatorRegistry.setLiquidStaking(address(1000));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(1000), address(0), address(0), 0, 0, 0
+        );
         assertEq(address(operatorRegistry.liquidStakingContract()), address(1000));
 
         vm.prank(_dao);
-        operatorRegistry.setPermissionlessBlockNumber(1000);
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(0), address(0), 0, 0, 1000
+        );
         assertEq(operatorRegistry.permissionlessBlockNumber(), 1000);
 
         vm.prank(_dao);
-        operatorRegistry.setOperatorSlashContract(address(1000));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(1000), address(0), 0, 0, 0
+        );
         assertEq(address(operatorRegistry.operatorSlashContract()), address(1000));
 
         address[] memory _rewardAddresses3 = new address[] (3);
@@ -2334,15 +2379,21 @@ contract LiquidStakingTest is Test, MockOracleProvider {
         );
 
         vm.prank(_dao);
-        operatorRegistry.setRegistrationFee(1000);
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(0), address(0), 0, 1000, 0
+        );
         assertEq(operatorRegistry.registrationFee(), 1000);
 
         vm.prank(_dao);
-        operatorRegistry.setDaoVaultAddress(address(1000));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(1000), address(0), address(0), address(0), 0, 0, 0
+        );
         assertEq(address(operatorRegistry.daoVaultAddress()), address(1000));
 
         vm.prank(_dao);
-        operatorRegistry.setVaultFactorContract(address(1000));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(0), address(1000), 0, 0, 0
+        );
         assertEq(address(operatorRegistry.vaultFactoryContract()), address(1000));
 
         vm.prank(_dao);

@@ -37,29 +37,6 @@ interface INodeOperatorsRegistry {
     function removeTrustedOperator(uint256 _id) external;
 
     /**
-     * @notice Set the name of the operator
-     * @param _id operator id
-     * @param _name operator new name
-     */
-    function setNodeOperatorName(uint256 _id, string memory _name) external;
-
-    /**
-     * @notice Set the rewardAddress of the operator
-     * @param _id operator id
-     * @param _rewardAddresses Ethereum 1 address which receives ETH rewards for this operator
-     * @param _ratios reward ratios
-     */
-    function setNodeOperatorRewardAddress(uint256 _id, address[] memory _rewardAddresses, uint256[] memory _ratios)
-        external;
-
-    /**
-     * @notice Set the controllerAddress of the operator
-     * @param _id operator id
-     * @param _controllerAddress Ethereum 1 address for the operator's management authority
-     */
-    function setNodeOperatorControllerAddress(uint256 _id, address _controllerAddress) external;
-
-    /**
      * @notice Get information about an operator
      * @param _id operator id
      * @param _fullInfo Get all information
@@ -91,16 +68,6 @@ interface INodeOperatorsRegistry {
         returns (address[] memory, uint256[] memory);
 
     /**
-     * @notice Returns total number of node operators
-     */
-    function getNodeOperatorsCount() external view returns (uint256);
-
-    /**
-     * @notice Returns total number of trusted operators
-     */
-    function getTrustedOperatorsCount() external view returns (uint256);
-
-    /**
      * @notice Returns whether an operator is trusted
      * @param _id operator id
      */
@@ -123,18 +90,20 @@ interface INodeOperatorsRegistry {
      * @param _operatorIds operator id
      */
     function getOperatorCommissionRate(uint256[] memory _operatorIds) external view returns (uint256[] memory);
-    /**
-     * @notice Get operator owner address
-     * @param _id operator id
-     */
-    function getNodeOperatorOwner(uint256 _id) external view returns (address);
 
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
+     * @param _slashType slashType
+     * @param _slashIds tokenId or stakingId
      * @param _operatorIds operator id
      * @param _amounts slash amount
      */
-    function slash(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
+    function slash(
+        uint256 _slashType,
+        uint256[] memory _slashIds,
+        uint256[] memory _operatorIds,
+        uint256[] memory _amounts
+    ) external;
 
     /**
      * @notice Operators will be penalized when they do not exit validators in time
@@ -147,12 +116,6 @@ interface INodeOperatorsRegistry {
      * @param _operatorId operator Id
      */
     function deposit(uint256 _operatorId) external payable;
-
-    /**
-     * @notice Determine whether the operator meets the pledge requirements
-     * @param _operatorId operator id
-     */
-    function isConformBasicPledge(uint256 _operatorId) external view returns (bool);
 
     /**
      * @notice Returns whether an operator is Blacklist
