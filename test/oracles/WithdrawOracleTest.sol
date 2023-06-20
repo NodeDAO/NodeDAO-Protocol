@@ -17,6 +17,9 @@ import "src/vault/ELVaultFactory.sol";
 import "src/vault/ConsensusVault.sol";
 import "src/OperatorSlash.sol";
 import "src/WithdrawalRequest.sol";
+import "src/largeStaking/largeStaking.sol";
+import "src/largeStaking/elReward.sol";
+import "src/largeStaking/elRewardFactor.sol";
 
 // forge test --match-path  test/oracles/WithdrawOracleTest.sol
 contract WithdrawOracleTest is Test, MockOracleProvider {
@@ -43,6 +46,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     address payable consensusVaultContractAddr;
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
+    LargeStaking largeStaking;
+    ELReward elReward;
+    ELRewardFactory elRewardFactor;
 
     address _dao = DAO;
     address _daoValutAddress = address(2);
@@ -75,7 +81,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         operatorRegistry = new NodeOperatorRegistry();
         operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
-        operatorRegistry.setLiquidStaking(address(liquidStaking));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(liquidStaking), address(0), address(0), 0, 0, 0
+        );
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
 
         depositContract = new DepositContract();
@@ -124,7 +132,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         );
 
         vm.prank(_dao);
-        operatorRegistry.setOperatorSlashContract(address(operatorSlash));
+        operatorRegistry.setNodeOperatorregistrySetting(
+            address(0), address(0), address(0), address(operatorSlash), address(0), 0, 0, 0
+        );
         vm.prank(_dao);
         liquidStaking.initializeV2(
             _operatorIds,
@@ -145,6 +155,22 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
             address(withdrawOracle),
             address(operatorSlash)
         );
+
+        elReward = new ELReward();
+        elRewardFactor = new ELRewardFactory();
+        elRewardFactor.initialize(address(elReward), _dao);
+        largeStaking = new LargeStaking();
+        largeStaking.initialize(
+            _dao,
+            _daoValutAddress,
+            address(operatorRegistry),
+            address(withdrawOracle),
+            address(elRewardFactor),
+            address(depositContract),
+            address(operatorSlash)
+        );
+        vm.prank(_dao);
+        operatorRegistry.initializeV3(address(largeStaking));
     }
 
     ////////////////////////////////////////////////////////////////
