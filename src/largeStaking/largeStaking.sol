@@ -393,6 +393,7 @@ contract LargeStaking is
                 _pubkeys[i], _withdrawalCredential, _signatures[i], _depositDataRoots[i]
             );
             emit ValidatorRegistered(operatorId, _stakingId, _pubkeys[i]);
+            validators[_stakingId].push(_pubkeys[i]);
         }
 
         largeStakingList[_stakingId].alreadyStakingAmount += depositAmount;
