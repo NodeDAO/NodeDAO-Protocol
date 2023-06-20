@@ -553,7 +553,7 @@ contract NodeOperatorRegistry is
         }
     }
 
-    function _slash(uint256 _operatorId, uint256 _amount) internal returns (uint256) {
+    function _slash(uint256 _operatorId, uint256 _amount) internal operatorExists(_operatorId) returns (uint256) {
         uint256 pledgeAmounts = operatorPledgeVaultBalances[_operatorId];
         if (pledgeAmounts == 0) {
             emit OperatorArrearsIncrease(_operatorId, _amount);
