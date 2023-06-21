@@ -52,8 +52,8 @@ contract LargeStaking is
     // dao el commisssionRate
     uint256 public daoElCommissionRate;
 
-    mapping(uint256 => address) private privateELRewardCountract; // key is stakingId
-    mapping(uint256 => address) private elRewardSharingCountract; // key is operatorId
+    mapping(uint256 => address) internal privateELRewardCountract; // key is stakingId
+    mapping(uint256 => address) internal elRewardSharingCountract; // key is operatorId
 
     // share reward pool
     struct SettleInfo {
@@ -61,7 +61,7 @@ contract LargeStaking is
         uint256 rewardBalance;
     }
 
-    mapping(uint256 => SettleInfo) private eLRewardSettleInfo; // key is stakingId
+    mapping(uint256 => SettleInfo) public eLRewardSettleInfo; // key is stakingId
     mapping(uint256 => uint256) public unclaimedSharingRewards; // key is operatorId
     mapping(uint256 => uint256) public operatorSharingRewards; // key is operatorId
     mapping(uint256 => uint256) public daoSharingRewards; // key is operatorId
@@ -228,13 +228,13 @@ contract LargeStaking is
             } else {
                 _unstakeAmount = fastAmount;
             }
+            // _unstakeAmount is not equal to 0, which means that the unstake is completed synchronously
             stakingInfo.unstakeAmount += _unstakeAmount;
             payable(stakingInfo.owner).transfer(_unstakeAmount);
             emit FastUnstake(_stakingId, _unstakeAmount);
         }
-        if (_unstakeAmount != _amount) {
-            stakingInfo.unstakeRequestAmount += (_amount - _unstakeAmount);
-        }
+
+        stakingInfo.unstakeRequestAmount += _amount;
 
         emit LargeUnstake(_stakingId, _amount);
     }
@@ -683,7 +683,14 @@ contract LargeStaking is
                 );
             }
 
-            largeStakingList[sInfo.stakingId].unstakeAmount += sInfo.notReportedUnstakeAmount;
+            uint256 newUnstakeAmount = stakingInfo.unstakeAmount + sInfo.notReportedUnstakeAmount;
+            largeStakingList[sInfo.stakingId].unstakeAmount = newUnstakeAmount;
+            // The operator actively withdraws from the validator
+            if (newUnstakeAmount > stakingInfo.unstakeRequestAmount) {
+                // When unstakeRequestAmount > unstakeAmount, the operator will exit the validator
+                largeStakingList[sInfo.stakingId].unstakeRequestAmount = newUnstakeAmount;
+            }
+
             totalLargeStakeAmounts[stakingInfo.operatorId] -= sInfo.notReportedUnstakeAmount;
             emit ValidatorExitReport(stakingInfo.operatorId, sInfo.notReportedUnstakeAmount);
         }
