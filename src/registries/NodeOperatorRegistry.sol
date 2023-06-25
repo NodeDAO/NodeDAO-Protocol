@@ -678,6 +678,9 @@ contract NodeOperatorRegistry is
         emit NodeOperatorOwnerAddressSet(_id, operator.name, _owner);
     }
 
+    /**
+     * @notice set operator setting
+     */
     function setOperatorSetting(
         uint256 _id,
         string calldata _name,
@@ -717,6 +720,9 @@ contract NodeOperatorRegistry is
         }
     }
 
+    /**
+     * @notice set contract setting
+     */
     function setNodeOperatorregistrySetting(
         address _dao,
         address _daoVaultAddress,
