@@ -6,14 +6,7 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "src/library/Math.sol";
 import "src/utils/Dao.sol";
-
-/**
- * 1. del AccessControlEnumerable Controls the role permission and uses dao and owner to manage it
- *  - The onlyRole is changed to onlyDao or onlyOwner
- * 2. Introduce uups and init
- * 3. Understand the FastLane pattern
- * 4. QUORUM ALGORITHM NEEDS TO BE MODIFIED
- */
+import "src/utils/Array.sol";
 
 /// @notice A contract that gets consensus reports (i.e. hashes) pushed to and processes them
 /// asynchronously.
@@ -37,7 +30,7 @@ interface IReportAsyncProcessor {
     /// free to reach consensus on another report for the same reporting frame and submit it
     /// using this same function.
     ///
-    function submitConsensusReport(bytes32 report, uint256 refSlot, uint256 deadline) external;
+    function submitConsensusReport(bytes32[] memory report, uint256 refSlot, uint256 deadline) external;
 
     /// @notice Returns the last reference slot for which processing of the report was started.
     ///
@@ -56,30 +49,16 @@ interface IReportAsyncProcessor {
     function getConsensusVersion() external view returns (uint256);
 }
 
-/// @notice A contract managing oracle members committee and allowing the members to reach
-/// consensus on a hash for each reporting frame.
-///
-/// Time is divided in frames of equal length, each having reference slot and processing
-/// deadline. Report data must be gathered by looking at the world state at the moment of
-/// the frame's reference slot (including any state changes made in that slot), and must
-/// be processed before the frame's processing deadline.
-///
-/// Frame length is defined in Ethereum consensus layer epochs. Reference slot for each
-/// frame is set to the last slot of the epoch preceding the frame's first epoch. The
-/// processing deadline is set to the last slot of the last epoch of the frame.
-///
-/// This means that all state changes a report processing could entail are guaranteed to be
-/// observed while gathering data for the next frame's report. This is an important property
-/// given that oracle reports sometimes have to contain diffs instead of the full state which
-/// might be impractical or even impossible to transmit and process.
-///
-contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
+contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     using SafeCast for uint256;
 
     error InvalidAddr();
     error NumericOverflow();
     error ReportProcessorCannotBeZero();
     error DuplicateMember();
+    error DuplicateReportProcessor();
+    error ReportProcessorNotFound(address reportProcessor);
+    error ReportProcessorExist(address reportProcessor);
     error AddressCannotBeZero();
     error InitialEpochIsYetToArrive();
     error InitialEpochAlreadyArrived();
@@ -102,9 +81,10 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     event MemberAdded(address indexed addr, uint256 newTotalMembers, uint256 newQuorum);
     event MemberRemoved(address indexed addr, uint256 newTotalMembers, uint256 newQuorum);
     event QuorumSet(uint256 newQuorum, uint256 totalMembers, uint256 prevQuorum);
-    event ReportReceived(uint256 indexed refSlot, address indexed member, bytes32 report);
-    event ConsensusReached(uint256 indexed refSlot, bytes32 report, uint256 support);
-    event ReportProcessorSet(address indexed processor, address indexed prevProcessor);
+    event ReportReceived(uint256 indexed refSlot, address indexed member, bytes32[] report);
+    event ConsensusReached(uint256 indexed refSlot, bytes32[] report, uint256 support);
+    event ReportProcessorAdd(address indexed processor, uint256 indexed moduleId);
+    event ReportProcessorUpdate(address indexed oldProcessor, address indexed newProcessor, uint256 indexed moduleId);
 
     struct FrameConfig {
         uint64 initialEpoch;
@@ -134,7 +114,6 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
     struct MemberState {
         // the last reference slot a report from this member was received for
-        // 共识层的slot
         uint64 lastReportRefSlot;
         // the variant index of the last report from this member
         uint64 lastReportVariantIndex;
@@ -142,8 +121,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
     struct ReportVariant {
         // the reported hash
-        // todo hash如果改成bytes32[]，则可以支持多个hash， 需要考虑 比较及票数问题
-        bytes32 hash;
+        bytes32[] hashArr;
         // how many unique members from the current set reported this hash in the current frame
         uint64 support;
     }
@@ -183,15 +161,11 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     /// @dev The number of report variants
     uint256 internal _reportVariantsLength;
 
-    /// @dev The address of the report processor contract
-    // todo _reportProcessor 改为数组，最好与moduleId一致
-    // todo 支持 addReportProcessor
-    address internal _reportProcessor;
+    address[] internal reportProcessors;
 
-    ///
-    /// Initialization
-    ///
+    mapping(address => uint256) internal reportIndices1b;
 
+    // Initialization
     function initialize(
         uint256 slotsPerEpoch,
         uint256 secondsPerSlot,
@@ -215,19 +189,16 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint256 farFutureEpoch = _computeEpochAtTimestamp(type(uint64).max);
         _setFrameConfig(farFutureEpoch, epochsPerFrame, fastLaneLengthSlots, FrameConfig(0, 0, 0));
 
-        _reportProcessor = reportProcessor;
+        // todo _reportProcessors 处理
+        //        _reportProcessor = reportProcessor;
     }
 
-    // set dao vault address
+    // set dao address
     function setDaoAddress(address _dao) external override onlyOwner {
         if (_dao == address(0)) revert InvalidAddr();
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
     }
-
-    ///
-    /// Time
-    ///
 
     /// @notice Returns the immutable chain parameters required to calculate epoch and slot
     /// given a timestamp.
@@ -289,10 +260,6 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         }
 
         _setFrameConfig(initialEpoch, prevConfig.epochsPerFrame, prevConfig.fastLaneLengthSlots, prevConfig);
-
-        if (_getInitialFrame().refSlot < _getLastProcessingRefSlot()) {
-            revert InitialEpochRefSlotCannotBeEarlierThanProcessingSlot();
-        }
     }
 
     /// @notice Updates the time-related configuration.
@@ -410,17 +377,41 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     }
 
     ///
-    /// Report processor
+    /// Report processor todo test
     ///
 
-    // todo getReportProcessors() getReportProcessor(index)
-    function getReportProcessor() external view returns (address) {
-        return _reportProcessor;
+    function getReportProcessors() external view returns (address[] memory) {
+        return reportProcessors;
     }
 
-    // todo addReportProcessor
-    function setReportProcessor(address newProcessor) external onlyOwner {
-        _setReportProcessor(newProcessor);
+    function getIsReportProcessor(address addr) public view returns (bool) {
+        return reportIndices1b[addr] != 0;
+    }
+
+    function getReportModuleId(address reportProcessor) external view returns (uint256) {
+        return reportIndices1b[reportProcessor];
+    }
+
+    function addReportProcessor(address newProcessor) external onlyDao {
+        if (newProcessor == address(0)) revert ReportProcessorCannotBeZero();
+        if (getIsReportProcessor(newProcessor)) revert DuplicateReportProcessor();
+
+        reportProcessors.push(newProcessor);
+        uint256 newTotalReportProcessors = reportProcessors.length;
+        reportIndices1b[newProcessor] = newTotalReportProcessors;
+
+        emit ReportProcessorAdd(newProcessor, newTotalReportProcessors);
+    }
+
+    function updateReportProcessor(address oldProcessor, address newProcessor) external onlyDao {
+        if (oldProcessor == address(0) || newProcessor == address(0)) revert ReportProcessorCannotBeZero();
+        if (getIsReportProcessor(oldProcessor)) revert ReportProcessorNotFound(oldProcessor);
+        if (getIsReportProcessor(newProcessor)) revert ReportProcessorExist(newProcessor);
+
+        uint256 oldIndex = reportIndices1b[oldProcessor] - 1;
+        reportProcessors[oldIndex] = newProcessor;
+
+        emit ReportProcessorUpdate(oldProcessor, newProcessor, oldIndex + 1);
     }
 
     ///
@@ -433,36 +424,31 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     ///
     /// @return consensusReport Consensus report for the current frame, if any.
     ///         Zero bytes otherwise.
-    ///
-    /// @return isReportProcessing If consensus report for the current frame is already
-    ///         being processed. Consensus can be changed before the processing starts.
-    ///
-    // todo isReportProcessing 可能需要变成多个 每一个oracle对应一个
-    function getConsensusState()
-        external
-        view
-        returns (uint256 refSlot, bytes32 consensusReport, bool isReportProcessing)
-    {
+    function getConsensusState() external view returns (uint256 refSlot, bytes32[] memory consensusReport) {
         refSlot = _getCurrentFrame().refSlot;
         (consensusReport,,) = _getConsensusReport(refSlot, _quorum);
-        isReportProcessing = _getLastProcessingRefSlot() == refSlot;
+    }
+
+    /// @return isReportProcessing If consensus report for the current frame is already
+    ///         being processed. Consensus can be changed before the processing starts.
+    function getIsReportProcessing(address _reportProcessor) external view returns (bool) {
+        return _getLastProcessingRefSlot(_reportProcessor) == _getCurrentFrame().refSlot;
     }
 
     /// @notice Returns report variants and their support for the current reference slot.
     ///
-    // todo 投票 改造
-    function getReportVariants() external view returns (bytes32[] memory variants, uint256[] memory support) {
+    function getReportVariants() external view returns (bytes32[][] memory variants, uint256[] memory support) {
         if (reportingState.lastReportRefSlot != _getCurrentFrame().refSlot) {
             return (variants, support);
         }
 
         uint256 variantsLength = _reportVariantsLength;
-        variants = new bytes32[](variantsLength);
+        variants = new bytes32[][](variantsLength);
         support = new uint256[](variantsLength);
 
         for (uint256 i = 0; i < variantsLength; ++i) {
             ReportVariant memory variant = _reportVariants[i];
-            variants[i] = variant.hash;
+            variants[i] = variant.hashArr;
             support[i] = variant.support;
         }
     }
@@ -471,7 +457,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         /// @notice Current frame's reference slot.
         uint256 currentFrameRefSlot;
         /// @notice Consensus report for the current frame, if any. Zero bytes otherwise.
-        bytes32 currentFrameConsensusReport;
+        bytes32[] currentFrameConsensusReport;
         /// @notice Whether the provided address is a member of the oracle committee.
         bool isMember;
         /// @notice Whether the oracle committee member is in the fast lane members subset
@@ -479,14 +465,12 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         bool isFastLane;
         /// @notice Whether the oracle committee member is allowed to submit a report at
         /// the moment of the call.
-        // todo 状态改变逻辑审查
         bool canReport;
         /// @notice The last reference slot for which the member submitted a report.
         uint256 lastMemberReportRefSlot;
         /// @notice The hash reported by the member for the current frame, if any.
         /// Zero bytes otherwise.
-        // todo consensusReport 可能需要变成多个 每一个oracle对应一个
-        bytes32 currentFrameMemberReport;
+        bytes32[] currentFrameMemberReport;
     }
 
     /// @notice Returns the extended information related to an oracle committee member with the
@@ -496,7 +480,6 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     /// @param addr The member address.
     /// @return result See the docs for `MemberConsensusState`.
     ///
-    // todo 根据字段改变 做出相应的调整
     function getConsensusStateForMember(address addr) external view returns (MemberConsensusState memory result) {
         ConsensusFrame memory frame = _getCurrentFrame();
         result.currentFrameRefSlot = frame.refSlot;
@@ -511,15 +494,14 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
             } // convert to 0-based
             MemberState memory memberState = _memberStates[index];
 
-            // todo 这个参数需要调整，为真实数据的上报的slot 可以得知这个成员 最后一次上报真实数据的时间
             result.lastMemberReportRefSlot = memberState.lastReportRefSlot;
-            result.currentFrameMemberReport = result.lastMemberReportRefSlot == frame.refSlot
-                ? _reportVariants[memberState.lastReportVariantIndex].hash
-                : ZERO_HASH;
+            if (result.lastMemberReportRefSlot == frame.refSlot) {
+                result.currentFrameMemberReport = _reportVariants[memberState.lastReportVariantIndex].hashArr;
+            }
 
             uint256 slot = _computeSlotAtTimestamp(_getTime());
 
-            result.canReport = slot <= frame.reportProcessingDeadlineSlot && frame.refSlot > _getLastProcessingRefSlot();
+            result.canReport = slot <= frame.reportProcessingDeadlineSlot;
 
             result.isFastLane = _isFastLaneMember(index, frame.index);
 
@@ -541,8 +523,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     ///        match the version returned by the currently set consensus report processor,
     ///        or zero if no report processor is set.
     ///
-    // todo bytes32 report 结构进行改变
-    function submitReport(uint256 slot, bytes32 report, uint256 consensusVersion) external {
+    function submitReport(uint256 slot, bytes32[] calldata report, uint256 consensusVersion) external {
         _submitReport(slot, report, consensusVersion);
     }
 
@@ -711,13 +692,6 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
         ConsensusFrame memory frame = _getCurrentFrame();
 
-        // todo 判断需要调整，
-        if (memberState.lastReportRefSlot == frame.refSlot && _getLastProcessingRefSlot() < frame.refSlot) {
-            // member reported for the current ref. slot and the consensus report
-            // is not processing yet => need to cancel the member's report
-            --_reportVariants[memberState.lastReportVariantIndex].support;
-        }
-
         _setQuorumAndCheckConsensus(quorum, newTotalMembers);
     }
 
@@ -786,24 +760,18 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     ///
     /// Implementation: consensus
     ///
-    // todo 进行逻辑改变
-    function _submitReport(uint256 slot, bytes32 report, uint256 consensusVersion) internal {
+    function _submitReport(uint256 slot, bytes32[] calldata report, uint256 consensusVersion) internal {
         if (slot > type(uint64).max) revert NumericOverflow();
 
         uint256 memberIndex = _getMemberIndex(_msgSender());
         MemberState memory memberState = _memberStates[memberIndex];
-
-        uint256 expectedConsensusVersion = _getConsensusVersion();
-        if (consensusVersion != expectedConsensusVersion) {
-            revert UnexpectedConsensusVersion(expectedConsensusVersion, consensusVersion);
-        }
 
         uint256 timestamp = _getTime();
         uint256 currentSlot = _computeSlotAtTimestamp(timestamp);
         FrameConfig memory config = _frameConfig;
         ConsensusFrame memory frame = _getFrameAtTimestamp(timestamp, config);
 
-        if (report == ZERO_HASH) revert EmptyReport();
+        if (report.length == 0) revert EmptyReport();
         if (slot != frame.refSlot) revert InvalidSlot();
         if (currentSlot > frame.reportProcessingDeadlineSlot) revert StaleReport();
 
@@ -811,15 +779,10 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
             revert NonFastLaneMemberCannotReportWithinFastLaneInterval();
         }
 
-        if (slot <= _getLastProcessingRefSlot()) {
-            // consensus for the ref. slot was already reached and consensus report is processing
-            if (slot == memberState.lastReportRefSlot) {
-                // member sends a report for the same slot => let them know via a revert
-                revert ConsensusReportAlreadyProcessing();
-            } else {
-                // member hasn't sent a report for this slot => normal operation, do nothing
-                return;
-            }
+        // consensus for the ref. slot was already reached and consensus report is processing
+        if (slot == memberState.lastReportRefSlot) {
+            // member sends a report for the same slot => let them know via a revert
+            revert ConsensusReportAlreadyProcessing();
         }
 
         uint256 variantsLength;
@@ -835,7 +798,8 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint64 varIndex = 0;
         uint64 support;
 
-        while (varIndex < variantsLength && _reportVariants[varIndex].hash != report) {
+        // todo test
+        while (varIndex < variantsLength && !Array.compareBytes32Arrays(_reportVariants[varIndex].hashArr, report)) {
             ++varIndex;
         }
 
@@ -853,7 +817,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
             support = ++_reportVariants[varIndex].support;
         } else {
             support = 1;
-            _reportVariants[varIndex] = ReportVariant({hash: report, support: 1});
+            _reportVariants[varIndex] = ReportVariant({hashArr: report, support: 1});
             _reportVariantsLength = ++variantsLength;
         }
 
@@ -866,9 +830,12 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         }
     }
 
-    function _consensusReached(ConsensusFrame memory frame, bytes32 report, uint256 variantIndex, uint256 support)
-        internal
-    {
+    function _consensusReached(
+        ConsensusFrame memory frame,
+        bytes32[] memory report,
+        uint256 variantIndex,
+        uint256 support
+    ) internal {
         if (
             reportingState.lastConsensusRefSlot != frame.refSlot
                 || reportingState.lastConsensusVariantIndex != variantIndex
@@ -911,12 +878,7 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
             return;
         }
 
-        if (_getLastProcessingRefSlot() >= frame.refSlot) {
-            // consensus report for the current ref. slot already processing
-            return;
-        }
-
-        (bytes32 consensusReport, int256 consensusVariantIndex, uint256 support) =
+        (bytes32[] memory consensusReport, int256 consensusVariantIndex, uint256 support) =
             _getConsensusReport(frame.refSlot, quorum);
 
         if (consensusVariantIndex >= 0) {
@@ -924,26 +886,27 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         }
     }
 
+    // todo test
     function _getConsensusReport(uint256 currentRefSlot, uint256 quorum)
         internal
         view
-        returns (bytes32 report, int256 variantIndex, uint256 support)
+        returns (bytes32[] memory report, int256 variantIndex, uint256 support)
     {
         if (reportingState.lastReportRefSlot != currentRefSlot) {
             // there were no reports for the current ref. slot
-            return (ZERO_HASH, -1, 0);
+            return (report, -1, 0);
         }
 
         uint256 variantsLength = _reportVariantsLength;
         variantIndex = -1;
-        report = ZERO_HASH;
+//        report = ZERO_HASH;
         support = 0;
 
-        for (uint256 i = 0; i < variantsLength && report == ZERO_HASH; ++i) {
+        for (uint256 i = 0; i < variantsLength && report.length == 0; ++i) {
             uint256 iSupport = _reportVariants[i].support;
             if (iSupport >= quorum) {
                 variantIndex = int256(i);
-                report = _reportVariants[i].hash;
+                report = _reportVariants[i].hashArr;
                 support = iSupport;
             }
         }
@@ -951,45 +914,21 @@ contract HashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         return (report, variantIndex, support);
     }
 
-    ///
-    /// Implementation: report processing
-    ///
-    // todo 改变成 add
-    function _setReportProcessor(address newProcessor) internal {
-        address prevProcessor = _reportProcessor;
-        if (newProcessor == address(0)) revert ReportProcessorCannotBeZero();
-        if (newProcessor == prevProcessor) revert NewProcessorCannotBeTheSame();
-
-        _reportProcessor = newProcessor;
-        emit ReportProcessorSet(newProcessor, prevProcessor);
-
-        ConsensusFrame memory frame = _getCurrentFrame();
-        uint256 lastConsensusRefSlot = reportingState.lastConsensusRefSlot;
-
-        uint256 processingRefSlotPrev = IReportAsyncProcessor(prevProcessor).getLastProcessingRefSlot();
-        uint256 processingRefSlotNext = IReportAsyncProcessor(newProcessor).getLastProcessingRefSlot();
-
-        if (
-            processingRefSlotPrev < frame.refSlot && processingRefSlotNext < frame.refSlot
-                && lastConsensusRefSlot == frame.refSlot
-        ) {
-            bytes32 report = _reportVariants[reportingState.lastConsensusVariantIndex].hash;
-            _submitReportForProcessing(frame, report);
+    function _submitReportForProcessing(ConsensusFrame memory frame, bytes32[] memory report)
+        internal
+    {
+        for (uint256 i = 0; i < reportProcessors.length; ++i) {
+            IReportAsyncProcessor(reportProcessors[i]).submitConsensusReport(
+                report, frame.refSlot, _computeTimestampAtSlot(frame.reportProcessingDeadlineSlot)
+            );
         }
     }
 
-    function _getLastProcessingRefSlot() internal view returns (uint256) {
+    function _getLastProcessingRefSlot(address _reportProcessor) internal view returns (uint256) {
         return IReportAsyncProcessor(_reportProcessor).getLastProcessingRefSlot();
     }
 
-    // todo
-    function _submitReportForProcessing(ConsensusFrame memory frame, bytes32 report) internal {
-        IReportAsyncProcessor(_reportProcessor).submitConsensusReport(
-            report, frame.refSlot, _computeTimestampAtSlot(frame.reportProcessingDeadlineSlot)
-        );
-    }
-
-    function _getConsensusVersion() internal view returns (uint256) {
+    function _getConsensusVersion(address _reportProcessor) internal view returns (uint256) {
         return IReportAsyncProcessor(_reportProcessor).getConsensusVersion();
     }
 
