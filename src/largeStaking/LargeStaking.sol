@@ -64,10 +64,10 @@ contract LargeStaking is
         uint256 rewardBalance;
     }
 
-    mapping(uint256 => SettleInfo) public eLRewardSettleInfo; // key is stakingId
-    mapping(uint256 => uint256) public unclaimedSharingRewards; // key is operatorId
-    mapping(uint256 => uint256) public operatorSharingRewards; // key is operatorId
-    mapping(uint256 => uint256) public daoSharingRewards; // key is operatorId
+    mapping(uint256 => SettleInfo) public eLSharedRewardSettleInfo; // key is stakingId
+    mapping(uint256 => uint256) public unclaimedSharedRewards; // key is operatorId
+    mapping(uint256 => uint256) public operatorSharedRewards; // key is operatorId
+    mapping(uint256 => uint256) public daoSharedRewards; // key is operatorId
     mapping(uint256 => uint256) public totalShares; // key is operatorId
     mapping(uint256 => uint256) public valuePerShare; // key is operatorId
     uint256 private constant UNIT = 1e18;
@@ -157,7 +157,7 @@ contract LargeStaking is
         if (!nodeOperatorRegistryContract.isTrustedOperator(_operatorId)) revert RequireOperatorTrusted();
 
         if (_isELRewardSharing) {
-            settleElSharingReward(_operatorId);
+            settleElSharedReward(_operatorId);
         }
 
         uint256 curStakingId;
@@ -179,7 +179,7 @@ contract LargeStaking is
         }
 
         if (stakingInfo.isELRewardSharing) {
-            settleElSharingReward(stakingInfo.operatorId);
+            settleElSharedReward(stakingInfo.operatorId);
             _updateShare(
                 _stakingId,
                 stakingInfo.operatorId,
@@ -233,7 +233,7 @@ contract LargeStaking is
         if (operatorId == 0) revert RequireOperatorTrusted();
 
         if (_isELRewardSharing) {
-            settleElSharingReward(operatorId);
+            settleElSharedReward(operatorId);
         }
 
         uint256 curStakingId;
@@ -266,7 +266,7 @@ contract LargeStaking is
         uint256 stakeAmounts = _pubKeys.length * 32 ether;
 
         if (stakingInfo.isELRewardSharing) {
-            settleElSharingReward(stakingInfo.operatorId);
+            settleElSharedReward(stakingInfo.operatorId);
             _updateShare(
                 _stakingId,
                 stakingInfo.operatorId,
@@ -340,7 +340,7 @@ contract LargeStaking is
         uint256 _updataAmount,
         bool _isStake
     ) internal {
-        SettleInfo storage info = eLRewardSettleInfo[_stakingId];
+        SettleInfo storage info = eLSharedRewardSettleInfo[_stakingId];
 
         info.rewardBalance += (valuePerShare[_operatorId] - info.valuePerSharePoint) * (_curAmount) / UNIT;
         info.valuePerSharePoint = valuePerShare[_operatorId];
@@ -391,9 +391,9 @@ contract LargeStaking is
         (uint256 operatorId,, uint256 rewards) = getRewardPoolInfo(_stakingId);
 
         if (stakingInfo.isELRewardSharing) {
-            SettleInfo memory settleInfo = eLRewardSettleInfo[_stakingId];
-            daoReward = daoSharingRewards[operatorId];
-            operatorReward = operatorSharingRewards[operatorId];
+            SettleInfo memory settleInfo = eLSharedRewardSettleInfo[_stakingId];
+            daoReward = daoSharedRewards[operatorId];
+            operatorReward = operatorSharedRewards[operatorId];
             userReward = settleInfo.rewardBalance;
 
             if (totalShares[operatorId] == 0 || rewards == 0) {
@@ -441,7 +441,7 @@ contract LargeStaking is
         operatorId = stakingInfo.operatorId;
         if (stakingInfo.isELRewardSharing) {
             rewardPoolAddr = elSharedRewardPool[operatorId];
-            rewards = rewardPoolAddr.balance - unclaimedSharingRewards[operatorId];
+            rewards = rewardPoolAddr.balance - unclaimedSharedRewards[operatorId];
         } else {
             rewardPoolAddr = elPrivateRewardPool[_stakingId];
             rewards = rewardPoolAddr.balance - unclaimedPrivateRewards[_stakingId];
@@ -449,16 +449,16 @@ contract LargeStaking is
         return (operatorId, rewardPoolAddr, rewards);
     }
 
-    function settleElSharingReward(uint256 _operatorId) public {
+    function settleElSharedReward(uint256 _operatorId) public {
         address rewardPoolAddr = elSharedRewardPool[_operatorId];
-        uint256 rewards = rewardPoolAddr.balance - unclaimedSharingRewards[_operatorId];
+        uint256 rewards = rewardPoolAddr.balance - unclaimedSharedRewards[_operatorId];
 
         (uint256 daoReward, uint256 operatorReward, uint256 poolReward) = _calcElReward(rewards, _operatorId);
         if (poolReward == 0 || totalShares[_operatorId] == 0) return;
 
-        operatorSharingRewards[_operatorId] += operatorReward;
-        daoSharingRewards[_operatorId] += daoReward;
-        unclaimedSharingRewards[_operatorId] = rewardPoolAddr.balance;
+        operatorSharedRewards[_operatorId] += operatorReward;
+        daoSharedRewards[_operatorId] += daoReward;
+        unclaimedSharedRewards[_operatorId] = rewardPoolAddr.balance;
 
         valuePerShare[_operatorId] += poolReward * UNIT / totalShares[_operatorId]; // settle
 
@@ -499,11 +499,11 @@ contract LargeStaking is
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
         if (beneficiary == address(0) || msg.sender != stakingInfo.owner) revert PermissionDenied();
 
-        SettleInfo storage settleInfo = eLRewardSettleInfo[_stakingId];
+        SettleInfo storage settleInfo = eLSharedRewardSettleInfo[_stakingId];
 
         address rewardPoolAddr;
         if (stakingInfo.isELRewardSharing) {
-            settleElSharingReward(stakingInfo.operatorId);
+            settleElSharedReward(stakingInfo.operatorId);
 
             rewardPoolAddr = elSharedRewardPool[stakingInfo.operatorId];
 
@@ -514,7 +514,7 @@ contract LargeStaking is
             settleInfo.valuePerSharePoint = valuePerShare[stakingInfo.operatorId];
 
             settleInfo.rewardBalance = totalRewards - rewards;
-            unclaimedSharingRewards[stakingInfo.operatorId] -= rewards;
+            unclaimedSharedRewards[stakingInfo.operatorId] -= rewards;
         } else {
             settleElPrivateReward(_stakingId);
             rewardPoolAddr = elPrivateRewardPool[_stakingId];
@@ -564,11 +564,11 @@ contract LargeStaking is
         if (_claimSharePool) {
             (pledgeBalance, requirBalance) = nodeOperatorRegistryContract.getPledgeInfoOfOperator(_operatorId);
             if (pledgeBalance < requirBalance) revert InsufficientMargin();
-            settleElSharingReward(_operatorId);
-            uint256 operatorRewards = operatorSharingRewards[_operatorId];
-            operatorSharingRewards[_operatorId] = 0;
-            unclaimedSharingRewards[_operatorId] -= operatorRewards;
-            emit OperatorSharingRewardClaimed(stakingInfo.operatorId, operatorRewards);
+            settleElSharedReward(_operatorId);
+            uint256 operatorRewards = operatorSharedRewards[_operatorId];
+            operatorSharedRewards[_operatorId] = 0;
+            unclaimedSharedRewards[_operatorId] -= operatorRewards;
+            emit OperatorSharedRewardClaimed(stakingInfo.operatorId, operatorRewards);
             _distributeOperatorRewards(elSharedRewardPool[_operatorId], operatorRewards, _operatorId);
         }
     }
@@ -629,13 +629,13 @@ contract LargeStaking is
 
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
-            settleElSharingReward(operatorId);
-            uint256 daoRewards = daoSharingRewards[operatorId];
-            daoSharingRewards[operatorId] = 0;
-            unclaimedSharingRewards[operatorId] -= daoRewards;
+            settleElSharedReward(operatorId);
+            uint256 daoRewards = daoSharedRewards[operatorId];
+            daoSharedRewards[operatorId] = 0;
+            unclaimedSharedRewards[operatorId] -= daoRewards;
 
             IELReward(elSharedRewardPool[operatorId]).transfer(daoRewards, daoVaultAddress);
-            emit DaoSharingRewardClaimed(operatorId, daoVaultAddress, daoRewards);
+            emit DaoSharedRewardClaimed(operatorId, daoVaultAddress, daoRewards);
         }
     }
 
@@ -651,7 +651,7 @@ contract LargeStaking is
             }
             stakingInfo = largeStakingList[sInfo.stakingId];
             if (stakingInfo.isELRewardSharing) {
-                settleElSharingReward(stakingInfo.operatorId);
+                settleElSharedReward(stakingInfo.operatorId);
                 _updateShare(
                     sInfo.stakingId,
                     stakingInfo.operatorId,
