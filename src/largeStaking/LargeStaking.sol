@@ -34,7 +34,7 @@ contract LargeStaking is
         uint256 unstakeRequestAmount; // The amount the user requested to withdraw
         uint256 unstakeAmount; // Amount the user has withdrawn
         address owner; // The owner of the staking order，used for claim execution layer reward
-        bytes withdrawCredentials; // Withdrawal certificate
+        bytes32 withdrawCredentials; // Withdrawal certificate
         bool isELRewardSharing; // Whether to share the execution layer reward pool
     }
 
@@ -184,13 +184,10 @@ contract LargeStaking is
     function appendLargeStake(uint256 _stakingId, address _owner, address _withdrawCredentials) public payable {
         if (msg.value < 32 ether || msg.value % 32 ether != 0) revert InvalidAmount();
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        bytes memory userWithdrawalCredentials =
-            bytes.concat(hex"010000000000000000000000", abi.encodePacked(_withdrawCredentials));
+        bytes32 userWithdrawalCredentials =
+            abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
 
-        if (
-            stakingInfo.owner != _owner
-                || keccak256(stakingInfo.withdrawCredentials) != keccak256(userWithdrawalCredentials)
-        ) {
+        if (stakingInfo.owner != _owner || stakingInfo.withdrawCredentials != userWithdrawalCredentials) {
             revert InvalidParameter();
         }
 
@@ -272,13 +269,10 @@ contract LargeStaking is
         bytes[] calldata _pubKeys
     ) public {
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        bytes memory userWithdrawalCredentials =
-            bytes.concat(hex"010000000000000000000000", abi.encodePacked(_withdrawCredentials));
+        bytes32 userWithdrawalCredentials =
+            abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
 
-        if (
-            stakingInfo.owner != _owner
-                || keccak256(stakingInfo.withdrawCredentials) != keccak256(userWithdrawalCredentials)
-        ) {
+        if (stakingInfo.owner != _owner || stakingInfo.withdrawCredentials != userWithdrawalCredentials) {
             revert InvalidParameter();
         }
 
@@ -321,8 +315,8 @@ contract LargeStaking is
         uint256 curStakingId = totalLargeStakingCounts;
         totalLargeStakingCounts++;
 
-        bytes memory userWithdrawalCredentials =
-            bytes.concat(hex"010000000000000000000000", abi.encodePacked(_withdrawCredentials));
+        bytes32 userWithdrawalCredentials =
+            abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
 
         largeStakingList.push(
             StakingInfo({
@@ -392,10 +386,10 @@ contract LargeStaking is
         if ((stakingInfo.stakingAmount - stakingInfo.alreadyStakingAmount) < depositAmount) {
             revert InsufficientFunds();
         }
-        bytes memory _withdrawalCredential = stakingInfo.withdrawCredentials;
+
         for (uint256 i = 0; i < _pubkeys.length; ++i) {
             depositContract.deposit{value: 32 ether}(
-                _pubkeys[i], _withdrawalCredential, _signatures[i], _depositDataRoots[i]
+                _pubkeys[i], abi.encodePacked(stakingInfo.withdrawCredentials), _signatures[i], _depositDataRoots[i]
             );
             emit ValidatorRegistered(operatorId, _stakingId, _pubkeys[i]);
             validators[_stakingId].push(_pubkeys[i]);
