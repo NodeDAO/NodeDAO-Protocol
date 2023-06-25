@@ -27,6 +27,7 @@ contract LargeStaking is
     IDepositContract public depositContract;
 
     struct StakingInfo {
+        bool isELRewardSharing; // Whether to share the execution layer reward pool
         uint256 stakingId; // Staking order id
         uint256 operatorId; // Specify which operator operates the validator
         uint256 stakingAmount; // The total amount of user stake
@@ -35,7 +36,6 @@ contract LargeStaking is
         uint256 unstakeAmount; // Amount the user has withdrawn
         address owner; // The owner of the staking order，used for claim execution layer reward
         bytes32 withdrawCredentials; // Withdrawal certificate
-        bool isELRewardSharing; // Whether to share the execution layer reward pool
     }
 
     StakingInfo[] public largeStakingList; // Staking order
@@ -320,6 +320,7 @@ contract LargeStaking is
 
         largeStakingList.push(
             StakingInfo({
+                isELRewardSharing: _isELRewardSharing,
                 stakingId: curStakingId,
                 operatorId: _operatorId,
                 stakingAmount: _stakingAmount,
@@ -327,8 +328,7 @@ contract LargeStaking is
                 unstakeRequestAmount: 0,
                 unstakeAmount: 0,
                 owner: _owner,
-                withdrawCredentials: userWithdrawalCredentials,
-                isELRewardSharing: _isELRewardSharing
+                withdrawCredentials: userWithdrawalCredentials
             })
         );
 
