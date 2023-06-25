@@ -382,30 +382,20 @@ contract LargeStaking is
         largeStakingList[_stakingId].alreadyStakingAmount += depositAmount;
     }
 
-    function reward(uint256 _stakingId)
-        public
-        view
-        returns (uint256 daoReward, uint256 operatorReward, uint256 userReward)
-    {
+    function reward(uint256 _stakingId) public view returns (uint256 userReward) {
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
         (uint256 operatorId,, uint256 rewards) = getRewardPoolInfo(_stakingId);
 
         if (stakingInfo.isELRewardSharing) {
             SettleInfo memory settleInfo = eLSharedRewardSettleInfo[_stakingId];
-            daoReward = daoSharedRewards[operatorId];
-            operatorReward = operatorSharedRewards[operatorId];
             userReward = settleInfo.rewardBalance;
 
             if (totalShares[operatorId] == 0 || rewards == 0) {
-                return (daoReward, operatorReward, userReward);
+                return (userReward);
             }
 
-            uint256 unsettledDaoReward;
-            uint256 unsettledOperatorReward;
             uint256 unsettledPoolReward;
-            (unsettledDaoReward, unsettledOperatorReward, unsettledPoolReward) = _calcElReward(rewards, operatorId);
-            daoReward += unsettledDaoReward;
-            operatorReward += unsettledOperatorReward;
+            (,, unsettledPoolReward) = _calcElReward(rewards, operatorId);
 
             uint256 unsettledUserReward = (
                 valuePerShare[operatorId] + unsettledPoolReward * UNIT / totalShares[operatorId]
@@ -413,23 +403,16 @@ contract LargeStaking is
             ) * (stakingInfo.alreadyStakingAmount - stakingInfo.unstakeAmount) / UNIT;
             userReward += unsettledUserReward;
         } else {
-            daoReward = daoPrivateRewards[_stakingId];
-            operatorReward = operatorPrivateRewards[_stakingId];
-
             if (rewards == 0) {
-                return (daoReward, operatorReward, 0);
+                return (0);
             }
 
-            uint256 unsettledDaoReward;
-            uint256 unsettledOperatorReward;
             uint256 unsettledPoolReward;
-            (unsettledDaoReward, unsettledOperatorReward, unsettledPoolReward) = _calcElReward(rewards, operatorId);
-            daoReward += unsettledDaoReward;
-            operatorReward += unsettledOperatorReward;
+            (,, unsettledPoolReward) = _calcElReward(rewards, operatorId);
             userReward = unsettledPoolReward;
         }
 
-        return (daoReward, operatorReward, userReward);
+        return (userReward);
     }
 
     function getRewardPoolInfo(uint256 _stakingId)
