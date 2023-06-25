@@ -390,17 +390,19 @@ contract LargeStaking is
             SettleInfo memory settleInfo = eLSharedRewardSettleInfo[_stakingId];
             userReward = settleInfo.rewardBalance;
 
-            if (totalShares[operatorId] == 0 || rewards == 0) {
+            if (totalShares[operatorId] == 0 || valuePerShare[operatorId] == settleInfo.valuePerSharePoint) {
                 return (userReward);
             }
 
             uint256 unsettledPoolReward;
-            (,, unsettledPoolReward) = _calcElReward(rewards, operatorId);
+            if (rewards != 0) {
+                (,, unsettledPoolReward) = _calcElReward(rewards, operatorId);
+            }
 
             uint256 unsettledUserReward = (
                 valuePerShare[operatorId] + unsettledPoolReward * UNIT / totalShares[operatorId]
                     - settleInfo.valuePerSharePoint
-            ) * (stakingInfo.alreadyStakingAmount - stakingInfo.unstakeAmount) / UNIT;
+            ) * (stakingInfo.stakingAmount - stakingInfo.unstakeAmount) / UNIT;
             userReward += unsettledUserReward;
         } else {
             if (rewards == 0) {
