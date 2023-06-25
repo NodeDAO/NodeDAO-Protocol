@@ -211,8 +211,22 @@ contract LargeStaking is
             } else {
                 _unstakeAmount = fastAmount;
             }
+
+            if (stakingInfo.isELRewardSharing) {
+                settleElSharedReward(stakingInfo.operatorId);
+                _updateShare(
+                    _stakingId,
+                    stakingInfo.operatorId,
+                    stakingInfo.stakingAmount - stakingInfo.unstakeAmount,
+                    _unstakeAmount,
+                    false
+                );
+            }
+            
             // _unstakeAmount is not equal to 0, which means that the unstake is completed synchronously
             stakingInfo.unstakeAmount += _unstakeAmount;
+            totalLargeStakeAmounts[stakingInfo.operatorId] -= _unstakeAmount;
+
             payable(stakingInfo.owner).transfer(_unstakeAmount);
             emit FastUnstake(_stakingId, _unstakeAmount);
         }
