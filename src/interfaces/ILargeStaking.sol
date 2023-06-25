@@ -6,5 +6,37 @@ pragma solidity 0.8.8;
  */
 
 interface ILargeStaking {
+    event SharedRewardPoolStart(uint256 _operatorId, address _elRewardPoolAddr);
+    event LargeStake(
+        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, bool _isELRewardSharing
+    );
+    event MigretaStake(
+        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, bool _isELRewardSharing
+    );
+    event AppendStake(uint256 _stakingId, uint256 _amount);
+    event ValidatorRegistered(uint256 _operatorId, uint256 _stakeingId, bytes _pubKey);
+    event FastUnstake(uint256 _stakingId, uint256 _unstakeAmount);
+    event LargeUnstake(uint256 _stakingId, uint256 _amount);
+    event ELShareingRewardSettle(uint256 _operatorId, uint256 _daoReward, uint256 _operatorReward, uint256 _poolReward);
+    event ElPrivateRewardSettle(
+        uint256 _stakingId, uint256 _operatorId, uint256 _daoReward, uint256 _operatorReward, uint256 _poolReward
+    );
+    event UserRewardClaimed(uint256 _stakingId, address _beneficiary, uint256 _rewards);
+    event OperatorRewardClaimed(uint256 _operatorId, address _rewardAddresses, uint256 _rewardAmounts);
+    event OperatorPrivateRewardClaimed(uint256 _stakingId, uint256 _operatorId, uint256 _operatorRewards);
+    event OperatorSharingRewardClaimed(uint256 _operatorId, uint256 _operatorRewards);
+    event DaoPrivateRewardClaimed(uint256 _stakingId, address _daoVaultAddress, uint256 _daoRewards);
+    event DaoSharingRewardClaimed(uint256 _operatorId, address daoVaultAddress, uint256 _daoRewards);
+    event LargeStakingSlash(uint256[] _stakingIds, uint256[] _operatorIds, uint256[] _amounts);
+    event ValidatorExitReport(uint256 _operatorId, uint256 _notReportedUnstakeAmount);
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event DaoVaultAddressChanged(address _oldDaoVaultAddress, address _daoVaultAddress);
+    event DaoELCommissionRateChanged(uint256 _oldDaoElCommissionRate, uint256 _daoElCommissionRate);
+    event NodeOperatorsRegistryChanged(address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryAddress);
+    event ConsensusOracleChanged(address _oldConsensusOracleContractAddr, address _consensusOracleContractAddr);
+    event ELRewardFactoryChanged(address _oldElRewardFactory, address _elRewardFactory);
+    event OperatorSlashChanged(address _oldOperatorSlashContract, address _operatorSlashContract);
+    event MinStakeAmountChange(uint256 _oldMinStakeAmount, uint256 _minStakeAmount);
+
     function getOperatorValidatorCounts(uint256 _operatorId) external view returns (uint256);
 }
