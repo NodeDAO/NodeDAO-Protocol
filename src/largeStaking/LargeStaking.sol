@@ -171,8 +171,7 @@ contract LargeStaking is
     function appendLargeStake(uint256 _stakingId, address _owner, address _withdrawCredentials) public payable {
         if (msg.value < 32 ether || msg.value % 32 ether != 0) revert InvalidAmount();
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        bytes32 userWithdrawalCredentials =
-            abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
+        bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
 
         if (stakingInfo.owner != _owner || stakingInfo.withdrawCredentials != userWithdrawalCredentials) {
             revert InvalidParameter();
@@ -256,8 +255,7 @@ contract LargeStaking is
         bytes[] calldata _pubKeys
     ) public {
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        bytes32 userWithdrawalCredentials =
-            abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
+        bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
 
         if (stakingInfo.owner != _owner || stakingInfo.withdrawCredentials != userWithdrawalCredentials) {
             revert InvalidParameter();
@@ -302,9 +300,7 @@ contract LargeStaking is
         uint256 curStakingId = totalLargeStakingCounts;
         totalLargeStakingCounts++;
 
-        bytes32 userWithdrawalCredentials =
-            abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
-
+        bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
         largeStakingList.push(
             StakingInfo({
                 isELRewardSharing: _isELRewardSharing,
@@ -350,6 +346,10 @@ contract LargeStaking is
         } else {
             totalShares[_operatorId] -= _updataAmount;
         }
+    }
+
+    function getWithdrawCredentials(address _withdrawCredentials) public pure returns (bytes32) {
+        return abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
     }
 
     function registerValidator(
