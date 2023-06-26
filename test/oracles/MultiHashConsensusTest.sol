@@ -25,5 +25,4 @@ contract MultiHashConsensusTest is Test {
 
         assertFalse(Array.compareBytes32Arrays(arr1, arr2));
     }
-
 }

@@ -56,6 +56,7 @@ abstract contract BaseOracle is
     event WarnProcessingMissed(uint256 indexed refSlot);
 
     // todo 大量使用hash，需要修改兼容
+    // todo 最好可以存储 moduleId
     struct ConsensusReport {
         bytes32 hash;
         uint64 refSlot;
@@ -244,8 +245,6 @@ abstract contract BaseOracle is
     /// @notice May be called by a descendant contract to check if the received data matches
     /// the currently submitted consensus report, and that processing deadline is not missed.
     /// Reverts otherwise.
-    ///
-    // todo bytes32 hash 兼容
     function _checkConsensusData(uint256 refSlot, uint256 _consensusVersion, bytes32 hash) internal view {
         // If the processing deadline for the current consensus report is missed, an error is reported
         _checkProcessingDeadline();

@@ -30,7 +30,7 @@ interface IReportAsyncProcessor {
     /// free to reach consensus on another report for the same reporting frame and submit it
     /// using this same function.
     ///
-    function submitConsensusReport(bytes32[] memory report, uint256 refSlot, uint256 deadline) external;
+    function submitConsensusReport(bytes32 report, uint256 refSlot, uint256 deadline, uint256 moduleId) external;
 
     /// @notice Returns the last reference slot for which processing of the report was started.
     ///
@@ -189,8 +189,9 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint256 farFutureEpoch = _computeEpochAtTimestamp(type(uint64).max);
         _setFrameConfig(farFutureEpoch, epochsPerFrame, fastLaneLengthSlots, FrameConfig(0, 0, 0));
 
-        // todo _reportProcessors 处理
-        //        _reportProcessor = reportProcessor;
+        if (reportProcessor != address(0)) {
+            addReportProcessor(reportProcessor);
+        }
     }
 
     // set dao address
@@ -392,7 +393,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         return reportIndices1b[reportProcessor];
     }
 
-    function addReportProcessor(address newProcessor) external onlyDao {
+    function addReportProcessor(address newProcessor) public onlyDao {
         if (newProcessor == address(0)) revert ReportProcessorCannotBeZero();
         if (getIsReportProcessor(newProcessor)) revert DuplicateReportProcessor();
 
@@ -518,13 +519,8 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     ///        the current reference slot.
     ///
     /// @param report Hash of the data calculated for the given reference slot.
-    ///
-    /// @param consensusVersion Version of the oracle consensus rules. Reverts if doesn't
-    ///        match the version returned by the currently set consensus report processor,
-    ///        or zero if no report processor is set.
-    ///
-    function submitReport(uint256 slot, bytes32[] calldata report, uint256 consensusVersion) external {
-        _submitReport(slot, report, consensusVersion);
+    function submitReport(uint256 slot, bytes32[] calldata report) external {
+        _submitReport(slot, report);
     }
 
     ///
@@ -675,7 +671,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint256 newTotalMembers = _memberStates.length - 1;
 
         assert(index <= newTotalMembers);
-        MemberState memory memberState = _memberStates[index];
 
         if (index != newTotalMembers) {
             address addrToMove = _memberAddresses[newTotalMembers];
@@ -689,8 +684,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         _memberIndices1b[addr] = 0;
 
         emit MemberRemoved(addr, newTotalMembers, quorum);
-
-        ConsensusFrame memory frame = _getCurrentFrame();
 
         _setQuorumAndCheckConsensus(quorum, newTotalMembers);
     }
@@ -760,7 +753,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     ///
     /// Implementation: consensus
     ///
-    function _submitReport(uint256 slot, bytes32[] calldata report, uint256 consensusVersion) internal {
+    function _submitReport(uint256 slot, bytes32[] calldata report) internal {
         if (slot > type(uint64).max) revert NumericOverflow();
 
         uint256 memberIndex = _getMemberIndex(_msgSender());
@@ -899,7 +892,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
         uint256 variantsLength = _reportVariantsLength;
         variantIndex = -1;
-//        report = ZERO_HASH;
+        //        report = ZERO_HASH;
         support = 0;
 
         for (uint256 i = 0; i < variantsLength && report.length == 0; ++i) {
@@ -914,12 +907,11 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         return (report, variantIndex, support);
     }
 
-    function _submitReportForProcessing(ConsensusFrame memory frame, bytes32[] memory report)
-        internal
-    {
+    // todo 考虑BaseOracle是否要存储 moduleId 用来进行hash校验
+    function _submitReportForProcessing(ConsensusFrame memory frame, bytes32[] memory report) internal {
         for (uint256 i = 0; i < reportProcessors.length; ++i) {
             IReportAsyncProcessor(reportProcessors[i]).submitConsensusReport(
-                report, frame.refSlot, _computeTimestampAtSlot(frame.reportProcessingDeadlineSlot)
+                report[i], frame.refSlot, _computeTimestampAtSlot(frame.reportProcessingDeadlineSlot), i + 1
             );
         }
     }
