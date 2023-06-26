@@ -107,10 +107,10 @@ contract LargeStaking is
         address _dao,
         address _daoVaultAddress,
         address _nodeOperatorRegistryAddress,
+        address _operatorSlashContract,
         address _consensusOracleContractAddr,
         address _elRewardFactory,
-        address _depositContract,
-        address _operatorSlashContract
+        address _depositContract
     ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
@@ -222,7 +222,7 @@ contract LargeStaking is
                     false
                 );
             }
-            
+
             // _unstakeAmount is not equal to 0, which means that the unstake is completed synchronously
             stakingInfo.unstakeAmount += _unstakeAmount;
             totalLargeStakeAmounts[stakingInfo.operatorId] -= _unstakeAmount;
@@ -419,13 +419,12 @@ contract LargeStaking is
             ) * (stakingInfo.stakingAmount - stakingInfo.unstakeAmount) / UNIT;
             userReward += unsettledUserReward;
         } else {
-            if (rewards == 0) {
-                return (0);
+            userReward =
+                unclaimedPrivateRewards[_stakingId] - daoPrivateRewards[_stakingId] - operatorPrivateRewards[_stakingId];
+            if (rewards != 0) {
+                (,, uint256 unsettledPoolReward) = _calcElReward(rewards, operatorId);
+                userReward += unsettledPoolReward;
             }
-
-            uint256 unsettledPoolReward;
-            (,, unsettledPoolReward) = _calcElReward(rewards, operatorId);
-            userReward = unsettledPoolReward;
         }
 
         return (userReward);
