@@ -8,12 +8,23 @@ pragma solidity 0.8.8;
 interface ILargeStaking {
     event SharedRewardPoolStart(uint256 _operatorId, address _elRewardPoolAddr);
     event LargeStake(
-        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, bool _isELRewardSharing
+        uint256 _operatorId,
+        uint256 _curStakingId,
+        uint256 _amount,
+        address _owner,
+        address _withdrawCredentials,
+        bool _isELRewardSharing
     );
     event MigretaStake(
-        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, bool _isELRewardSharing
+        uint256 _operatorId,
+        uint256 _curStakingId,
+        uint256 _amount,
+        address _owner,
+        address _withdrawCredentials,
+        bool _isELRewardSharing
     );
     event AppendStake(uint256 _stakingId, uint256 _amount);
+    event AppendMigretaStake(uint256 _stakingId, uint256 _stakeAmounts);
     event ValidatorRegistered(uint256 _operatorId, uint256 _stakeingId, bytes _pubKey);
     event FastUnstake(uint256 _stakingId, uint256 _unstakeAmount);
     event LargeUnstake(uint256 _stakingId, uint256 _amount);

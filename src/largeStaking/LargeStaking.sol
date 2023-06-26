@@ -165,7 +165,7 @@ contract LargeStaking is
         (curStakingId, elRewardPoolAddr) =
             _stake(_operatorId, _owner, _withdrawCredentials, _isELRewardSharing, msg.value, false);
         totalLargeStakeAmounts[_operatorId] += msg.value;
-        emit LargeStake(_operatorId, curStakingId, msg.value, _owner, _isELRewardSharing);
+        emit LargeStake(_operatorId, curStakingId, msg.value, _owner, _withdrawCredentials, _isELRewardSharing);
     }
 
     function appendLargeStake(uint256 _stakingId, address _owner, address _withdrawCredentials) public payable {
@@ -259,7 +259,7 @@ contract LargeStaking is
         }
         totalLargeStakeAmounts[operatorId] += stakeAmounts;
 
-        emit MigretaStake(operatorId, curStakingId, stakeAmounts, _owner, _isELRewardSharing);
+        emit MigretaStake(operatorId, curStakingId, stakeAmounts, _owner, _withdrawCredentials, _isELRewardSharing);
     }
 
     function appendMigrateStake(
@@ -296,7 +296,7 @@ contract LargeStaking is
             validators[_stakingId].push(_pubKeys[i]);
         }
 
-        emit MigretaStake(stakingInfo.operatorId, _stakingId, stakeAmounts, _owner, stakingInfo.isELRewardSharing);
+        emit AppendMigretaStake(_stakingId, stakeAmounts);
     }
 
     function _stake(
