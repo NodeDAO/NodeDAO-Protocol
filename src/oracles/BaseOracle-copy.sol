@@ -187,6 +187,7 @@ abstract contract BaseOracle is
     /// free to reach consensus on another report for the same reporting frame and submit it
     /// using this same function.
     ///
+    // todo 多添加参数 moduleId 用来进行hash校验
     function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline) external {
         if (_msgSender() != consensusContract) {
             revert OnlyConsensusContractCanSubmitReport();

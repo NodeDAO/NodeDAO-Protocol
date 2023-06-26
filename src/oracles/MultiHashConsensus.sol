@@ -70,9 +70,9 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     error InvalidSlot();
     error DuplicateReport();
     error EmptyReport();
+    error ReportLenNotEqualReportProcessorsLen();
     error StaleReport();
     error NonFastLaneMemberCannotReportWithinFastLaneInterval();
-    error NewProcessorCannotBeTheSame();
     error ConsensusReportAlreadyProcessing();
     error FastLanePeriodCannotBeLongerThanFrame();
 
@@ -179,7 +179,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         __UUPSUpgradeable_init();
 
         if (_dao == address(0)) revert DaoCannotBeZero();
-        if (reportProcessor == address(0)) revert ReportProcessorCannotBeZero();
 
         SLOTS_PER_EPOCH = slotsPerEpoch.toUint64();
         SECONDS_PER_SLOT = secondsPerSlot.toUint64();
@@ -378,7 +377,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     }
 
     ///
-    /// Report processor todo test
+    /// Report processor
     ///
 
     function getReportProcessors() external view returns (address[] memory) {
@@ -765,6 +764,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         ConsensusFrame memory frame = _getFrameAtTimestamp(timestamp, config);
 
         if (report.length == 0) revert EmptyReport();
+        if (report.length != reportProcessors.length) revert ReportLenNotEqualReportProcessorsLen();
         if (slot != frame.refSlot) revert InvalidSlot();
         if (currentSlot > frame.reportProcessingDeadlineSlot) revert StaleReport();
 
@@ -791,7 +791,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint64 varIndex = 0;
         uint64 support;
 
-        // todo test
         while (varIndex < variantsLength && !Array.compareBytes32Arrays(_reportVariants[varIndex].hashArr, report)) {
             ++varIndex;
         }
@@ -879,7 +878,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         }
     }
 
-    // todo test
     function _getConsensusReport(uint256 currentRefSlot, uint256 quorum)
         internal
         view
