@@ -135,17 +135,17 @@ contract LargeStaking is
         MIN_STAKE_AMOUNT = 320 ether;
     }
 
-    function startSharedRewardPool() public {
-        uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
-        if (operatorId == 0) revert RequireOperatorTrusted();
+    function startupSharedRewardPool(uint256 _operatorId) public {
+        (,, address owner,,) = nodeOperatorRegistryContract.getNodeOperator(_operatorId, false);
+        if (msg.sender != owner) revert PermissionDenied();
 
-        address elRewardPoolAddr = elSharedRewardPool[operatorId];
+        address elRewardPoolAddr = elSharedRewardPool[_operatorId];
         if (elRewardPoolAddr != address(0)) revert SharedRewardPoolOpened();
 
-        elRewardPoolAddr = elRewardFactory.create(operatorId, address(this));
-        elSharedRewardPool[operatorId] = elRewardPoolAddr;
+        elRewardPoolAddr = elRewardFactory.create(_operatorId, address(this));
+        elSharedRewardPool[_operatorId] = elRewardPoolAddr;
 
-        emit SharedRewardPoolStart(operatorId, elRewardPoolAddr);
+        emit SharedRewardPoolStart(_operatorId, elRewardPoolAddr);
     }
 
     function largeStake(uint256 _operatorId, address _owner, address _withdrawCredentials, bool _isELRewardSharing)
