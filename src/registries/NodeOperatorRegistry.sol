@@ -184,8 +184,8 @@ contract NodeOperatorRegistry is
         }
     }
 
-    function initializeV3(address _largeStakingContractAddrss) public reinitializer(3) onlyDao {
-        largeStakingContract = ILargeStaking(_largeStakingContractAddrss);
+    function initializeV3(address _largeStakingContractAddress) public reinitializer(3) onlyDao {
+        largeStakingContract = ILargeStaking(_largeStakingContractAddress);
     }
 
     /**
@@ -729,6 +729,7 @@ contract NodeOperatorRegistry is
         address _liquidStakingContractAddress,
         address _operatorSlashContractAddress,
         address _vaultFactoryContractAddress,
+        address _largeStakingContractAddress,
         uint256 _defaultOperatorCommission,
         uint256 _registrationFee,
         uint256 _permissionlessBlockNumber
@@ -774,6 +775,11 @@ contract NodeOperatorRegistry is
             if (_permissionlessBlockNumber <= block.number) revert InvalidParameter();
             permissionlessBlockNumber = _permissionlessBlockNumber;
             emit PermissionlessBlockNumberSet(_permissionlessBlockNumber);
+        }
+
+        if (_largeStakingContractAddress != address(0)) {
+            emit LargeStakingChanged(address(largeStakingContract), _largeStakingContractAddress);
+            largeStakingContract = ILargeStaking(_largeStakingContractAddress);
         }
     }
 
