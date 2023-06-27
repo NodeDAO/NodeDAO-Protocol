@@ -6,6 +6,8 @@ import "test/helpers/oracles/MockMultiReportProcessor.sol";
 import "test/helpers/CommonConstantProvider.sol";
 import {MockWithdrawInfo, WithdrawOracleWithTimer} from "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
+import "src/oracles/LargeStakeOracle.sol";
+import "src/oracles/WithdrawOracle.sol";
 
 // Provide baseline data for the Hash Consensus contract test
 contract MockMultiOracleProvider is CommonConstantProvider {
@@ -23,6 +25,9 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     uint256 public constant SLOTS_PER_FRAME = EPOCHS_PER_FRAME * SLOTS_PER_EPOCH;
 
     uint256 public constant CONSENSUS_VERSION = 2;
+
+    uint256 public constant WITHDRAW_ORACLE_CONTRACT_VERSION = 2;
+    uint256 public constant LARGE_STAKE_ORACLE_CONTRACT_VERSION = 1;
 
     address public constant MEMBER_1 = address(11);
     address public constant MEMBER_2 = address(12);
@@ -125,6 +130,29 @@ contract MockMultiOracleProvider is CommonConstantProvider {
             CL_BALANCE,
             PENDING_BALANCE
         );
+        return oracle;
+    }
+
+    function deployWithdrawOracle(address consensus) public returns (WithdrawOracle) {
+        WithdrawOracle oracle = new WithdrawOracle();
+        oracle.initialize(
+            SECONDS_PER_SLOT,
+            GENESIS_TIME,
+            consensus,
+            CONSENSUS_VERSION,
+            0,
+            DAO,
+            EXIT_REQUEST_LIMIT,
+            CL_VAULT_MIN_SETTLE_LIMIT,
+            CL_BALANCE,
+            PENDING_BALANCE
+        );
+        return oracle;
+    }
+
+    function deployLargeStakeOracle(address consensus, address largeStake) public returns (LargeStakeOracle) {
+        LargeStakeOracle oracle = new LargeStakeOracle();
+        oracle.initialize(SECONDS_PER_SLOT, GENESIS_TIME, consensus, CONSENSUS_VERSION, 0, DAO, largeStake);
         return oracle;
     }
 

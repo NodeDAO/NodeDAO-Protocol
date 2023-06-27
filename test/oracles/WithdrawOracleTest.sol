@@ -59,6 +59,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
     address _controllerAddress2 = address(1001);
     address[] _rewardAddresses = new address[] (1);
     uint256[] _ratios = new uint256[] (1);
+    uint256 moduleId = 1;
 
     function initAndSetOtherContract() public {
         _rewardAddresses[0] = address(5);
@@ -198,7 +199,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
 
         withdrawOracle.setLiquidStaking(address(liquidStaking));
         withdrawOracle.setVaultManager(address(vaultManager));
-        withdrawOracle.updateContractVersion(CONSENSUS_VERSION);
+        withdrawOracle.updateContractVersion(WITHDRAW_ORACLE_CONTRACT_VERSION);
 
         vm.stopPrank();
     }
@@ -382,7 +383,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
                 mockWithdrawOracleReportDataMock1Hash_2(refSlot)[0]
             )
         );
-        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_2(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_2(refSlot), CONSENSUS_VERSION, moduleId);
 
         console.log("-------mockWithdrawOracleReportDataMock1_3----------");
         vm.prank(MEMBER_1);
@@ -393,7 +394,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
                 mockWithdrawOracleReportDataMock1Hash_3(refSlot)[0]
             )
         );
-        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_3(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_3(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     // forge test -vvvv --match-test testReportDataMock1Success
@@ -404,7 +405,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_1(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_1(refSlot), CONSENSUS_VERSION, moduleId);
 
         WithdrawOracleWithTimer.ProcessingState memory procState = withdrawOracle.getProcessingState();
         assertTrue(procState.dataSubmitted);
@@ -458,7 +459,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
 
         vm.prank(MEMBER_1);
         withdrawOracle.submitReportDataMock1(
-            mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION
+            mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION, moduleId
         );
     }
 
@@ -663,7 +664,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         reportDataConsensusReached(hash);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_1(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_1(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     // forge test -vvvv --match-test testCheckTotalClBalance
@@ -712,7 +713,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         vm.roll(20200);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_3validatorExit(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_3validatorExit(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     //    ----------------------------- ReportData for 3 NFT exit and 1 delayed  -----------------------------------
@@ -745,7 +746,9 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         vm.roll(30200);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_3validatorExit_1delayed(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(
+            mockFinalReportData_3validatorExit_1delayed(refSlot), CONSENSUS_VERSION, moduleId
+        );
     }
 
     // ----------------------------- ReportData for 3 NFT exit; 1 largeExitRequest while delayed  -----------------------------------
@@ -787,7 +790,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
 
         vm.prank(MEMBER_1);
         withdrawOracle.submitReportData(
-            mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed(refSlot), CONSENSUS_VERSION
+            mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed(refSlot), CONSENSUS_VERSION, moduleId
         );
     }
 
@@ -809,7 +812,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         vm.roll(20000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_OperatorReward(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_OperatorReward(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -987,7 +990,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         vm.roll(30000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_batch100(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_batch100(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -1026,7 +1029,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         vm.roll(30000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_batch100_normal(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_batch100_normal(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     // see gas: 1875255
@@ -1059,7 +1062,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         vm.roll(30000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_20Nft_20Operator(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_20Nft_20Operator(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     ////////////////////////////////////////////////////////////////

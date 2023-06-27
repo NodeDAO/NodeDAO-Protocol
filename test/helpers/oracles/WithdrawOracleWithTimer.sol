@@ -73,17 +73,18 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
         bytes data;
     }
 
-    function submitReportDataMock1(ReportDataMock1 calldata data, uint256 _contractVersion) external {
+    function submitReportDataMock1(ReportDataMock1 calldata data, uint256 _contractVersion, uint256 _moduleId)
+        external
+    {
         _checkMsgSenderIsAllowedToSubmitData();
         _checkContractVersion(_contractVersion);
         // it's a waste of gas to copy the whole calldata into mem but seems there's no way around
-        _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)));
+        _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)), _moduleId);
         _startProcessing();
         _handleConsensusReportDataMock1(data);
     }
 
     function _handleConsensusReportDataMock1(ReportDataMock1 calldata data) internal {
-
         if (
             data.exitTokenIds.length != data.reportExitedCount || data.exitBlockNumbers.length != data.reportExitedCount
         ) {

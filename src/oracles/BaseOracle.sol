@@ -34,6 +34,7 @@ abstract contract BaseOracle is
 {
     using SafeCast for uint256;
 
+    error SenderNotAllowed();
     error InvalidAddr();
     error AddressCannotBeZero();
     error AddressCannotBeSame();
@@ -165,7 +166,6 @@ abstract contract BaseOracle is
         _setConsensusVersion(version);
     }
 
-
     /// @notice Sets the oracle contract version.
     function updateContractVersion(uint256 version) external onlyDao {
         _updateContractVersion(version);
@@ -268,12 +268,25 @@ abstract contract BaseOracle is
         uint256 prevProcessingRefSlot
     ) internal virtual;
 
+    function _checkMsgSenderIsAllowedToSubmitData() internal view {
+        address sender = _msgSender();
+        if (!_isConsensusMember(sender)) {
+            revert SenderNotAllowed();
+        }
+    }
+
     /// @notice May be called by a descendant contract to check if the received data matches
     /// the currently submitted consensus report, and that processing deadline is not missed.
     /// Reverts otherwise.
-    function _checkConsensusData(uint256 refSlot, uint256 _consensusVersion, bytes32 hash) internal view {
+    function _checkConsensusData(uint256 refSlot, uint256 _consensusVersion, bytes32 hash, uint256 _moduleId)
+        internal
+        view
+    {
         // If the processing deadline for the current consensus report is missed, an error is reported
         _checkProcessingDeadline();
+
+        if (moduleId == 0) revert ModuleIdIsZero();
+        if (moduleId != _moduleId) revert ModuleIdNotEqual();
 
         ConsensusReport memory report = consensusReport;
         if (refSlot != report.refSlot) {
