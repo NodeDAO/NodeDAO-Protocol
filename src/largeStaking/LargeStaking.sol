@@ -649,6 +649,9 @@ contract LargeStaking is
                 revert InvalidReport();
             }
             stakingInfo = largeStakingList[sInfo.stakingId];
+            uint256 newUnstakeAmount = stakingInfo.unstakeAmount + sInfo.notReportedUnstakeAmount;
+            if (newUnstakeAmount > stakingInfo.stakingAmount) revert InvalidReport();
+
             if (stakingInfo.isELRewardSharing) {
                 settleElSharedReward(stakingInfo.operatorId);
                 _updateShare(
@@ -660,7 +663,6 @@ contract LargeStaking is
                 );
             }
 
-            uint256 newUnstakeAmount = stakingInfo.unstakeAmount + sInfo.notReportedUnstakeAmount;
             largeStakingList[sInfo.stakingId].unstakeAmount = newUnstakeAmount;
             // The operator actively withdraws from the validator
             if (newUnstakeAmount > stakingInfo.unstakeRequestAmount) {
