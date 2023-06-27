@@ -2539,4 +2539,20 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
 
         assertEq(0, vnft.getActiveNftCountsOfOperator(1));
     }
+
+    function testWithdrawalCredentials() public view {
+        bytes memory withdrawalCredentials =
+            bytes.concat(hex"010000000000000000000000", abi.encodePacked(consensusVaultContractAddr));
+        console.log("========withdrawalCredentials========1");
+        console.logBytes(withdrawalCredentials);
+
+        console.log("========withdrawalCredentials========2");
+
+        bytes memory result = abi.encodePacked(hex"010000000000000000000000", consensusVaultContractAddr);
+        console.logBytes(result);
+
+        bytes32 withdrawCredentials = abi.decode(result, (bytes32));
+        console.log("========withdrawalCredentials========3");
+        console.logBytes32(withdrawCredentials);
+    }
 }

@@ -553,7 +553,7 @@ contract NodeOperatorRegistry is
         }
     }
 
-    function _slash(uint256 _operatorId, uint256 _amount) internal returns (uint256) {
+    function _slash(uint256 _operatorId, uint256 _amount) internal operatorExists(_operatorId) returns (uint256) {
         uint256 pledgeAmounts = operatorPledgeVaultBalances[_operatorId];
         if (pledgeAmounts == 0) {
             emit OperatorArrearsIncrease(_operatorId, _amount);
@@ -678,6 +678,9 @@ contract NodeOperatorRegistry is
         emit NodeOperatorOwnerAddressSet(_id, operator.name, _owner);
     }
 
+    /**
+     * @notice set operator setting
+     */
     function setOperatorSetting(
         uint256 _id,
         string calldata _name,
@@ -717,6 +720,9 @@ contract NodeOperatorRegistry is
         }
     }
 
+    /**
+     * @notice set contract setting
+     */
     function setNodeOperatorregistrySetting(
         address _dao,
         address _daoVaultAddress,

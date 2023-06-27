@@ -49,7 +49,7 @@ contract OperatorSlash is
     // key is requestId, value is blockNumber
     mapping(uint256 => uint256) public largeExitDelayedSlashRecords;
 
-    // v2.1 storage
+    // v2 storage
     address public largeStakingContractAddress;
 
     uint256 public constant slashTypeOfNft = 1;
@@ -115,6 +115,10 @@ contract OperatorSlash is
 
         // 2000000000000 * 7200 * 365 = 5256000000000000000 = 5.256 eth
         slashAmountPerBlockPerValidator = 2000000000000;
+    }
+
+    function initalizeV2(address _largeStakingContractAddress) public reinitializer(2) onlyDao {
+        largeStakingContractAddress = _largeStakingContractAddress;
     }
 
     /**
@@ -376,40 +380,37 @@ contract OperatorSlash is
     }
 
     /**
-     * @notice Set new nodeOperatorRegistryContract address
-     * @param _nodeOperatorRegistryContract new withdrawalCredentials
+     * @notice set contract setting
      */
-    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
-        emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
-        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
-    }
+    function setOperatorSlashSetting(
+        address _nodeOperatorRegistryContract,
+        address _withdrawalRequestContractAddress,
+        address _vaultManagerContract,
+        address _liquidStakingContractAddress,
+        address _largeStakingContractAddress
+    ) external onlyDao {
+        if (_nodeOperatorRegistryContract != address(0)) {
+            emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
+            nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+        }
 
-    /**
-     * @notice Set new withdrawalRequestContract address
-     * @param _withdrawalRequestContractAddress new withdrawalRequestContract address
-     */
-    function setWithdrawalRequestContract(address _withdrawalRequestContractAddress) external onlyDao {
-        emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
-        withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
-    }
+        if (_withdrawalRequestContractAddress != address(0)) {
+            emit WithdrawalRequestContractSet(address(withdrawalRequestContract), _withdrawalRequestContractAddress);
+            withdrawalRequestContract = IWithdrawalRequest(_withdrawalRequestContractAddress);
+        }
+        if (_vaultManagerContract != address(0)) {
+            emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
+            vaultManagerContractAddress = _vaultManagerContract;
+        }
 
-    /**
-     * @notice Set new vaultManagerContractA address
-     * @param _vaultManagerContract new vaultManagerContract address
-     */
-    function setVaultManagerContract(address _vaultManagerContract) external onlyDao {
-        emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
-        vaultManagerContractAddress = _vaultManagerContract;
-    }
+        if (_liquidStakingContractAddress != address(0)) {
+            emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+            liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+        }
 
-    /**
-     * @notice Set proxy address of LiquidStaking
-     * @param _liquidStakingContractAddress proxy address of LiquidStaking
-     * @dev will only allow call of function by the address registered as the owner
-     */
-    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
-        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
-        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+        if (_largeStakingContractAddress != address(0)) {
+            largeStakingContractAddress = _largeStakingContractAddress;
+        }
     }
 
     /**

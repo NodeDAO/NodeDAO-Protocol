@@ -11,9 +11,11 @@ import "src/interfaces/INodeOperatorsRegistry.sol";
 import "src/interfaces/IDepositContract.sol";
 import "src/interfaces/IELReward.sol";
 import "src/interfaces/IOperatorSlash.sol";
+import "src/interfaces/ILargeStaking.sol";
 import {CLStakingInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
 
 contract LargeStaking is
+    ILargeStaking,
     Initializable,
     OwnableUpgradeable,
     UUPSUpgradeable,
@@ -27,20 +29,21 @@ contract LargeStaking is
     IDepositContract public depositContract;
 
     struct StakingInfo {
+        bool isELRewardSharing; // Whether to share the execution layer reward pool
         uint256 stakingId; // Staking order id
         uint256 operatorId; // Specify which operator operates the validator
         uint256 stakingAmount; // The total amount of user stake
         uint256 alreadyStakingAmount; // Amount deposited into Eth2
         uint256 unstakeRequestAmount; // The amount the user requested to withdraw
         uint256 unstakeAmount; // Amount the user has withdrawn
-        address claimAddr; // The owner of the staking order，used for claim execution layer reward
-        bytes withdrawCredentials; // Withdrawal certificate
-        bool isELRewardSharing; // Whether to share the execution layer reward pool
+        address owner; // The owner of the staking order，used for claim execution layer reward
+        bytes32 withdrawCredentials; // Withdrawal certificate
     }
 
     StakingInfo[] public largeStakingList; // Staking order
     uint256 public totalLargeStakingCounts; // Total number of staking orders
     mapping(uint256 => uint256) internal totalLargeStakeAmounts; // key is operatorId
+
     uint256 public MIN_STAKE_AMOUNT;
 
     mapping(uint256 => bytes[]) public validators; // key is stakingId
@@ -52,8 +55,8 @@ contract LargeStaking is
     // dao el commisssionRate
     uint256 public daoElCommissionRate;
 
-    mapping(uint256 => address) private privateELRewardCountract; // key is stakingId
-    mapping(uint256 => address) private elRewardSharingCountract; // key is operatorId
+    mapping(uint256 => address) public elPrivateRewardPool; // key is stakingId
+    mapping(uint256 => address) public elSharedRewardPool; // key is operatorId
 
     // share reward pool
     struct SettleInfo {
@@ -61,10 +64,10 @@ contract LargeStaking is
         uint256 rewardBalance;
     }
 
-    mapping(uint256 => SettleInfo) private eLRewardSettleInfo; // key is stakingId
-    mapping(uint256 => uint256) public unclaimedSharingRewards; // key is operatorId
-    mapping(uint256 => uint256) public operatorSharingRewards; // key is operatorId
-    mapping(uint256 => uint256) public daoSharingRewards; // key is operatorId
+    mapping(uint256 => SettleInfo) public eLSharedRewardSettleInfo; // key is stakingId
+    mapping(uint256 => uint256) public unclaimedSharedRewards; // key is operatorId
+    mapping(uint256 => uint256) public operatorSharedRewards; // key is operatorId
+    mapping(uint256 => uint256) public daoSharedRewards; // key is operatorId
     mapping(uint256 => uint256) public totalShares; // key is operatorId
     mapping(uint256 => uint256) public valuePerShare; // key is operatorId
     uint256 private constant UNIT = 1e18;
@@ -78,6 +81,8 @@ contract LargeStaking is
     error InvalidParameter();
     error InvalidAddr();
     error InvalidAmount();
+    error SharedRewardPoolOpened();
+    error SharedRewardPoolNotOpened();
     error RequireOperatorTrusted();
     error InvalidWithdrawalCredentials();
     error InsufficientFunds();
@@ -85,37 +90,6 @@ contract LargeStaking is
     error InvalidRewardAddr();
     error InvalidRewardRatio();
     error InvalidReport();
-
-    event LargeStake(
-        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _claimAddr, bool _isELRewardSharing
-    );
-    event MigretaStake(
-        uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _claimAddr, bool _isELRewardSharing
-    );
-    event AppendStake(uint256 _stakingId, uint256 _amount);
-    event ValidatorRegistered(uint256 _operatorId, uint256 _stakeingId, bytes _pubKey);
-    event FastUnstake(uint256 _stakingId, uint256 _unstakeAmount);
-    event LargeUnstake(uint256 _stakingId, uint256 _amount);
-    event ELShareingRewardSettle(uint256 _operatorId, uint256 _daoReward, uint256 _operatorReward, uint256 _poolReward);
-    event ElPrivateRewardSettle(
-        uint256 _stakingId, uint256 _operatorId, uint256 _daoReward, uint256 _operatorReward, uint256 _poolReward
-    );
-    event UserRewardClaimed(uint256 _stakingId, address _beneficiary, uint256 _rewards);
-    event OperatorRewardClaimed(uint256 _operatorId, address _rewardAddresses, uint256 _rewardAmounts);
-    event OperatorPrivateRewardClaimed(uint256 _stakingId, uint256 _operatorId, uint256 _operatorRewards);
-    event OperatorSharingRewardClaimed(uint256 _operatorId, uint256 _operatorRewards);
-    event DaoPrivateRewardClaimed(uint256 _stakingId, address _daoVaultAddress, uint256 _daoRewards);
-    event DaoSharingRewardClaimed(uint256 _operatorId, address daoVaultAddress, uint256 _daoRewards);
-    event LargeStakingSlash(uint256[] _stakingIds, uint256[] _operatorIds, uint256[] _amounts);
-    event ValidatorExitReport(uint256 _operatorId, uint256 _notReportedUnstakeAmount);
-    event DaoAddressChanged(address _oldDao, address _dao);
-    event DaoVaultAddressChanged(address _oldDaoVaultAddress, address _daoVaultAddress);
-    event DaoELCommissionRateChanged(uint256 _oldDaoElCommissionRate, uint256 _daoElCommissionRate);
-    event NodeOperatorsRegistryChanged(address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryAddress);
-    event ConsensusOracleChanged(address _oldConsensusOracleContractAddr, address _consensusOracleContractAddr);
-    event ELRewardFactoryChanged(address _oldElRewardFactory, address _elRewardFactory);
-    event OperatorSlashChanged(address _oldOperatorSlashContract, address _operatorSlashContract);
-    event MinStakeAmountChange(uint256 _oldMinStakeAmount, uint256 _minStakeAmount);
 
     modifier onlyDao() {
         if (msg.sender != dao) revert PermissionDenied();
@@ -133,10 +107,10 @@ contract LargeStaking is
         address _dao,
         address _daoVaultAddress,
         address _nodeOperatorRegistryAddress,
+        address _operatorSlashContract,
         address _consensusOracleContractAddr,
         address _elRewardFactory,
-        address _depositContract,
-        address _operatorSlashContract
+        address _depositContract
     ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
@@ -161,7 +135,20 @@ contract LargeStaking is
         MIN_STAKE_AMOUNT = 320 ether;
     }
 
-    function largeStake(uint256 _operatorId, address _claimAddr, address _withdrawCredentials, bool _isELRewardSharing)
+    function startupSharedRewardPool(uint256 _operatorId) public {
+        (,, address owner,,) = nodeOperatorRegistryContract.getNodeOperator(_operatorId, false);
+        if (msg.sender != owner) revert PermissionDenied();
+
+        address elRewardPoolAddr = elSharedRewardPool[_operatorId];
+        if (elRewardPoolAddr != address(0)) revert SharedRewardPoolOpened();
+
+        elRewardPoolAddr = elRewardFactory.create(_operatorId, address(this));
+        elSharedRewardPool[_operatorId] = elRewardPoolAddr;
+
+        emit SharedRewardPoolStart(_operatorId, elRewardPoolAddr);
+    }
+
+    function largeStake(uint256 _operatorId, address _owner, address _withdrawCredentials, bool _isELRewardSharing)
         public
         payable
     {
@@ -170,32 +157,28 @@ contract LargeStaking is
         if (!nodeOperatorRegistryContract.isTrustedOperator(_operatorId)) revert RequireOperatorTrusted();
 
         if (_isELRewardSharing) {
-            settleElSharingReward(_operatorId);
+            settleElSharedReward(_operatorId);
         }
 
         uint256 curStakingId;
-        address elRewardAddr;
-        (curStakingId, elRewardAddr) =
-            _stake(_operatorId, _claimAddr, _withdrawCredentials, _isELRewardSharing, msg.value, false);
+        address elRewardPoolAddr;
+        (curStakingId, elRewardPoolAddr) =
+            _stake(_operatorId, _owner, _withdrawCredentials, _isELRewardSharing, msg.value, false);
         totalLargeStakeAmounts[_operatorId] += msg.value;
-        emit LargeStake(_operatorId, curStakingId, msg.value, _claimAddr, _isELRewardSharing);
+        emit LargeStake(_operatorId, curStakingId, msg.value, _owner, _withdrawCredentials, _isELRewardSharing);
     }
 
-    function appendLargeStake(uint256 _stakingId, address _claimAddr, address _withdrawCredentials) public payable {
+    function appendLargeStake(uint256 _stakingId, address _owner, address _withdrawCredentials) public payable {
         if (msg.value < 32 ether || msg.value % 32 ether != 0) revert InvalidAmount();
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        bytes memory userWithdrawalCredentials =
-            bytes.concat(hex"010000000000000000000000", abi.encodePacked(_withdrawCredentials));
+        bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
 
-        if (
-            stakingInfo.claimAddr != _claimAddr
-                || keccak256(stakingInfo.withdrawCredentials) != keccak256(userWithdrawalCredentials)
-        ) {
+        if (stakingInfo.owner != _owner || stakingInfo.withdrawCredentials != userWithdrawalCredentials) {
             revert InvalidParameter();
         }
 
         if (stakingInfo.isELRewardSharing) {
-            settleElSharingReward(stakingInfo.operatorId);
+            settleElSharedReward(stakingInfo.operatorId);
             _updateShare(
                 _stakingId,
                 stakingInfo.operatorId,
@@ -212,9 +195,13 @@ contract LargeStaking is
     }
 
     function largeUnstake(uint256 _stakingId, uint256 _amount) public {
-        if (_amount < 32 ether || _amount % 32 ether != 0) revert InvalidAmount();
         StakingInfo storage stakingInfo = largeStakingList[_stakingId];
-        if (_amount > stakingInfo.stakingAmount - stakingInfo.unstakeAmount) revert InvalidAmount();
+        if (
+            _amount < 32 ether || _amount % 32 ether != 0
+                || _amount > stakingInfo.stakingAmount - stakingInfo.unstakeRequestAmount
+        ) revert InvalidAmount();
+
+        if (msg.sender != stakingInfo.owner) revert PermissionDenied();
 
         uint256 _unstakeAmount = 0;
         if (stakingInfo.stakingAmount > stakingInfo.alreadyStakingAmount) {
@@ -224,19 +211,33 @@ contract LargeStaking is
             } else {
                 _unstakeAmount = fastAmount;
             }
+
+            if (stakingInfo.isELRewardSharing) {
+                settleElSharedReward(stakingInfo.operatorId);
+                _updateShare(
+                    _stakingId,
+                    stakingInfo.operatorId,
+                    stakingInfo.stakingAmount - stakingInfo.unstakeAmount,
+                    _unstakeAmount,
+                    false
+                );
+            }
+
+            // _unstakeAmount is not equal to 0, which means that the unstake is completed synchronously
             stakingInfo.unstakeAmount += _unstakeAmount;
-            payable(stakingInfo.claimAddr).transfer(_unstakeAmount);
+            totalLargeStakeAmounts[stakingInfo.operatorId] -= _unstakeAmount;
+
+            payable(stakingInfo.owner).transfer(_unstakeAmount);
             emit FastUnstake(_stakingId, _unstakeAmount);
         }
-        if (_unstakeAmount != _amount) {
-            stakingInfo.unstakeRequestAmount += (_amount - _unstakeAmount);
-        }
+
+        stakingInfo.unstakeRequestAmount += _amount;
 
         emit LargeUnstake(_stakingId, _amount);
     }
 
     function migrateStake(
-        address _claimAddr,
+        address _owner,
         address _withdrawCredentials,
         bool _isELRewardSharing,
         bytes[] calldata _pubKeys
@@ -245,43 +246,39 @@ contract LargeStaking is
         if (operatorId == 0) revert RequireOperatorTrusted();
 
         if (_isELRewardSharing) {
-            settleElSharingReward(operatorId);
+            settleElSharedReward(operatorId);
         }
 
         uint256 curStakingId;
-        address elRewardAddr;
+        address elRewardPoolAddr;
         uint256 stakeAmounts = _pubKeys.length * 32 ether;
-        (curStakingId, elRewardAddr) =
-            _stake(operatorId, _claimAddr, _withdrawCredentials, _isELRewardSharing, stakeAmounts, true);
+        (curStakingId, elRewardPoolAddr) =
+            _stake(operatorId, _owner, _withdrawCredentials, _isELRewardSharing, stakeAmounts, true);
         for (uint256 i = 0; i < _pubKeys.length; ++i) {
             validators[curStakingId].push(_pubKeys[i]);
         }
         totalLargeStakeAmounts[operatorId] += stakeAmounts;
 
-        emit MigretaStake(operatorId, curStakingId, stakeAmounts, _claimAddr, _isELRewardSharing);
+        emit MigretaStake(operatorId, curStakingId, stakeAmounts, _owner, _withdrawCredentials, _isELRewardSharing);
     }
 
     function appendMigrateStake(
         uint256 _stakingId,
-        address _claimAddr,
+        address _owner,
         address _withdrawCredentials,
         bytes[] calldata _pubKeys
     ) public {
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        bytes memory userWithdrawalCredentials =
-            bytes.concat(hex"010000000000000000000000", abi.encodePacked(_withdrawCredentials));
+        bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
 
-        if (
-            stakingInfo.claimAddr != _claimAddr
-                || keccak256(stakingInfo.withdrawCredentials) != keccak256(userWithdrawalCredentials)
-        ) {
+        if (stakingInfo.owner != _owner || stakingInfo.withdrawCredentials != userWithdrawalCredentials) {
             revert InvalidParameter();
         }
 
         uint256 stakeAmounts = _pubKeys.length * 32 ether;
 
         if (stakingInfo.isELRewardSharing) {
-            settleElSharingReward(stakingInfo.operatorId);
+            settleElSharedReward(stakingInfo.operatorId);
             _updateShare(
                 _stakingId,
                 stakingInfo.operatorId,
@@ -299,55 +296,51 @@ contract LargeStaking is
             validators[_stakingId].push(_pubKeys[i]);
         }
 
-        emit MigretaStake(stakingInfo.operatorId, _stakingId, stakeAmounts, _claimAddr, stakingInfo.isELRewardSharing);
+        emit AppendMigretaStake(_stakingId, stakeAmounts);
     }
 
     function _stake(
         uint256 _operatorId,
-        address _claimAddr,
+        address _owner,
         address _withdrawCredentials,
         bool _isELRewardSharing,
         uint256 _stakingAmount,
         bool isMigrate
     ) internal returns (uint256, address) {
-        if (_withdrawCredentials == address(0)) revert InvalidWithdrawalCredentials();
-        if (_withdrawCredentials.balance < 1 wei) revert InvalidWithdrawalCredentials();
+        if (_withdrawCredentials == address(0) || _withdrawCredentials.balance < 1 wei) {
+            revert InvalidWithdrawalCredentials();
+        }
 
         uint256 curStakingId = totalLargeStakingCounts;
         totalLargeStakingCounts++;
 
-        bytes memory userWithdrawalCredentials =
-            bytes.concat(hex"010000000000000000000000", abi.encodePacked(_withdrawCredentials));
-
+        bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
         largeStakingList.push(
             StakingInfo({
+                isELRewardSharing: _isELRewardSharing,
                 stakingId: curStakingId,
                 operatorId: _operatorId,
                 stakingAmount: _stakingAmount,
                 alreadyStakingAmount: isMigrate ? _stakingAmount : 0,
                 unstakeRequestAmount: 0,
                 unstakeAmount: 0,
-                claimAddr: _claimAddr,
-                withdrawCredentials: userWithdrawalCredentials,
-                isELRewardSharing: _isELRewardSharing
+                owner: _owner,
+                withdrawCredentials: userWithdrawalCredentials
             })
         );
 
-        address elRewardAddr;
+        address elRewardPoolAddr;
         if (!_isELRewardSharing) {
-            elRewardAddr = elRewardFactory.create(_operatorId, address(this));
-            privateELRewardCountract[curStakingId] = elRewardAddr;
+            elRewardPoolAddr = elRewardFactory.create(_operatorId, address(this));
+            elPrivateRewardPool[curStakingId] = elRewardPoolAddr;
         } else {
-            elRewardAddr = elRewardSharingCountract[_operatorId];
-            if (address(0) == elRewardAddr) {
-                elRewardAddr = elRewardFactory.create(_operatorId, address(this));
-                elRewardSharingCountract[_operatorId] = elRewardAddr;
-            }
+            elRewardPoolAddr = elSharedRewardPool[_operatorId];
+            if (address(0) == elRewardPoolAddr) revert SharedRewardPoolNotOpened();
 
             _updateShare(curStakingId, _operatorId, 0, _stakingAmount, true);
         }
 
-        return (curStakingId, elRewardAddr);
+        return (curStakingId, elRewardPoolAddr);
     }
 
     function _updateShare(
@@ -357,7 +350,7 @@ contract LargeStaking is
         uint256 _updataAmount,
         bool _isStake
     ) internal {
-        SettleInfo storage info = eLRewardSettleInfo[_stakingId];
+        SettleInfo storage info = eLSharedRewardSettleInfo[_stakingId];
 
         info.rewardBalance += (valuePerShare[_operatorId] - info.valuePerSharePoint) * (_curAmount) / UNIT;
         info.valuePerSharePoint = valuePerShare[_operatorId];
@@ -367,6 +360,10 @@ contract LargeStaking is
         } else {
             totalShares[_operatorId] -= _updataAmount;
         }
+    }
+
+    function getWithdrawCredentials(address _withdrawCredentials) public pure returns (bytes32) {
+        return abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
     }
 
     function registerValidator(
@@ -387,10 +384,10 @@ contract LargeStaking is
         if ((stakingInfo.stakingAmount - stakingInfo.alreadyStakingAmount) < depositAmount) {
             revert InsufficientFunds();
         }
-        bytes memory _withdrawalCredential = stakingInfo.withdrawCredentials;
+
         for (uint256 i = 0; i < _pubkeys.length; ++i) {
             depositContract.deposit{value: 32 ether}(
-                _pubkeys[i], _withdrawalCredential, _signatures[i], _depositDataRoots[i]
+                _pubkeys[i], abi.encodePacked(stakingInfo.withdrawCredentials), _signatures[i], _depositDataRoots[i]
             );
             emit ValidatorRegistered(operatorId, _stakingId, _pubkeys[i]);
             validators[_stakingId].push(_pubkeys[i]);
@@ -399,71 +396,38 @@ contract LargeStaking is
         largeStakingList[_stakingId].alreadyStakingAmount += depositAmount;
     }
 
-    function reward(uint256 _stakingId)
-        public
-        view
-        returns (uint256 daoReward, uint256 operatorReward, uint256 userReward)
-    {
+    function reward(uint256 _stakingId) public view returns (uint256 userReward) {
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
+        (uint256 operatorId,, uint256 rewards) = getRewardPoolInfo(_stakingId);
 
         if (stakingInfo.isELRewardSharing) {
-            return _shareReward(_stakingId, stakingInfo.alreadyStakingAmount - stakingInfo.unstakeAmount);
+            SettleInfo memory settleInfo = eLSharedRewardSettleInfo[_stakingId];
+            userReward = settleInfo.rewardBalance;
+
+            if (totalShares[operatorId] == 0 || valuePerShare[operatorId] == settleInfo.valuePerSharePoint) {
+                return (userReward);
+            }
+
+            uint256 unsettledPoolReward;
+            if (rewards != 0) {
+                (,, unsettledPoolReward) = _calcElReward(rewards, operatorId);
+            }
+
+            uint256 unsettledUserReward = (
+                valuePerShare[operatorId] + unsettledPoolReward * UNIT / totalShares[operatorId]
+                    - settleInfo.valuePerSharePoint
+            ) * (stakingInfo.stakingAmount - stakingInfo.unstakeAmount) / UNIT;
+            userReward += unsettledUserReward;
         } else {
-            return _privateReward(_stakingId);
-        }
-    }
-
-    function _shareReward(uint256 _stakingId, uint256 amount)
-        internal
-        view
-        returns (uint256 daoReward, uint256 operatorReward, uint256 userReward)
-    {
-        (uint256 operatorId,, uint256 rewards) = getRewardPoolInfo(_stakingId);
-
-        SettleInfo memory settleInfo = eLRewardSettleInfo[_stakingId];
-        daoReward = daoSharingRewards[operatorId];
-        operatorReward = operatorSharingRewards[operatorId];
-        userReward = settleInfo.rewardBalance;
-
-        if (totalShares[operatorId] == 0 || rewards == 0) {
-            return (daoReward, operatorReward, userReward);
+            userReward =
+                unclaimedPrivateRewards[_stakingId] - daoPrivateRewards[_stakingId] - operatorPrivateRewards[_stakingId];
+            if (rewards != 0) {
+                (,, uint256 unsettledPoolReward) = _calcElReward(rewards, operatorId);
+                userReward += unsettledPoolReward;
+            }
         }
 
-        uint256 unsettledDaoReward;
-        uint256 unsettledOperatorReward;
-        uint256 unsettledPoolReward;
-        (unsettledDaoReward, unsettledOperatorReward, unsettledPoolReward) = _calcElReward(rewards, operatorId);
-        daoReward += unsettledDaoReward;
-        operatorReward += unsettledOperatorReward;
-
-        uint256 unsettledUserReward = (
-            valuePerShare[operatorId] + unsettledPoolReward * UNIT / totalShares[operatorId]
-                - settleInfo.valuePerSharePoint
-        ) * amount / UNIT;
-        userReward += unsettledUserReward;
-    }
-
-    function _privateReward(uint256 _stakingId)
-        internal
-        view
-        returns (uint256 daoReward, uint256 operatorReward, uint256 userReward)
-    {
-        daoReward = daoPrivateRewards[_stakingId];
-        operatorReward = operatorPrivateRewards[_stakingId];
-
-        (uint256 operatorId,, uint256 rewards) = getRewardPoolInfo(_stakingId);
-        if (rewards == 0) {
-            return (daoReward, operatorReward, 0);
-        }
-
-        uint256 unsettledDaoReward;
-        uint256 unsettledOperatorReward;
-        uint256 unsettledPoolReward;
-        (unsettledDaoReward, unsettledOperatorReward, unsettledPoolReward) = _calcElReward(rewards, operatorId);
-        daoReward += unsettledDaoReward;
-        operatorReward += unsettledOperatorReward;
-        userReward = unsettledPoolReward;
-        return (daoReward, operatorReward, userReward);
+        return (userReward);
     }
 
     function getRewardPoolInfo(uint256 _stakingId)
@@ -474,25 +438,25 @@ contract LargeStaking is
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
         operatorId = stakingInfo.operatorId;
         if (stakingInfo.isELRewardSharing) {
-            rewardPoolAddr = elRewardSharingCountract[operatorId];
-            rewards = rewardPoolAddr.balance - unclaimedSharingRewards[operatorId];
+            rewardPoolAddr = elSharedRewardPool[operatorId];
+            rewards = rewardPoolAddr.balance - unclaimedSharedRewards[operatorId];
         } else {
-            rewardPoolAddr = privateELRewardCountract[_stakingId];
+            rewardPoolAddr = elPrivateRewardPool[_stakingId];
             rewards = rewardPoolAddr.balance - unclaimedPrivateRewards[_stakingId];
         }
         return (operatorId, rewardPoolAddr, rewards);
     }
 
-    function settleElSharingReward(uint256 _operatorId) public {
-        address rewardPoolAddr = elRewardSharingCountract[_operatorId];
-        uint256 rewards = rewardPoolAddr.balance - unclaimedSharingRewards[_operatorId];
+    function settleElSharedReward(uint256 _operatorId) public {
+        address rewardPoolAddr = elSharedRewardPool[_operatorId];
+        uint256 rewards = rewardPoolAddr.balance - unclaimedSharedRewards[_operatorId];
 
         (uint256 daoReward, uint256 operatorReward, uint256 poolReward) = _calcElReward(rewards, _operatorId);
         if (poolReward == 0 || totalShares[_operatorId] == 0) return;
 
-        operatorSharingRewards[_operatorId] += operatorReward;
-        daoSharingRewards[_operatorId] += daoReward;
-        unclaimedSharingRewards[_operatorId] = rewardPoolAddr.balance;
+        operatorSharedRewards[_operatorId] += operatorReward;
+        daoSharedRewards[_operatorId] += daoReward;
+        unclaimedSharedRewards[_operatorId] = rewardPoolAddr.balance;
 
         valuePerShare[_operatorId] += poolReward * UNIT / totalShares[_operatorId]; // settle
 
@@ -500,7 +464,7 @@ contract LargeStaking is
     }
 
     function settleElPrivateReward(uint256 _stakingId) public {
-        address rewardPoolAddr = privateELRewardCountract[_stakingId];
+        address rewardPoolAddr = elPrivateRewardPool[_stakingId];
         uint256 _operatorId = largeStakingList[_stakingId].operatorId;
         uint256 rewards = rewardPoolAddr.balance - unclaimedPrivateRewards[_stakingId];
         (uint256 daoReward, uint256 operatorReward, uint256 poolReward) = _calcElReward(rewards, _operatorId);
@@ -531,15 +495,15 @@ contract LargeStaking is
 
     function claimRewardsOfUser(uint256 _stakingId, address beneficiary, uint256 rewards) public {
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        if (beneficiary == address(0) || msg.sender != stakingInfo.claimAddr) revert PermissionDenied();
+        if (beneficiary == address(0) || msg.sender != stakingInfo.owner) revert PermissionDenied();
 
-        SettleInfo storage settleInfo = eLRewardSettleInfo[_stakingId];
+        SettleInfo storage settleInfo = eLSharedRewardSettleInfo[_stakingId];
 
         address rewardPoolAddr;
         if (stakingInfo.isELRewardSharing) {
-            settleElSharingReward(stakingInfo.operatorId);
+            settleElSharedReward(stakingInfo.operatorId);
 
-            rewardPoolAddr = elRewardSharingCountract[stakingInfo.operatorId];
+            rewardPoolAddr = elSharedRewardPool[stakingInfo.operatorId];
 
             uint256 totalRewards = settleInfo.rewardBalance
                 + (valuePerShare[stakingInfo.operatorId] - settleInfo.valuePerSharePoint)
@@ -548,10 +512,10 @@ contract LargeStaking is
             settleInfo.valuePerSharePoint = valuePerShare[stakingInfo.operatorId];
 
             settleInfo.rewardBalance = totalRewards - rewards;
-            unclaimedSharingRewards[stakingInfo.operatorId] -= rewards;
+            unclaimedSharedRewards[stakingInfo.operatorId] -= rewards;
         } else {
             settleElPrivateReward(_stakingId);
-            rewardPoolAddr = privateELRewardCountract[_stakingId];
+            rewardPoolAddr = elPrivateRewardPool[_stakingId];
             if (
                 rewards + operatorPrivateRewards[_stakingId] + daoPrivateRewards[_stakingId]
                     > unclaimedPrivateRewards[_stakingId]
@@ -569,15 +533,15 @@ contract LargeStaking is
         operatorSlashContract.claimCompensatedOfLargeStaking(_stakingIds, beneficiary);
     }
 
-    function claimRewardsOfOperator(uint256[] memory _priPoolStakingIds, bool _claimSharePool, uint256 _operatorId)
+    function claimRewardsOfOperator(uint256[] memory _privatePoolStakingIds, bool _claimSharePool, uint256 _operatorId)
         external
     {
         StakingInfo memory stakingInfo;
         uint256 pledgeBalance = 0;
         uint256 requirBalance = 0;
 
-        for (uint256 i = 0; i < _priPoolStakingIds.length; ++i) {
-            uint256 stakingId = _priPoolStakingIds[i];
+        for (uint256 i = 0; i < _privatePoolStakingIds.length; ++i) {
+            uint256 stakingId = _privatePoolStakingIds[i];
             stakingInfo = largeStakingList[stakingId];
             if (stakingInfo.isELRewardSharing) {
                 continue;
@@ -592,18 +556,18 @@ contract LargeStaking is
             operatorPrivateRewards[stakingId] = 0;
             unclaimedPrivateRewards[stakingId] -= operatorRewards;
             emit OperatorPrivateRewardClaimed(stakingId, stakingInfo.operatorId, operatorRewards);
-            _distributeOperatorRewards(privateELRewardCountract[stakingId], operatorRewards, stakingInfo.operatorId);
+            _distributeOperatorRewards(elPrivateRewardPool[stakingId], operatorRewards, stakingInfo.operatorId);
         }
 
         if (_claimSharePool) {
             (pledgeBalance, requirBalance) = nodeOperatorRegistryContract.getPledgeInfoOfOperator(_operatorId);
             if (pledgeBalance < requirBalance) revert InsufficientMargin();
-            settleElSharingReward(_operatorId);
-            uint256 operatorRewards = operatorSharingRewards[_operatorId];
-            operatorSharingRewards[_operatorId] = 0;
-            unclaimedSharingRewards[_operatorId] -= operatorRewards;
-            emit OperatorSharingRewardClaimed(stakingInfo.operatorId, operatorRewards);
-            _distributeOperatorRewards(elRewardSharingCountract[_operatorId], operatorRewards, _operatorId);
+            settleElSharedReward(_operatorId);
+            uint256 operatorRewards = operatorSharedRewards[_operatorId];
+            operatorSharedRewards[_operatorId] = 0;
+            unclaimedSharedRewards[_operatorId] -= operatorRewards;
+            emit OperatorSharedRewardClaimed(stakingInfo.operatorId, operatorRewards);
+            _distributeOperatorRewards(elSharedRewardPool[_operatorId], operatorRewards, _operatorId);
         }
     }
 
@@ -643,10 +607,10 @@ contract LargeStaking is
         }
     }
 
-    function claimRewardsOfDao(uint256[] memory _priPoolStakingIds, uint256[] memory _operatorIds) external {
+    function claimRewardsOfDao(uint256[] memory _privatePoolStakingIds, uint256[] memory _operatorIds) external {
         StakingInfo memory stakingInfo;
-        for (uint256 i = 0; i < _priPoolStakingIds.length; ++i) {
-            uint256 stakingId = _priPoolStakingIds[i];
+        for (uint256 i = 0; i < _privatePoolStakingIds.length; ++i) {
+            uint256 stakingId = _privatePoolStakingIds[i];
             stakingInfo = largeStakingList[stakingId];
             if (stakingInfo.isELRewardSharing) {
                 continue;
@@ -657,19 +621,19 @@ contract LargeStaking is
             daoPrivateRewards[stakingId] = 0;
             unclaimedPrivateRewards[stakingId] -= daoRewards;
 
-            IELReward(privateELRewardCountract[stakingId]).transfer(daoRewards, daoVaultAddress);
+            IELReward(elPrivateRewardPool[stakingId]).transfer(daoRewards, daoVaultAddress);
             emit DaoPrivateRewardClaimed(stakingId, daoVaultAddress, daoRewards);
         }
 
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 operatorId = _operatorIds[i];
-            settleElSharingReward(operatorId);
-            uint256 daoRewards = daoSharingRewards[operatorId];
-            daoSharingRewards[operatorId] = 0;
-            unclaimedSharingRewards[operatorId] -= daoRewards;
+            settleElSharedReward(operatorId);
+            uint256 daoRewards = daoSharedRewards[operatorId];
+            daoSharedRewards[operatorId] = 0;
+            unclaimedSharedRewards[operatorId] -= daoRewards;
 
-            IELReward(elRewardSharingCountract[operatorId]).transfer(daoRewards, daoVaultAddress);
-            emit DaoSharingRewardClaimed(operatorId, daoVaultAddress, daoRewards);
+            IELReward(elSharedRewardPool[operatorId]).transfer(daoRewards, daoVaultAddress);
+            emit DaoSharedRewardClaimed(operatorId, daoVaultAddress, daoRewards);
         }
     }
 
@@ -680,11 +644,12 @@ contract LargeStaking is
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _clStakingInfo.length; ++i) {
             CLStakingInfo memory sInfo = _clStakingInfo[i];
-            if (sInfo.notReportedUnstakeAmount % 32 ether != 0) revert InvalidReport();
-            if (sInfo.stakingId > largeStakingList.length) revert InvalidReport();
+            if (sInfo.notReportedUnstakeAmount % 32 ether != 0 || sInfo.stakingId > largeStakingList.length) {
+                revert InvalidReport();
+            }
             stakingInfo = largeStakingList[sInfo.stakingId];
             if (stakingInfo.isELRewardSharing) {
-                settleElSharingReward(stakingInfo.operatorId);
+                settleElSharedReward(stakingInfo.operatorId);
                 _updateShare(
                     sInfo.stakingId,
                     stakingInfo.operatorId,
@@ -694,7 +659,14 @@ contract LargeStaking is
                 );
             }
 
-            largeStakingList[sInfo.stakingId].unstakeAmount += sInfo.notReportedUnstakeAmount;
+            uint256 newUnstakeAmount = stakingInfo.unstakeAmount + sInfo.notReportedUnstakeAmount;
+            largeStakingList[sInfo.stakingId].unstakeAmount = newUnstakeAmount;
+            // The operator actively withdraws from the validator
+            if (newUnstakeAmount > stakingInfo.unstakeRequestAmount) {
+                // When unstakeRequestAmount > unstakeAmount, the operator will exit the validator
+                largeStakingList[sInfo.stakingId].unstakeRequestAmount = newUnstakeAmount;
+            }
+
             totalLargeStakeAmounts[stakingInfo.operatorId] -= sInfo.notReportedUnstakeAmount;
             emit ValidatorExitReport(stakingInfo.operatorId, sInfo.notReportedUnstakeAmount);
         }
@@ -717,6 +689,24 @@ contract LargeStaking is
 
     function getOperatorValidatorCounts(uint256 _operatorId) external view returns (uint256) {
         return totalLargeStakeAmounts[_operatorId] / 32 ether;
+    }
+
+    function getStakingInfoOfOwner(address _owner) public view returns (StakingInfo[] memory) {
+        uint256 number = 0;
+        for (uint256 i = 0; i < largeStakingList.length; ++i) {
+            if (largeStakingList[i].owner == _owner) {
+                number += 1;
+            }
+        }
+        StakingInfo[] memory userStakings = new StakingInfo[] (number);
+        uint256 index = 0;
+        for (uint256 i = 0; i < largeStakingList.length; ++i) {
+            if (largeStakingList[i].owner == _owner) {
+                userStakings[index++] = largeStakingList[i];
+            }
+        }
+
+        return userStakings;
     }
 
     function setLargeStakingSetting(
