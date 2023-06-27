@@ -409,6 +409,7 @@ contract OperatorSlash is
         }
 
         if (_largeStakingContractAddress != address(0)) {
+            emit LargeStakingChanged(largeStakingContractAddress, _largeStakingContractAddress);
             largeStakingContractAddress = _largeStakingContractAddress;
         }
     }
