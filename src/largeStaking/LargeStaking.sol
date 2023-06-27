@@ -703,6 +703,7 @@ contract LargeStaking is
             _stakingIds[i] = sInfo.stakingId;
             _operatorIds[i] = largeStakingList[sInfo.stakingId].operatorId;
             _amounts[i] = sInfo.slashAmount;
+            validatorSlashAmount[sInfo.pubkey] = sInfo.slashAmount;
         }
 
         if (_clStakingSlashInfo.length != 0) {
