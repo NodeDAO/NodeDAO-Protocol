@@ -41,12 +41,12 @@ contract LargeStaking is
     }
 
     StakingInfo[] public largeStakingList; // Staking order
-    uint256 public totalLargeStakingCounts; // Total number of staking orders
     mapping(uint256 => uint256) internal totalLargeStakeAmounts; // key is operatorId
 
     uint256 public MIN_STAKE_AMOUNT;
 
     mapping(uint256 => bytes[]) public validators; // key is stakingId
+    mapping(bytes => uint256) public validatorOfOperator; // key is pubkey, value is operatorId
 
     // dao address
     address public dao;
@@ -76,6 +76,10 @@ contract LargeStaking is
     mapping(uint256 => uint256) public operatorPrivateRewards; // key is stakingId
     mapping(uint256 => uint256) public daoPrivateRewards; // key is stakingId
     mapping(uint256 => uint256) public unclaimedPrivateRewards; // key is stakingId
+
+    // report data
+    mapping(bytes => uint256) public validatorExitReportBlock;
+    mapping(bytes => uint256) public validatorSlashAmount;
 
     error PermissionDenied();
     error InvalidParameter();
@@ -256,7 +260,7 @@ contract LargeStaking is
         (curStakingId, elRewardPoolAddr) =
             _stake(operatorId, _owner, _withdrawCredentials, _isELRewardSharing, stakeAmounts, true);
         for (uint256 i = 0; i < _pubKeys.length; ++i) {
-            validators[curStakingId].push(_pubKeys[i]);
+            _savePubKey(curStakingId, operatorId, _pubKeys[i]);
         }
         totalLargeStakeAmounts[operatorId] += stakeAmounts;
 
@@ -294,7 +298,7 @@ contract LargeStaking is
         totalLargeStakeAmounts[stakingInfo.operatorId] += stakeAmounts;
 
         for (uint256 i = 0; i < _pubKeys.length; ++i) {
-            validators[_stakingId].push(_pubKeys[i]);
+            _savePubKey(_stakingId, stakingInfo.operatorId, _pubKeys[i]);
         }
 
         emit AppendMigretaStake(_stakingId, stakeAmounts);
@@ -312,8 +316,7 @@ contract LargeStaking is
             revert InvalidWithdrawalCredentials();
         }
 
-        uint256 curStakingId = totalLargeStakingCounts;
-        totalLargeStakingCounts++;
+        uint256 curStakingId = largeStakingList.length;
 
         bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
         largeStakingList.push(
@@ -391,10 +394,15 @@ contract LargeStaking is
                 _pubkeys[i], abi.encodePacked(stakingInfo.withdrawCredentials), _signatures[i], _depositDataRoots[i]
             );
             emit ValidatorRegistered(operatorId, _stakingId, _pubkeys[i]);
-            validators[_stakingId].push(_pubkeys[i]);
+            _savePubKey(_stakingId, operatorId, _pubkeys[i]);
         }
 
         largeStakingList[_stakingId].alreadyUsedAmount += depositAmount;
+    }
+
+    function _savePubKey(uint256 _stakingId, uint256 _operatorId, bytes memory _pubkey) internal {
+        validators[_stakingId].push(_pubkey);
+        validatorOfOperator[_pubkey] = _operatorId;
     }
 
     function reward(uint256 _stakingId) public view returns (uint256 userReward) {
@@ -645,9 +653,15 @@ contract LargeStaking is
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _clStakingInfo.length; ++i) {
             CLStakingInfo memory sInfo = _clStakingInfo[i];
-            if (sInfo.notReportedUnstakeAmount % 32 ether != 0 || sInfo.stakingId > largeStakingList.length) {
+
+            if (
+                sInfo.notReportedUnstakeAmount % 32 ether != 0 || sInfo.stakingId > largeStakingList.length
+                    || validatorOfOperator[sInfo.pubkey] == 0 || validatorExitReportBlock[sInfo.pubkey] != 0
+            ) {
                 revert InvalidReport();
             }
+            validatorExitReportBlock[sInfo.pubkey] = block.number;
+
             stakingInfo = largeStakingList[sInfo.stakingId];
             uint256 newUnstakeAmount = stakingInfo.unstakeAmount + sInfo.notReportedUnstakeAmount;
             if (newUnstakeAmount > stakingInfo.stakingAmount) revert InvalidReport();
@@ -679,6 +693,13 @@ contract LargeStaking is
         uint256[] memory _amounts = new uint256[] (_clStakingSlashInfo.length);
         for (uint256 i = 0; i < _clStakingSlashInfo.length; ++i) {
             CLStakingSlashInfo memory sInfo = _clStakingSlashInfo[i];
+            if (
+                validatorOfOperator[sInfo.pubkey] == 0 || validatorSlashAmount[sInfo.pubkey] != 0
+                    || sInfo.stakingId > largeStakingList.length - 1
+            ) {
+                revert InvalidReport();
+            }
+
             _stakingIds[i] = sInfo.stakingId;
             _operatorIds[i] = largeStakingList[sInfo.stakingId].operatorId;
             _amounts[i] = sInfo.slashAmount;
