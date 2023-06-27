@@ -69,6 +69,7 @@ interface IOperatorSlash {
         address _oldWithdrawalRequestContract, address _withdrawalRequestContractAddress
     );
     event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
+    event LargeStakingChanged(address _oldLargeStakingContractAddress, address _largeStakingContractAddress);
     event DaoAddressChanged(address oldDao, address _dao);
     event CompensatedClaimedOfNft(address _owner, uint256 _totalCompensated);
     event CompensatedClaimedOfLargeStaking(address _owner, uint256 _totalCompensated);

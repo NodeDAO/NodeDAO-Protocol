@@ -26,6 +26,7 @@ struct CLStakingInfo {
     uint128 stakingId;
     // Must be an integer multiple of 32 ether, whether it is slashed or not
     uint128 notReportedUnstakeAmount;
+    bytes pubkey;
 }
 
 // Verifier penalty reporting information
@@ -33,4 +34,5 @@ struct CLStakingSlashInfo {
     uint128 stakingId;
     // Trigger penalty on operator if slash occurs
     uint128 slashAmount;
+    bytes pubkey;
 }

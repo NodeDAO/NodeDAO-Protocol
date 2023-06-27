@@ -167,4 +167,5 @@ interface INodeOperatorsRegistry {
     event DefaultOperatorCommissionRateChanged(
         uint256 _oldDefaultOperatorCommission, uint256 _defaultOperatorCommission
     );
+    event LargeStakingChanged(address _oldLargeStakingContractAddress, address _largeStakingContractAddress);
 }
