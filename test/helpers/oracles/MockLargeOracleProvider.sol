@@ -56,4 +56,37 @@ contract MockLargeOracleProvider is MockMultiOracleProvider {
         hashArr[1] = hash2;
         return hashArr;
     }
+
+    function mockLargeStakeOracleReportDataExitAndSlash(uint256 refSlot)
+        public
+        pure
+        returns (LargeStakeOracle.ReportData memory reportData)
+    {
+        reportData.consensusVersion = CONSENSUS_VERSION;
+        reportData.refSlot = refSlot;
+
+        bytes memory pubkey =
+            bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
+
+        CLStakingInfo[] memory clStakingInfos = new CLStakingInfo[](1);
+        CLStakingInfo memory clStakingInfo =
+            CLStakingInfo({stakingId: 0, notReportedUnstakeAmount: 32 ether, pubkey: pubkey});
+        clStakingInfos[0] = clStakingInfo;
+        reportData.clStakingInfos = clStakingInfos;
+
+        CLStakingSlashInfo[] memory clStakingSlashInfos = new CLStakingSlashInfo[](1);
+        CLStakingSlashInfo memory clStakingSlashInfo =
+            CLStakingSlashInfo({stakingId: 0, slashAmount: 32 ether, pubkey: pubkey});
+        clStakingSlashInfos[0] = clStakingSlashInfo;
+        reportData.clStakingSlashInfos = clStakingSlashInfos;
+    }
+
+    function mockLargeStakeOracleReportDataExitAndSlashHash(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash1 = keccak256(abi.encode(mockWithdrawOracleNoExitReportData(refSlot)));
+        bytes32 hash2 = keccak256(abi.encode(mockLargeStakeOracleReportDataExitAndSlash(refSlot)));
+        hashArr[0] = hash1;
+        hashArr[1] = hash2;
+        return hashArr;
+    }
 }

@@ -28,8 +28,10 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
     WithdrawOracle withdrawOracle;
     LargeStakeOracle largeStakeOracle;
 
-    uint256 WithdrawOracleModuleId = 1;
+    uint256 withdrawOracleModuleId = 1;
     uint256 largeStakeOracleModuleId = 2;
+
+    address _owner = address(555);
 
     ////////////////////////////////////////////////////////////////
     //------------ init and set other contracts --------------------
@@ -83,7 +85,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
         operatorRegistry.setNodeOperatorregistrySetting(
-            address(0), address(0), address(liquidStaking), address(0), address(0), 0, 0, 0
+            address(0), address(0), address(liquidStaking), address(0), address(0), address(0), 0, 0, 0
         );
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
 
@@ -134,7 +136,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
 
         vm.prank(_dao);
         operatorRegistry.setNodeOperatorregistrySetting(
-            address(0), address(0), address(0), address(operatorSlash), address(0), 0, 0, 0
+            address(0), address(0), address(liquidStaking), address(operatorSlash), address(0), address(0), 0, 0, 0
         );
         vm.prank(_dao);
         liquidStaking.initializeV2(
@@ -165,13 +167,20 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
             _dao,
             _daoValutAddress,
             address(operatorRegistry),
-            address(withdrawOracle),
+            address(operatorSlash),
+            address(largeStakeOracle),
             address(elRewardFactor),
-            address(depositContract),
-            address(operatorSlash)
+            address(depositContract)
         );
         vm.prank(_dao);
         operatorRegistry.initializeV3(address(largeStaking));
+
+        vm.prank(_dao);
+        largeStaking.setLargeStakingSetting(
+            address(0), address(0), 300, 0, address(0), address(0), address(0), address(0)
+        );
+        vm.prank(_dao);
+        operatorSlash.initalizeV2(address(largeStaking));
     }
 
     ////////////////////////////////////////////////////////////////
@@ -198,6 +207,11 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         withdrawOracle.setLiquidStaking(address(liquidStaking));
         withdrawOracle.setVaultManager(address(vaultManager));
         withdrawOracle.updateContractVersion(WITHDRAW_ORACLE_CONTRACT_VERSION);
+
+        largeStakeOracle.setLargeStakeContract(address(largeStaking));
+        largeStaking.setLargeStakingSetting(
+            address(0), address(0), 300, 0, address(0), address(largeStakeOracle), address(0), address(0)
+        );
 
         vm.stopPrank();
     }
@@ -276,6 +290,175 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         reportDataConsensusReached(hashArr);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockWithdrawOracleNoExitReportData(refSlot), WITHDRAW_ORACLE_CONTRACT_VERSION, WithdrawOracleModuleId);
+        withdrawOracle.submitReportData(
+            mockWithdrawOracleNoExitReportData(refSlot), WITHDRAW_ORACLE_CONTRACT_VERSION, withdrawOracleModuleId
+        );
+
+        (uint256 refSlot2, bytes32[] memory consensusReport2) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(consensusReport2, hashArr));
+        assertEq(refSlot2, refSlot);
+
+        bool isReportProcessing2 = consensus.getIsReportProcessing(address(withdrawOracle));
+        assertTrue(isReportProcessing2);
+
+        (bytes32 reportHash, uint256 reportRefSlot, uint256 reportProcessingDeadlineTime, bool reportProcessingStarted)
+        = withdrawOracle.getConsensusReport();
+        assertEq(reportHash, hashArr[0]);
+        assertEq(reportRefSlot, refSlot);
+        assertEq(reportProcessingDeadlineTime, computeTimestampAtSlot(refSlot + SLOTS_PER_FRAME));
+        assertTrue(reportProcessingStarted);
+
+        (uint256 curRefSlot, uint256 reportProcessingDeadlineSlot) = consensus.getCurrentFrame();
+        WithdrawOracle.ProcessingState memory procState = withdrawOracle.getProcessingState();
+
+        assertEq(procState.currentFrameRefSlot, curRefSlot);
+        assertEq(procState.dataHash, reportHash);
+        assertEq(procState.processingDeadlineTime, computeTimestampAtSlot(reportProcessingDeadlineSlot));
+        assertTrue(procState.dataSubmitted);
+    }
+
+    // forge test -vvvv --match-test testLargeStakeOracleReportEmpty
+    function testLargeStakeOracleReportEmpty() public {
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        bytes32[] memory hashArr = mockLargeStakeOracleEmptyReportDataHash(refSlot);
+        reportDataConsensusReached(hashArr);
+
+        vm.prank(MEMBER_1);
+        vm.expectRevert(abi.encodeWithSignature("ReportDataIsEmpty()"));
+        largeStakeOracle.submitReportData(
+            mockLargeStakeOracleEmptyReportData(refSlot), LARGE_STAKE_ORACLE_CONTRACT_VERSION, largeStakeOracleModuleId
+        );
+    }
+
+    function largeStakeForTest() public {
+        vm.prank(address(4));
+        largeStaking.startupSharedRewardPool(1);
+
+        // shared reward 0
+        vm.deal(address(1000), 320 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1000));
+        largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
+        (uint256 operatorId, address rewardPoolAddr, uint256 rewards) = largeStaking.getRewardPoolInfo(0);
+        console.log("operatorId", operatorId);
+        console.log("rewardPoolAddr", rewardPoolAddr);
+        console.log("rewards", rewards);
+
+        // registerValidator
+        bytes[] memory pubkeys = new bytes[](1);
+        bytes[] memory signatures = new bytes[](1);
+        bytes32[] memory depositDataRoots = new bytes32[](1);
+
+        bytes memory pubkey =
+            bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
+        bytes memory sign = bytes(
+            hex"8c9270550945d18f6500e11d0db074d52408cde8a3a30108c8e341ba6e0b92a4d82efb24097dc808313a0145ba096e0c16455aa1c3a7a1019ae34ddf540d9fa121e498c43f757bc6f4105fe31dd5ea8d67483ab435e5a371874dddffa5e65b58"
+        );
+        bytes32 root = bytes32(hex"2c6181bcae0df24f047332b10657ee75faa7c42657b6577d7efac6672376bc33");
+        pubkeys[0] = pubkey;
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+
+        vm.prank(_controllerAddress);
+        largeStaking.registerValidator(0, pubkeys, signatures, depositDataRoots);
+    }
+
+    // forge test -vvvv --match-test testLargeStakeOracleReportData
+    function testLargeStakeOracleReportData() public {
+        largeStakeForTest();
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        bytes32[] memory hashArr = mockLargeStakeOracleReportDataExitAndSlashHash(refSlot);
+        reportDataConsensusReached(hashArr);
+
+        vm.prank(MEMBER_1);
+        largeStakeOracle.submitReportData(
+            mockLargeStakeOracleReportDataExitAndSlash(refSlot),
+            LARGE_STAKE_ORACLE_CONTRACT_VERSION,
+            largeStakeOracleModuleId
+        );
+
+        (uint256 refSlot2, bytes32[] memory consensusReport2) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(consensusReport2, hashArr));
+        assertEq(refSlot2, refSlot);
+
+        bool isReportProcessing2 = consensus.getIsReportProcessing(address(largeStakeOracle));
+        assertTrue(isReportProcessing2);
+
+        (
+            bytes32 largeStakeOracleReportHash,
+            uint256 largeStakeOracleReportRefSlot,
+            uint256 largeStakeOracleReportProcessingDeadlineTime,
+            bool largeStakeOracleReportProcessingStarted
+        ) = largeStakeOracle.getConsensusReport();
+        (uint256 curRefSlot, uint256 reportProcessingDeadlineSlot) = consensus.getCurrentFrame();
+        LargeStakeOracle.ProcessingState memory largeStakeOracleProcState = largeStakeOracle.getProcessingState();
+        assertEq(largeStakeOracleProcState.currentFrameRefSlot, curRefSlot);
+        assertEq(largeStakeOracleProcState.dataHash, largeStakeOracleReportHash);
+        assertEq(largeStakeOracleProcState.processingDeadlineTime, computeTimestampAtSlot(reportProcessingDeadlineSlot));
+        assertTrue(largeStakeOracleProcState.dataSubmitted);
+    }
+
+    // forge test -vvvv --match-test testLargeStakeOracleReportDataForTwoOracle
+    function testLargeStakeOracleReportDataForTwoOracle() public {
+        largeStakeForTest();
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        bytes32[] memory hashArr = mockLargeStakeOracleReportDataExitAndSlashHash(refSlot);
+        reportDataConsensusReached(hashArr);
+
+        // withdrawOracle report
+        vm.prank(MEMBER_1);
+        withdrawOracle.submitReportData(
+            mockWithdrawOracleNoExitReportData(refSlot), WITHDRAW_ORACLE_CONTRACT_VERSION, withdrawOracleModuleId
+        );
+
+        (uint256 refSlot2, bytes32[] memory consensusReport2) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(consensusReport2, hashArr));
+        assertEq(refSlot2, refSlot);
+
+        bool isReportProcessing2 = consensus.getIsReportProcessing(address(withdrawOracle));
+        assertTrue(isReportProcessing2);
+
+        (bytes32 reportHash, uint256 reportRefSlot, uint256 reportProcessingDeadlineTime, bool reportProcessingStarted)
+        = withdrawOracle.getConsensusReport();
+        assertEq(reportHash, hashArr[0]);
+        assertEq(reportRefSlot, refSlot);
+        assertEq(reportProcessingDeadlineTime, computeTimestampAtSlot(refSlot + SLOTS_PER_FRAME));
+        assertTrue(reportProcessingStarted);
+
+        (uint256 curRefSlot, uint256 reportProcessingDeadlineSlot) = consensus.getCurrentFrame();
+        WithdrawOracle.ProcessingState memory procState = withdrawOracle.getProcessingState();
+
+        assertEq(procState.currentFrameRefSlot, curRefSlot);
+        assertEq(procState.dataHash, reportHash);
+        assertEq(procState.processingDeadlineTime, computeTimestampAtSlot(reportProcessingDeadlineSlot));
+        assertTrue(procState.dataSubmitted);
+
+        // largeStakeOracle report
+        vm.prank(MEMBER_1);
+        largeStakeOracle.submitReportData(
+            mockLargeStakeOracleReportDataExitAndSlash(refSlot),
+            LARGE_STAKE_ORACLE_CONTRACT_VERSION,
+            largeStakeOracleModuleId
+        );
+
+        (
+            bytes32 largeStakeOracleReportHash,
+            uint256 largeStakeOracleReportRefSlot,
+            uint256 largeStakeOracleReportProcessingDeadlineTime,
+            bool largeStakeOracleReportProcessingStarted
+        ) = largeStakeOracle.getConsensusReport();
+        (uint256 curRefSlot2, uint256 reportProcessingDeadlineSlot2) = consensus.getCurrentFrame();
+        LargeStakeOracle.ProcessingState memory largeStakeOracleProcState = largeStakeOracle.getProcessingState();
+        assertEq(largeStakeOracleProcState.currentFrameRefSlot, curRefSlot2);
+        assertEq(largeStakeOracleProcState.dataHash, largeStakeOracleReportHash);
+        assertEq(
+            largeStakeOracleProcState.processingDeadlineTime, computeTimestampAtSlot(reportProcessingDeadlineSlot2)
+        );
+        assertTrue(largeStakeOracleProcState.dataSubmitted);
     }
 }

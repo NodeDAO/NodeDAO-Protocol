@@ -167,10 +167,10 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
             _dao,
             _daoValutAddress,
             address(operatorRegistry),
+            address(operatorSlash),
             address(withdrawOracle),
             address(elRewardFactor),
-            address(depositContract),
-            address(operatorSlash)
+            address(depositContract)
         );
         vm.prank(_dao);
         operatorRegistry.initializeV3(address(largeStaking));
