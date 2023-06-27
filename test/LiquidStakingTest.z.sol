@@ -14,8 +14,8 @@ import "forge-std/console.sol";
 import "src/vault/ELVaultFactory.sol";
 import "src/vault/ConsensusVault.sol";
 import "src/vault/NodeDaoTreasury.sol";
-import "test/helpers/oracles/HashConsensusWithTimer.sol";
-import "test/helpers/oracles/MockOracleProvider.sol";
+import "test/helpers/oracles/MultiHashConsensusWithTimer.sol";
+import "test/helpers/oracles/MockMultiOracleProvider.sol";
 import "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import "test/helpers/CommonConstantProvider.sol";
 import "src/interfaces/ILiquidStaking.sol";
@@ -26,7 +26,8 @@ import "src/largeStaking/LargeStaking.sol";
 import "src/largeStaking/ELReward.sol";
 import "src/largeStaking/ELRewardFactory.sol";
 
-contract LiquidStakingTest is Test, MockOracleProvider {
+// forge test --match-path  test/LiquidStakingTest.z.sol
+contract LiquidStakingTest is Test, MockMultiOracleProvider {
     error PermissionDenied();
     error RequireBlacklistOperator();
     error AssignMustSameOperator();
@@ -81,6 +82,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     VaultManager vaultManager;
     NodeOperatorRegistry operatorRegistry;
     WithdrawOracle withdrawOracle;
+    MockMultiReportProcessor reportProcessor1;
     DepositContract depositContract;
     ELVault vaultContract;
     ELVaultFactory vaultFactoryContract;
@@ -89,7 +91,7 @@ contract LiquidStakingTest is Test, MockOracleProvider {
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
     NodeDaoTreasury nodeDaoTreasury;
-    HashConsensusWithTimer consensus;
+    MultiHashConsensusWithTimer consensus;
     LargeStaking largeStaking;
     ELReward elReward;
     ELRewardFactory elRewardFactor;
@@ -139,16 +141,24 @@ contract LiquidStakingTest is Test, MockOracleProvider {
 
         depositContract = new DepositContract();
 
-        (consensus, withdrawOracle) = deployWithdrawOracleMock();
+        consensus = deployMultiHashConsensusMock();
+        withdrawOracle = deployWithdrawOracleMock(address(consensus));
+        reportProcessor1 = new MockMultiReportProcessor(CONSENSUS_VERSION);
+
         vm.startPrank(_dao);
         consensus.updateInitialEpoch(INITIAL_EPOCH);
         consensus.setTime(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
+
+        consensus.addReportProcessor(address(withdrawOracle));
+        consensus.addReportProcessor(address(reportProcessor1));
 
         consensus.addMember(MEMBER_1, 1);
         consensus.addMember(MEMBER_2, 3);
         consensus.addMember(MEMBER_3, 3);
         consensus.addMember(MEMBER_4, 3);
         withdrawOracle.setLiquidStaking(address(liquidStaking));
+        withdrawOracle.updateContractVersion(CONSENSUS_VERSION);
+
         vm.stopPrank();
 
         liquidStaking.initialize(

@@ -14,9 +14,9 @@ contract MultiHashConsensusTest is Test, MockMultiOracleProvider {
 
     function setUp() public {
         consensus = deployMultiHashConsensusMock();
-        reportProcessor1 = new MockMultiReportProcessor(CONSENSUS_VERSION, 1);
-        reportProcessor2 = new MockMultiReportProcessor(CONSENSUS_VERSION, 2);
-        reportProcessor3 = new MockMultiReportProcessor(CONSENSUS_VERSION, 3);
+        reportProcessor1 = new MockMultiReportProcessor(CONSENSUS_VERSION);
+        reportProcessor2 = new MockMultiReportProcessor(CONSENSUS_VERSION);
+        reportProcessor3 = new MockMultiReportProcessor(CONSENSUS_VERSION);
 
         vm.startPrank(DAO);
         consensus.updateInitialEpoch(INITIAL_EPOCH);
@@ -461,7 +461,7 @@ contract MultiHashConsensusTest is Test, MockMultiOracleProvider {
         consensus.addReportProcessor(address(reportProcessor1));
 
         //        vm.prank(DAO);
-        MockMultiReportProcessor reportProcessor4 = new MockMultiReportProcessor(CONSENSUS_VERSION, 4);
+        MockMultiReportProcessor reportProcessor4 = new MockMultiReportProcessor(CONSENSUS_VERSION);
         vm.prank(DAO);
         consensus.addReportProcessor(address(reportProcessor4));
         assertEq(consensus.getReportProcessors()[3], address(reportProcessor4));

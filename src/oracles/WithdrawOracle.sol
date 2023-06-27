@@ -22,7 +22,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 indexed refSlot, uint256 reportExitedCount, uint256 clBalance, uint256 clVaultBalance
     );
 
-    error PermissionDenied();
     error SenderNotAllowed();
     error UnsupportedRequestsDataFormat(uint256 format);
     error InvalidRequestsData();
