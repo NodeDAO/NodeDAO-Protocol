@@ -33,7 +33,7 @@ contract LargeStaking is
         uint256 stakingId; // Staking order id
         uint256 operatorId; // Specify which operator operates the validator
         uint256 stakingAmount; // The total amount of user stake
-        uint256 alreadyStakingAmount; // Amount deposited into Eth2
+        uint256 alreadyUsedAmount; // Amount deposited into Eth2 or unstake
         uint256 unstakeRequestAmount; // The amount the user requested to withdraw
         uint256 unstakeAmount; // Amount the user has withdrawn
         address owner; // The owner of the staking order，used for claim execution layer reward
@@ -204,8 +204,8 @@ contract LargeStaking is
         if (msg.sender != stakingInfo.owner) revert PermissionDenied();
 
         uint256 _unstakeAmount = 0;
-        if (stakingInfo.stakingAmount > stakingInfo.alreadyStakingAmount) {
-            uint256 fastAmount = stakingInfo.stakingAmount - stakingInfo.alreadyStakingAmount;
+        if (stakingInfo.stakingAmount > stakingInfo.alreadyUsedAmount) {
+            uint256 fastAmount = stakingInfo.stakingAmount - stakingInfo.alreadyUsedAmount;
             if (fastAmount > _amount) {
                 _unstakeAmount = _amount;
             } else {
@@ -225,6 +225,7 @@ contract LargeStaking is
 
             // _unstakeAmount is not equal to 0, which means that the unstake is completed synchronously
             stakingInfo.unstakeAmount += _unstakeAmount;
+            stakingInfo.alreadyUsedAmount += _unstakeAmount;
             totalLargeStakeAmounts[stakingInfo.operatorId] -= _unstakeAmount;
 
             payable(stakingInfo.owner).transfer(_unstakeAmount);
@@ -289,7 +290,7 @@ contract LargeStaking is
         }
 
         largeStakingList[_stakingId].stakingAmount += stakeAmounts;
-        largeStakingList[_stakingId].alreadyStakingAmount += stakeAmounts;
+        largeStakingList[_stakingId].alreadyUsedAmount += stakeAmounts;
         totalLargeStakeAmounts[stakingInfo.operatorId] += stakeAmounts;
 
         for (uint256 i = 0; i < _pubKeys.length; ++i) {
@@ -321,7 +322,7 @@ contract LargeStaking is
                 stakingId: curStakingId,
                 operatorId: _operatorId,
                 stakingAmount: _stakingAmount,
-                alreadyStakingAmount: isMigrate ? _stakingAmount : 0,
+                alreadyUsedAmount: isMigrate ? _stakingAmount : 0,
                 unstakeRequestAmount: 0,
                 unstakeAmount: 0,
                 owner: _owner,
@@ -381,7 +382,7 @@ contract LargeStaking is
 
         uint256 depositAmount = _pubkeys.length * 32 ether;
         StakingInfo memory stakingInfo = largeStakingList[_stakingId];
-        if ((stakingInfo.stakingAmount - stakingInfo.alreadyStakingAmount) < depositAmount) {
+        if ((stakingInfo.stakingAmount - stakingInfo.alreadyUsedAmount) < depositAmount) {
             revert InsufficientFunds();
         }
 
@@ -393,7 +394,7 @@ contract LargeStaking is
             validators[_stakingId].push(_pubkeys[i]);
         }
 
-        largeStakingList[_stakingId].alreadyStakingAmount += depositAmount;
+        largeStakingList[_stakingId].alreadyUsedAmount += depositAmount;
     }
 
     function reward(uint256 _stakingId) public view returns (uint256 userReward) {
