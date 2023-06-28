@@ -199,7 +199,7 @@ abstract contract BaseOracle is
     ///
     function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline, uint256 _moduleId) external {
         uint256 moduleId = IConsensusContract(consensusContract).getReportModuleId(address(this));
-        console.log("moduleId",moduleId);
+        console.log("moduleId", moduleId);
         if (moduleId == 0) revert ModuleIdIsZero();
         if (moduleId != _moduleId) revert ModuleIdNotEqual();
 

@@ -646,10 +646,10 @@ contract LargeStaking is
         }
     }
 
-    function reportCLStakingData(CLStakingExitInfo[] memory _clStakingExitInfo, CLStakingSlashInfo[] memory _clStakingSlashInfo)
-        external
-        onlyConsensusOracle
-    {
+    function reportCLStakingData(
+        CLStakingExitInfo[] memory _clStakingExitInfo,
+        CLStakingSlashInfo[] memory _clStakingSlashInfo
+    ) external onlyConsensusOracle {
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _clStakingExitInfo.length; ++i) {
             CLStakingExitInfo memory sInfo = _clStakingExitInfo[i];

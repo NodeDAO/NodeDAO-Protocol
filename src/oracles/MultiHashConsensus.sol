@@ -47,7 +47,6 @@ interface IReportAsyncProcessor {
     /// one returned from this function.
     ///
     function getConsensusVersion() external view returns (uint256);
-
 }
 
 contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {

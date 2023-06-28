@@ -245,7 +245,7 @@ contract DeployMainnetOracleScript is Script, BaseContract, MainnetHelperContrac
 // forge script script/Deploy-oracle.s.sol:UpgradeWithdrawOracleScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify --retries 10 --delay 30
 contract UpgradeWithdrawOracleScript is Script, BaseContract, GoerliHelperContract {
     WithdrawOracle withdrawOracleUpgrade;
-    address withdrawOracleUpgradeProxy = address(0x4C5609a94431D90CD0E273e3a81C13514b6E5ca5);
+    address withdrawOracleUpgradeProxy = address(0x1E726f6111B58e74CCD63d5b659191A49366CaD9);
     MultiHashConsensus multiHashConsensus;
     address multiHashConsensusProxy;
 
@@ -255,34 +255,38 @@ contract UpgradeWithdrawOracleScript is Script, BaseContract, GoerliHelperContra
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        //        multiHashConsensus = new MultiHashConsensus();
-        //
-        //        DeployProxy deployer = new DeployProxy();
-        //        deployer.setType("uups");
-        //
-        //        multiHashConsensusProxy = deployer.deploy(address(multiHashConsensus));
-        //        console.log("========multiHashConsensusProxy: ", multiHashConsensusProxy);
+        //        withdrawOracleUpgrade = new WithdrawOracle();
+        //        console.log("========withdrawOracleUpgrade: ", address(withdrawOracleUpgrade));
 
-        // deploy WithdrawOracle implement
-        withdrawOracleUpgrade = new WithdrawOracle();
-        console.log("========withdrawOracleUpgrade: ", address(withdrawOracleUpgrade));
-        //        WithdrawOracle(withdrawOracleUpgradeProxy).upgradeTo(address(withdrawOracleUpgrade));
-        //        WithdrawOracle(withdrawOracleUpgradeProxy).initializeV2(multiHashConsensusProxy, 0);
-        //
-        //        // initialize MultiHashConsensus
-        //        MultiHashConsensus(multiHashConsensusProxy).initialize(
-        //            SLOTS_PER_EPOCH,
-        //            SECONDS_PER_SLOT,
-        //            _genesisTime,
-        //            EPOCHS_PER_FRAME,
-        //            INITIAL_FAST_LANE_LENGTH_SLOTS,
-        //            _daoEOA,
-        //            withdrawOracleUpgradeProxy
-        //        );
-        //
-        //        MultiHashConsensus(multiHashConsensusProxy).updateInitialEpoch(1);
-        //
-        //        MultiHashConsensus(multiHashConsensusProxy).transferOwnership(timelock);
+        multiHashConsensus = new MultiHashConsensus();
+
+        DeployProxy deployer = new DeployProxy();
+        deployer.setType("uups");
+
+        multiHashConsensusProxy = deployer.deploy(address(multiHashConsensus));
+        console.log("========multiHashConsensusProxy: ", multiHashConsensusProxy);
+
+        // initialize MultiHashConsensus
+        MultiHashConsensus(multiHashConsensusProxy).initialize(
+            SLOTS_PER_EPOCH,
+            SECONDS_PER_SLOT,
+            _genesisTime,
+            EPOCHS_PER_FRAME,
+            INITIAL_FAST_LANE_LENGTH_SLOTS,
+            _daoEOA,
+            withdrawOracleUpgradeProxy
+        );
+
+        MultiHashConsensus(multiHashConsensusProxy).updateInitialEpoch(186032);
+
+        // hashConsensusProxy addOracleMember
+        for (uint256 i = 0; i < memberArray.length; ++i) {
+            MultiHashConsensus(hashConsensusProxy).addMember(memberArray[i], QUORUM);
+        }
+
+        WithdrawOracle(withdrawOracleUpgradeProxy).initializeV2(multiHashConsensusProxy, 5936159);
+
+        MultiHashConsensus(multiHashConsensusProxy).transferOwnership(timelock);
 
         vm.stopBroadcast();
     }

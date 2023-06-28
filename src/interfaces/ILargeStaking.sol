@@ -53,6 +53,8 @@ interface ILargeStaking {
 
     function getOperatorValidatorCounts(uint256 _operatorId) external view returns (uint256);
 
-    function reportCLStakingData(CLStakingExitInfo[] memory _clStakingExitInfo, CLStakingSlashInfo[] memory _clStakingSlashInfo)
-        external;
+    function reportCLStakingData(
+        CLStakingExitInfo[] memory _clStakingExitInfo,
+        CLStakingSlashInfo[] memory _clStakingSlashInfo
+    ) external;
 }

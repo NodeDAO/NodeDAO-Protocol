@@ -56,5 +56,4 @@ contract MockMultiReportProcessor is IReportAsyncProcessor {
     function getLastProcessingRefSlot() external view returns (uint256) {
         return _lastProcessingRefSlot;
     }
-
 }
