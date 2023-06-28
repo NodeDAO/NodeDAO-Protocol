@@ -465,6 +465,8 @@ contract LargeStaking is
 
     function settleElSharedReward(uint256 _operatorId) public {
         address rewardPoolAddr = elSharedRewardPool[_operatorId];
+        if (address(0) == rewardPoolAddr) revert SharedRewardPoolNotOpened();
+
         uint256 rewards = rewardPoolAddr.balance - unclaimedSharedRewards[_operatorId];
 
         (uint256 daoReward, uint256 operatorReward, uint256 poolReward) = _calcElReward(rewards, _operatorId);
