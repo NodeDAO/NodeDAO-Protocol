@@ -602,11 +602,9 @@ contract NodeOperatorRegistry is
             totalSlashAmounts += slashAmount;
         }
 
-        if (totalSlashAmounts != 0) {
-            operatorSlashContract.slashReceive{value: totalSlashAmounts}(
-                _slashType, _slashIds, _operatorIds, slashAmounts, _amounts
-            );
-        }
+        operatorSlashContract.slashReceive{value: totalSlashAmounts}(
+            _slashType, _slashIds, _operatorIds, slashAmounts, _amounts
+        );
     }
 
     /**
