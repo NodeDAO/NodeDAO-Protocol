@@ -655,15 +655,15 @@ contract LargeStaking is
             CLStakingInfo memory sInfo = _clStakingInfo[i];
 
             if (
-                sInfo.notReportedUnstakeAmount % 32 ether != 0 || sInfo.stakingId > largeStakingList.length
-                    || validatorOfOperator[sInfo.pubkey] == 0 || validatorExitReportBlock[sInfo.pubkey] != 0
+                sInfo.stakingId > largeStakingList.length || validatorOfOperator[sInfo.pubkey] == 0
+                    || validatorExitReportBlock[sInfo.pubkey] != 0
             ) {
                 revert InvalidReport();
             }
             validatorExitReportBlock[sInfo.pubkey] = block.number;
 
             stakingInfo = largeStakingList[sInfo.stakingId];
-            uint256 newUnstakeAmount = stakingInfo.unstakeAmount + sInfo.notReportedUnstakeAmount;
+            uint256 newUnstakeAmount = stakingInfo.unstakeAmount + 32 ether;
             if (newUnstakeAmount > stakingInfo.stakingAmount) revert InvalidReport();
 
             if (stakingInfo.isELRewardSharing) {
@@ -672,7 +672,7 @@ contract LargeStaking is
                     sInfo.stakingId,
                     stakingInfo.operatorId,
                     stakingInfo.stakingAmount - stakingInfo.unstakeAmount,
-                    sInfo.notReportedUnstakeAmount,
+                    32 ether,
                     false
                 );
             }
@@ -684,9 +684,10 @@ contract LargeStaking is
                 largeStakingList[sInfo.stakingId].unstakeRequestAmount = newUnstakeAmount;
             }
 
-            totalLargeStakeAmounts[stakingInfo.operatorId] -= sInfo.notReportedUnstakeAmount;
-            emit ValidatorExitReport(stakingInfo.operatorId, sInfo.notReportedUnstakeAmount);
+            emit ValidatorExitReport(stakingInfo.operatorId, sInfo.pubkey);
         }
+
+        totalLargeStakeAmounts[stakingInfo.operatorId] -= 32 ether * _clStakingInfo.length;
 
         uint256[] memory _stakingIds = new uint256[] (_clStakingSlashInfo.length);
         uint256[] memory _operatorIds = new uint256[] (_clStakingSlashInfo.length);
@@ -719,7 +720,7 @@ contract LargeStaking is
     function getLargeStakingListLength() public view returns (uint256) {
         return largeStakingList.length;
     }
-    
+
     function getStakingInfoOfOwner(address _owner) public view returns (StakingInfo[] memory) {
         uint256 number = 0;
         for (uint256 i = 0; i < largeStakingList.length; ++i) {
