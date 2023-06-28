@@ -174,7 +174,10 @@ contract LargeStaking is
     }
 
     function appendLargeStake(uint256 _stakingId, address _owner, address _withdrawCredentials) public payable {
-        if (msg.value < 32 ether || msg.value % 32 ether != 0) revert InvalidAmount();
+        if (msg.value < 32 ether || msg.value % 32 ether != 0 || _stakingId < 1 || _stakingId > totalLargeStakingCounts)
+        {
+            revert InvalidAmount();
+        }
         StakingInfo memory stakingInfo = largeStakings[_stakingId];
         bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
 
@@ -277,7 +280,10 @@ contract LargeStaking is
         StakingInfo memory stakingInfo = largeStakings[_stakingId];
         bytes32 userWithdrawalCredentials = getWithdrawCredentials(_withdrawCredentials);
 
-        if (stakingInfo.owner != _owner || stakingInfo.withdrawCredentials != userWithdrawalCredentials) {
+        if (
+            stakingInfo.owner != _owner || stakingInfo.withdrawCredentials != userWithdrawalCredentials
+                || _stakingId < 1 || _stakingId > totalLargeStakingCounts
+        ) {
             revert InvalidParameter();
         }
 
@@ -474,6 +480,8 @@ contract LargeStaking is
     }
 
     function settleElPrivateReward(uint256 _stakingId) public {
+        if (_stakingId < 1 || _stakingId > totalLargeStakingCounts) revert InvalidParameter();
+
         address rewardPoolAddr = elPrivateRewardPool[_stakingId];
         uint256 _operatorId = largeStakings[_stakingId].operatorId;
         uint256 rewards = rewardPoolAddr.balance - unclaimedPrivateRewards[_stakingId];
