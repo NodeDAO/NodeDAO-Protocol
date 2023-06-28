@@ -138,6 +138,11 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         pendingBalances = _pendingBalance;
     }
 
+    function initializeV2(address _consensus, uint256 _lastProcessingRefSlot) public reinitializer(2) onlyDao {
+        _setConsensusContract(_consensus, _lastProcessingRefSlot);
+        updateContractVersion(2);
+    }
+
     /// Set the number limit for the validator to report
     function setExitRequestLimit(uint256 _exitRequestLimit) external onlyDao {
         if (_exitRequestLimit == 0) revert ExitRequestLimitNotZero();
