@@ -5,7 +5,7 @@ pragma solidity 0.8.8;
  * @notice Vault factory
  */
 
-import {CLStakingInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
+import {CLStakingExitInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
 
 interface ILargeStaking {
     event SharedRewardPoolStart(uint256 _operatorId, address _elRewardPoolAddr);
@@ -53,6 +53,6 @@ interface ILargeStaking {
 
     function getOperatorValidatorCounts(uint256 _operatorId) external view returns (uint256);
 
-    function reportCLStakingData(CLStakingInfo[] memory _clStakingInfo, CLStakingSlashInfo[] memory _clStakingSlashInfo)
+    function reportCLStakingData(CLStakingExitInfo[] memory _clStakingExitInfo, CLStakingSlashInfo[] memory _clStakingSlashInfo)
         external;
 }

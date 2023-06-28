@@ -12,7 +12,7 @@ import "src/interfaces/IDepositContract.sol";
 import "src/interfaces/IELReward.sol";
 import "src/interfaces/IOperatorSlash.sol";
 import "src/interfaces/ILargeStaking.sol";
-import {CLStakingInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
+import {CLStakingExitInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
 
 contract LargeStaking is
     ILargeStaking,
@@ -646,13 +646,13 @@ contract LargeStaking is
         }
     }
 
-    function reportCLStakingData(CLStakingInfo[] memory _clStakingInfo, CLStakingSlashInfo[] memory _clStakingSlashInfo)
+    function reportCLStakingData(CLStakingExitInfo[] memory _clStakingExitInfo, CLStakingSlashInfo[] memory _clStakingSlashInfo)
         external
         onlyConsensusOracle
     {
         StakingInfo memory stakingInfo;
-        for (uint256 i = 0; i < _clStakingInfo.length; ++i) {
-            CLStakingInfo memory sInfo = _clStakingInfo[i];
+        for (uint256 i = 0; i < _clStakingExitInfo.length; ++i) {
+            CLStakingExitInfo memory sInfo = _clStakingExitInfo[i];
 
             if (
                 sInfo.stakingId > largeStakingList.length || validatorOfOperator[sInfo.pubkey] == 0
@@ -687,7 +687,7 @@ contract LargeStaking is
             emit ValidatorExitReport(stakingInfo.operatorId, sInfo.pubkey);
         }
 
-        totalLargeStakeAmounts[stakingInfo.operatorId] -= 32 ether * _clStakingInfo.length;
+        totalLargeStakeAmounts[stakingInfo.operatorId] -= 32 ether * _clStakingExitInfo.length;
 
         uint256[] memory _stakingIds = new uint256[] (_clStakingSlashInfo.length);
         uint256[] memory _operatorIds = new uint256[] (_clStakingSlashInfo.length);

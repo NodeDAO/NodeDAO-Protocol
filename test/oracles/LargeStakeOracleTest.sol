@@ -84,7 +84,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         operatorRegistry = new NodeOperatorRegistry();
         operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
-        operatorRegistry.setNodeOperatorregistrySetting(
+        operatorRegistry.setNodeOperatorRegistrySetting(
             address(0), address(0), address(liquidStaking), address(0), address(0), address(0), 0, 0, 0
         );
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
@@ -135,7 +135,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         );
 
         vm.prank(_dao);
-        operatorRegistry.setNodeOperatorregistrySetting(
+        operatorRegistry.setNodeOperatorRegistrySetting(
             address(0), address(0), address(liquidStaking), address(operatorSlash), address(0), address(0), 0, 0, 0
         );
         vm.prank(_dao);
@@ -180,7 +180,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
             address(0), address(0), 300, 0, address(0), address(0), address(0), address(0)
         );
         vm.prank(_dao);
-        operatorSlash.initalizeV2(address(largeStaking));
+        operatorSlash.initializeV2(address(largeStaking));
     }
 
     ////////////////////////////////////////////////////////////////

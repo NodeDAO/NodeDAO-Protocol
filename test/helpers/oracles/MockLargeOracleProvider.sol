@@ -4,7 +4,7 @@ pragma solidity 0.8.8;
 import "test/helpers/oracles/MockMultiOracleProvider.sol";
 import "src/oracles/WithdrawOracle.sol";
 import "src/oracles/LargeStakeOracle.sol";
-import {CLStakingInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
+import {CLStakingExitInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
 
 // Provide baseline data for the Hash Consensus contract test
 contract MockLargeOracleProvider is MockMultiOracleProvider {
@@ -41,8 +41,8 @@ contract MockLargeOracleProvider is MockMultiOracleProvider {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
 
-        CLStakingInfo[] memory clStakingInfos = new CLStakingInfo[](0);
-        reportData.clStakingInfos = clStakingInfos;
+        CLStakingExitInfo[] memory clStakingExitInfos = new CLStakingExitInfo[](0);
+        reportData.clStakingExitInfos = clStakingExitInfos;
 
         CLStakingSlashInfo[] memory clStakingSlashInfos = new CLStakingSlashInfo[](0);
         reportData.clStakingSlashInfos = clStakingSlashInfos;
@@ -68,11 +68,10 @@ contract MockLargeOracleProvider is MockMultiOracleProvider {
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
 
-        CLStakingInfo[] memory clStakingInfos = new CLStakingInfo[](1);
-        CLStakingInfo memory clStakingInfo =
-            CLStakingInfo({stakingId: 0, notReportedUnstakeAmount: 32 ether, pubkey: pubkey});
-        clStakingInfos[0] = clStakingInfo;
-        reportData.clStakingInfos = clStakingInfos;
+        CLStakingExitInfo[] memory clStakingExitInfos = new CLStakingExitInfo[](1);
+        CLStakingExitInfo memory clStakingExitInfo = CLStakingExitInfo({stakingId: 0, pubkey: pubkey});
+        clStakingExitInfos[0] = clStakingExitInfo;
+        reportData.clStakingExitInfos = clStakingExitInfos;
 
         CLStakingSlashInfo[] memory clStakingSlashInfos = new CLStakingSlashInfo[](1);
         CLStakingSlashInfo memory clStakingSlashInfo =

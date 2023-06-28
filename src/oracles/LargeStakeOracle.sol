@@ -3,14 +3,14 @@ pragma solidity 0.8.8;
 
 import "src/oracles/BaseOracle.sol";
 import "src/interfaces/ILargeStaking.sol";
-import {CLStakingInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
+import {CLStakingExitInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
 
 contract LargeStakeOracle is BaseOracle {
     event LargeStakeContractChanged(address oldLargeStake, address newLargeStake);
     event ReportSuccess(
         uint256 indexed refSlot,
         uint256 consensusVersion,
-        CLStakingInfo[] cLStakingInfos,
+        CLStakingExitInfo[] cLStakingExitInfos,
         CLStakingSlashInfo[] cLStakingSlashInfos
     );
 
@@ -43,7 +43,7 @@ contract LargeStakeOracle is BaseOracle {
         uint256 refSlot;
         // @dev Validator quits reporting information.
         // Only validator exits are reported.
-        CLStakingInfo[] clStakingInfos;
+        CLStakingExitInfo[] clStakingExitInfos;
         // @dev Verifier slash reporting information.
         // Only validator slash are reported.
         CLStakingSlashInfo[] clStakingSlashInfos;
@@ -120,12 +120,12 @@ contract LargeStakeOracle is BaseOracle {
     }
 
     function _handleConsensusReportData(ReportData calldata data) internal {
-        if (data.clStakingInfos.length == 0 && data.clStakingSlashInfos.length == 0) {
+        if (data.clStakingExitInfos.length == 0 && data.clStakingSlashInfos.length == 0) {
             revert ReportDataIsEmpty();
         }
-        ILargeStaking(largeStakeContract).reportCLStakingData(data.clStakingInfos, data.clStakingSlashInfos);
+        ILargeStaking(largeStakeContract).reportCLStakingData(data.clStakingExitInfos, data.clStakingSlashInfos);
 
-        emit ReportSuccess(data.refSlot, data.consensusVersion, data.clStakingInfos, data.clStakingSlashInfos);
+        emit ReportSuccess(data.refSlot, data.consensusVersion, data.clStakingExitInfos, data.clStakingSlashInfos);
     }
 
     /// @notice Called when oracle gets a new consensus report from the HashConsensus contract.
