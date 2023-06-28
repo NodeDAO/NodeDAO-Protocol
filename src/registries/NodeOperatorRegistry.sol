@@ -723,7 +723,7 @@ contract NodeOperatorRegistry is
     /**
      * @notice set contract setting
      */
-    function setNodeOperatorregistrySetting(
+    function setNodeOperatorRegistrySetting(
         address _dao,
         address _daoVaultAddress,
         address _liquidStakingContractAddress,
