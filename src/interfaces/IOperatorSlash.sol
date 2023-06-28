@@ -52,7 +52,9 @@ interface IOperatorSlash {
      */
     function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable;
 
-    event ArrearsReceiveOfSlash(uint256 _operatorId, uint256 _amount);
+    event SlashArrearsReceive(uint256 _operatorId, uint256 _amount);
+    event SlashArrearsReceiveOfNft(uint256 _operatorId, uint256 _tokenId, uint256 _amount);
+    event SlashArrearsReceiveOfLargeStaking(uint256 _operatorId, uint256 stakingId, uint256 _amount);
     event SlashReceiveOfNft(uint256 _operatorId, uint256 tokenId, uint256 _slashAmount, uint256 _requirAmounts);
     event SlashReceiveOfLargeStaking(
         uint256 _operatorId, uint256 stakingId, uint256 _slashAmount, uint256 _requirAmounts

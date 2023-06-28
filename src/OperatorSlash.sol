@@ -117,7 +117,8 @@ contract OperatorSlash is
         slashAmountPerBlockPerValidator = 2000000000000;
     }
 
-    function initalizeV2(address _largeStakingContractAddress) public reinitializer(2) onlyDao {
+    function initializeV2(address _largeStakingContractAddress) public reinitializer(2) onlyDao {
+        emit LargeStakingChanged(largeStakingContractAddress, _largeStakingContractAddress);
         largeStakingContractAddress = _largeStakingContractAddress;
     }
 
@@ -136,6 +137,12 @@ contract OperatorSlash is
         nodeOperatorRegistryContract.slash(slashTypeOfNft, _exitTokenIds, _operatorIds, _amounts);
     }
 
+    /**
+     * @notice According to the report results of the oracle machine, the operator who has reduced nft will be punished
+     * @param _stakingIds staking id
+     * @param _operatorIds operator id
+     * @param _amounts slash amounts
+     */
     function slashOperatorOfLargeStaking(
         uint256[] memory _stakingIds,
         uint256[] memory _operatorIds,
@@ -262,8 +269,6 @@ contract OperatorSlash is
      * @param _amount slash amount
      */
     function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable {
-        emit ArrearsReceiveOfSlash(_operatorId, _amount);
-
         if (msg.sender != address(nodeOperatorRegistryContract)) revert PermissionDenied();
 
         uint256 compensatedIndex = operatorCompensatedIndex;
@@ -278,9 +283,12 @@ contract OperatorSlash is
                 nftHasCompensated[tokenId] += arrears;
                 compensatedIndex += 1;
                 _amount -= arrears;
+                emit SlashArrearsReceiveOfNft(_operatorId, tokenId, arrears);
             } else {
                 nftWillCompensated[tokenId] -= _amount;
                 nftHasCompensated[tokenId] += _amount;
+                emit SlashArrearsReceiveOfNft(_operatorId, tokenId, _amount);
+
                 _amount = 0;
             }
 
@@ -306,9 +314,11 @@ contract OperatorSlash is
                 stakingHasCompensated[stakingId] += arrears;
                 compensatedIndex += 1;
                 _amount -= arrears;
+                emit SlashArrearsReceiveOfLargeStaking(_operatorId, stakingId, arrears);
             } else {
                 stakingWillCompensated[stakingId] -= _amount;
                 stakingHasCompensated[stakingId] += _amount;
+                emit SlashArrearsReceiveOfLargeStaking(_operatorId, stakingId, _amount);
                 _amount = 0;
             }
 
@@ -323,6 +333,7 @@ contract OperatorSlash is
 
         if (_amount != 0) {
             liquidStakingContract.addPenaltyFundToStakePool{value: _amount}(_operatorId, _amount);
+            emit SlashArrearsReceive(_operatorId, _amount);
         }
     }
 
