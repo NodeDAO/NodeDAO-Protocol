@@ -2,24 +2,47 @@
 pragma solidity 0.8.8;
 
 import "forge-std/Test.sol";
-import "test/helpers/oracles/HashConsensusWithTimer.sol";
-import "test/helpers/oracles/MockOracleProvider.sol";
-import "test/helpers/oracles/MockReportProcessor.sol";
+import "src/utils/Array.sol";
+import "test/helpers/oracles/MockMultiOracleProvider.sol";
 
-// forge test --match-path  test/oracles/HashConsensusTest.sol
-contract HashConsensusTest is Test, MockOracleProvider {
-    HashConsensusWithTimer consensus;
-    MockReportProcessor reportProcessor;
-    MockReportProcessor reportProcessor2;
+// forge test --match-path  test/oracles/MultiHashConsensusTest.sol
+contract MultiHashConsensusTest is Test, MockMultiOracleProvider {
+    MultiHashConsensusWithTimer consensus;
+    MockMultiReportProcessor reportProcessor1;
+    MockMultiReportProcessor reportProcessor2;
+    MockMultiReportProcessor reportProcessor3;
 
     function setUp() public {
-        (consensus, reportProcessor) = deployHashConsensusMock();
-        reportProcessor2 = new MockReportProcessor(CONSENSUS_VERSION);
+        consensus = deployMultiHashConsensusMock();
+        reportProcessor1 = new MockMultiReportProcessor(CONSENSUS_VERSION);
+        reportProcessor2 = new MockMultiReportProcessor(CONSENSUS_VERSION);
+        reportProcessor3 = new MockMultiReportProcessor(CONSENSUS_VERSION);
 
         vm.startPrank(DAO);
         consensus.updateInitialEpoch(INITIAL_EPOCH);
         consensus.setTime(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
+        consensus.addReportProcessor(address(reportProcessor1));
+        consensus.addReportProcessor(address(reportProcessor2));
+        consensus.addReportProcessor(address(reportProcessor3));
         vm.stopPrank();
+    }
+
+    // forge test -vvvv --match-test testCompareBytes32Arrays
+    function testCompareBytes32Arrays() public {
+        bytes32[] memory arr1 = new bytes32[](2);
+        arr1[0] = bytes32(uint256(1));
+        arr1[1] = bytes32(uint256(2));
+
+        bytes32[] memory arr2 = new bytes32[](2);
+        arr2[0] = bytes32(uint256(1));
+        arr2[1] = bytes32(uint256(2));
+
+        assertTrue(Array.compareBytes32Arrays(arr1, arr2));
+
+        arr2[0] = bytes32(uint256(2));
+        arr2[1] = bytes32(uint256(1));
+
+        assertFalse(Array.compareBytes32Arrays(arr1, arr2));
     }
 
     // forge test -vvvv --match-test testFastLane
@@ -39,11 +62,12 @@ contract HashConsensusTest is Test, MockOracleProvider {
 
         assertFalse(consensus.getIsMember(MEMBER_1));
 
-        HashConsensusWithTimer.MemberConsensusState memory member1Info = consensus.getConsensusStateForMember(MEMBER_1);
+        MultiHashConsensusWithTimer.MemberConsensusState memory member1Info =
+            consensus.getConsensusStateForMember(MEMBER_1);
         assertFalse(member1Info.isMember);
         assertFalse(member1Info.canReport);
         assertEq(member1Info.lastMemberReportRefSlot, 0);
-        assertEq(member1Info.currentFrameMemberReport, ZERO_HASH);
+        assertEq(member1Info.currentFrameMemberReport.length, 0);
 
         assertEq(consensus.getQuorum(), 0);
     }
@@ -70,11 +94,12 @@ contract HashConsensusTest is Test, MockOracleProvider {
         assertEq(lastReportedRefSlots.length, 1);
         assertEq(addresses[0], MEMBER_1);
 
-        HashConsensusWithTimer.MemberConsensusState memory member1Info = consensus.getConsensusStateForMember(MEMBER_1);
+        MultiHashConsensusWithTimer.MemberConsensusState memory member1Info =
+            consensus.getConsensusStateForMember(MEMBER_1);
         assertTrue(member1Info.isMember);
         assertTrue(member1Info.canReport);
         assertEq(member1Info.lastMemberReportRefSlot, 0);
-        assertEq(member1Info.currentFrameMemberReport, ZERO_HASH);
+        assertEq(member1Info.currentFrameMemberReport.length, 0);
 
         assertEq(consensus.getQuorum(), 1);
 
@@ -101,22 +126,22 @@ contract HashConsensusTest is Test, MockOracleProvider {
         ///----------------------Report test-----------------------------
         (uint256 refSlot,) = consensus.getCurrentFrame();
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
         vm.prank(MEMBER_2);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
         vm.prank(MEMBER_3);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
 
         // test ConsensusState not to quorum
-        (, bytes32 notQuorumConsensusReport,) = consensus.getConsensusState();
-        assertEq(notQuorumConsensusReport, ZERO_HASH);
+        (, bytes32[] memory notQuorumConsensusReport) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(notQuorumConsensusReport, hashArrZero()));
 
         // Add MEMBER_5, set quorum to 3, and observe the reported result
         vm.prank(DAO);
         consensus.addMember(MEMBER_5, 3);
 
-        (, bytes32 quorum3ConsensusReport,) = consensus.getConsensusState();
-        assertEq(quorum3ConsensusReport, HASH_1);
+        (, bytes32[] memory quorum3ConsensusReport) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(quorum3ConsensusReport, hashArr1()));
     }
 
     // forge test -vvvv --match-test testReportAfterAddConsensusMember
@@ -129,30 +154,25 @@ contract HashConsensusTest is Test, MockOracleProvider {
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
         vm.prank(MEMBER_2);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
 
-        (, bytes32 reportState1,) = consensus.getConsensusState();
-        assertEq(reportState1, HASH_1);
+        (, bytes32[] memory reportState1) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(reportState1, hashArr1()));
 
         vm.prank(DAO);
         consensus.addMember(MEMBER_3, 3);
-        (, bytes32 reportState2,) = consensus.getConsensusState();
-        assertEq(reportState2, ZERO_HASH);
+        (, bytes32[] memory reportState2) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(reportState2, hashArrZero()));
 
         vm.prank(MEMBER_3);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
-        (, bytes32 reportState3,) = consensus.getConsensusState();
-        assertEq(reportState3, HASH_1);
+        consensus.submitReport(refSlot, hashArr1());
+        (, bytes32[] memory reportState3) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(reportState3, hashArr1()));
     }
 
     ///------------------------------Test Frame----------------------------------
-
-    // forge test -vvvv --match-test testCurrentFrame
-    function testCurrentFrame() public {
-        consensus.getCurrentFrame();
-    }
 
     // forge test -vvvv --match-test testFrameData
     function testFrameData() public {
@@ -300,34 +320,53 @@ contract HashConsensusTest is Test, MockOracleProvider {
         assertEq(reportProcessingDeadlineSlot1, expectedDeadlineSlot + SLOTS_PER_FRAME);
     }
 
-    // forge test -vvvv --match-test testFirstMemberVoteHash3
-    // first member votes for hash 3
-    function testFirstMemberVoteHash3() public {
+    // forge test -vvvv --match-test testFirstMemberVoteHash
+    // first member votes for hash
+    function testFirstMemberVoteHash() public {
         vm.prank(DAO);
         consensus.addMember(MEMBER_1, 1);
 
-        HashConsensusWithTimer.MemberConsensusState memory result = consensus.getConsensusStateForMember(MEMBER_1);
+        MultiHashConsensusWithTimer.MemberConsensusState memory result = consensus.getConsensusStateForMember(MEMBER_1);
         assertTrue(result.canReport);
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, HASH_3, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
     }
 
     // forge test -vvvv --match-test testReportNotReached
     // consensus is not reached
     function testReportNotReached() public {
-        (, bytes32 consensusReport, bool isReportProcessing) = consensus.getConsensusState();
-        assertEq(consensusReport, ZERO_HASH);
+        (, bytes32[] memory consensusReport) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(consensusReport, hashArrZero()));
+
+        bool isReportProcessing = consensus.getIsReportProcessing(address(reportProcessor1));
         assertFalse(isReportProcessing);
 
-        MockReportProcessor.SubmitReportLastCall memory submitReportLastCall =
-            reportProcessor.getLastCall_submitReport();
+        MockMultiReportProcessor.SubmitReportLastCall memory submitReportLastCall =
+            reportProcessor1.getLastCall_submitReport();
         assertEq(submitReportLastCall.callCount, 0);
 
-        HashConsensusWithTimer.MemberConsensusState memory memberInfo = consensus.getConsensusStateForMember(MEMBER_1);
-        assertEq(memberInfo.currentFrameConsensusReport, ZERO_HASH);
+        MultiHashConsensusWithTimer.MemberConsensusState memory memberInfo =
+            consensus.getConsensusStateForMember(MEMBER_1);
+        assertTrue(Array.compareBytes32Arrays(memberInfo.currentFrameConsensusReport, hashArrZero()));
+
+        vm.startPrank(DAO);
+        consensus.addMember(MEMBER_1, 1);
+        consensus.addMember(MEMBER_2, 2);
+        vm.stopPrank();
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+        vm.prank(MEMBER_1);
+        consensus.submitReport(refSlot, hashArr1());
+        vm.prank(MEMBER_2);
+        consensus.submitReport(refSlot, hashArr2());
+
+        (, bytes32[] memory reportState1) = consensus.getConsensusState();
+        assertFalse(Array.compareBytes32Arrays(reportState1, hashArr1()));
+        assertFalse(Array.compareBytes32Arrays(reportState1, hashArr2()));
+        assertTrue(Array.compareBytes32Arrays(reportState1, hashArrZero()));
     }
 
     // forge test -vvvv --match-test testReportReached
@@ -340,16 +379,18 @@ contract HashConsensusTest is Test, MockOracleProvider {
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
         vm.prank(MEMBER_2);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
 
-        (, bytes32 reportState1,) = consensus.getConsensusState();
-        assertEq(reportState1, HASH_1);
+        (, bytes32[] memory reportState1) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(reportState1, hashArr1()));
 
-        MockReportProcessor.SubmitReportLastCall memory submitReportLastCall =
-            reportProcessor.getLastCall_submitReport();
+        MockMultiReportProcessor.SubmitReportLastCall memory submitReportLastCall =
+            reportProcessor1.getLastCall_submitReport();
         assertEq(submitReportLastCall.callCount, 1);
+        assertEq(reportProcessor1.getLastCall_submitReport().report, HASH_1);
+        assertEq(reportProcessor2.getLastCall_submitReport().report, HASH_2);
 
         // ------------Second report-----------
         // add a frame for next report
@@ -357,12 +398,12 @@ contract HashConsensusTest is Test, MockOracleProvider {
 
         (uint256 refSlot2,) = consensus.getCurrentFrame();
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot2, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot2, hashArr1());
         vm.prank(MEMBER_2);
-        consensus.submitReport(refSlot2, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot2, hashArr1());
 
-        MockReportProcessor.SubmitReportLastCall memory submitReportLastCall2 =
-            reportProcessor.getLastCall_submitReport();
+        MockMultiReportProcessor.SubmitReportLastCall memory submitReportLastCall2 =
+            reportProcessor1.getLastCall_submitReport();
         assertEq(submitReportLastCall2.callCount, 2);
     }
 
@@ -374,13 +415,13 @@ contract HashConsensusTest is Test, MockOracleProvider {
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
 
-        reportProcessor.startReportProcessing();
+        reportProcessor1.startReportProcessing();
 
         vm.prank(MEMBER_1);
         vm.expectRevert(abi.encodeWithSignature("ConsensusReportAlreadyProcessing()"));
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
     }
 
     // forge test -vvvv --match-test testDuplicateReport
@@ -391,27 +432,39 @@ contract HashConsensusTest is Test, MockOracleProvider {
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hashArr1());
 
         vm.prank(MEMBER_1);
-        vm.expectRevert(abi.encodeWithSignature("DuplicateReport()"));
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
+        vm.expectRevert(abi.encodeWithSignature("ConsensusReportAlreadyProcessing()"));
+        consensus.submitReport(refSlot, hashArr1());
     }
 
     ///-----------------------Test Two ReportProcessor-----------------------------------------
 
-    // forge test -vvvv --match-test testTwoReportProcessor
+    // forge test -vvvv --match-test testAddReportProcessor
     // consensus is reached
-    function testTwoReportProcessor() public {
+    function testAddReportProcessor() public {
         // test properly set initial report processor
-        assertEq(consensus.getReportProcessor(), address(reportProcessor));
+        assertTrue(consensus.getIsReportProcessor(address(reportProcessor1)));
+        assertTrue(consensus.getIsReportProcessor(address(reportProcessor2)));
+
+        address[] memory reportProcessors = consensus.getReportProcessors();
+        assertEq(reportProcessors[0], address(reportProcessor1));
+        assertEq(reportProcessors[1], address(reportProcessor2));
+
+        assertEq(consensus.getReportModuleId(address(reportProcessor1)), 1);
+        assertEq(consensus.getReportModuleId(address(reportProcessor2)), 2);
 
         // checks next processor is not the same as previous
-        vm.expectRevert(abi.encodeWithSignature("NewProcessorCannotBeTheSame()"));
-        consensus.setReportProcessor(address(reportProcessor));
+        vm.prank(DAO);
+        vm.expectRevert(abi.encodeWithSignature("DuplicateReportProcessor()"));
+        consensus.addReportProcessor(address(reportProcessor1));
 
-        // test ReportProcessorSet
-        consensus.setReportProcessor(address(reportProcessor2));
+        //        vm.prank(DAO);
+        MockMultiReportProcessor reportProcessor4 = new MockMultiReportProcessor(CONSENSUS_VERSION);
+        vm.prank(DAO);
+        consensus.addReportProcessor(address(reportProcessor4));
+        assertEq(consensus.getReportProcessors()[3], address(reportProcessor4));
 
         //------test callCount ------
         vm.prank(DAO);
@@ -419,13 +472,7 @@ contract HashConsensusTest is Test, MockOracleProvider {
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, HASH_1, CONSENSUS_VERSION);
-
-        // There is no `processor.startReportProcessing()`
-        // to simulate situation when processing still in progress
-
-        MockReportProcessor.SubmitReportLastCall memory submitReportLastCall2 =
-            reportProcessor2.getLastCall_submitReport();
-        assertEq(submitReportLastCall2.callCount, 1);
+        vm.expectRevert(abi.encodeWithSignature("ReportLenNotEqualReportProcessorsLen()"));
+        consensus.submitReport(refSlot, hashArr1());
     }
 }

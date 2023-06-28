@@ -73,36 +73,23 @@ contract WithdrawOracleWithTimer is WithdrawOracle {
         bytes data;
     }
 
-    function submitReportDataMock1(ReportDataMock1 calldata data, uint256 _contractVersion) external {
+    function submitReportDataMock1(ReportDataMock1 calldata data, uint256 _contractVersion, uint256 _moduleId)
+        external
+    {
         _checkMsgSenderIsAllowedToSubmitData();
         _checkContractVersion(_contractVersion);
         // it's a waste of gas to copy the whole calldata into mem but seems there's no way around
-        _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)));
+        _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)), _moduleId);
         _startProcessing();
         _handleConsensusReportDataMock1(data);
     }
 
     function _handleConsensusReportDataMock1(ReportDataMock1 calldata data) internal {
-        // Data format exception that does not match the number of bytes of each element in the array
-        //        if (data.data.length % PACKED_REQUEST_LENGTH != 0) {
-        //            revert InvalidRequestsDataLength();
-        //        }
-
         if (
             data.exitTokenIds.length != data.reportExitedCount || data.exitBlockNumbers.length != data.reportExitedCount
         ) {
             revert InvalidRequestsDataLength();
         }
-
-        // todo 调用结算
-
-        // 退出数量不一致 报错
-        //        if (data.data.length / PACKED_REQUEST_LENGTH != data.requestsCount) {
-        //            revert UnexpectedRequestsDataLength();
-        //        }
-
-        // todo 退出请求列表处理 如果数据需要包装 那么 再做实现
-        //        _processExitRequestsList(data.data);
 
         dataProcessingState = DataProcessingState({
             refSlot: data.refSlot.toUint64(),

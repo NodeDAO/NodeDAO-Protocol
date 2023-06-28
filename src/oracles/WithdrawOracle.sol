@@ -22,8 +22,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 indexed refSlot, uint256 reportExitedCount, uint256 clBalance, uint256 clVaultBalance
     );
 
-    error PermissionDenied();
-    error SenderNotAllowed();
     error UnsupportedRequestsDataFormat(uint256 format);
     error InvalidRequestsData();
     error InvalidRequestsDataLength();
@@ -140,6 +138,11 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         pendingBalances = _pendingBalance;
     }
 
+    function initializeV2(address _consensus, uint256 _lastProcessingRefSlot) public reinitializer(2) onlyDao {
+        _setConsensusContract(_consensus, _lastProcessingRefSlot);
+        updateContractVersion(2);
+    }
+
     /// Set the number limit for the validator to report
     function setExitRequestLimit(uint256 _exitRequestLimit) external onlyDao {
         if (_exitRequestLimit == 0) revert ExitRequestLimitNotZero();
@@ -227,11 +230,14 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// - The keccak256 hash of the ABI-encoded data is different from the last hash
     ///   provided by the hash consensus contract.
     /// - The provided data doesn't meet safety checks.
-    function submitReportData(ReportData calldata data, uint256 _contractVersion) external whenNotPaused {
+    function submitReportData(ReportData calldata data, uint256 _contractVersion, uint256 _moduleId)
+        external
+        whenNotPaused
+    {
         _checkMsgSenderIsAllowedToSubmitData();
         _checkContractVersion(_contractVersion);
         // it's a waste of gas to copy the whole calldata into mem but seems there's no way around
-        _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)));
+        _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)), _moduleId);
         _startProcessing();
         _handleConsensusReportData(data);
     }
@@ -257,13 +263,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         }
 
         result.reportExitedCount = procState.reportExitedCount;
-    }
-
-    function _checkMsgSenderIsAllowedToSubmitData() internal view {
-        address sender = _msgSender();
-        if (!_isConsensusMember(sender)) {
-            revert SenderNotAllowed();
-        }
     }
 
     function _handleConsensusReportData(ReportData calldata data) internal {

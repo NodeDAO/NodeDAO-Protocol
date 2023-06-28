@@ -719,7 +719,7 @@ contract LargeStaking is
     function getLargeStakingListLength() public view returns (uint256) {
         return largeStakingList.length;
     }
-    
+
     function getStakingInfoOfOwner(address _owner) public view returns (StakingInfo[] memory) {
         uint256 number = 0;
         for (uint256 i = 0; i < largeStakingList.length; ++i) {
