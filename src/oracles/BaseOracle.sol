@@ -8,6 +8,7 @@ import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import "src/utils/Versioned.sol";
 import "src/utils/Dao.sol";
 import {IReportAsyncProcessor} from "src/oracles/MultiHashConsensus.sol";
+import {console} from "forge-std/console.sol";
 
 interface IConsensusContract {
     function getIsMember(address addr) external view returns (bool);
@@ -22,6 +23,8 @@ interface IConsensusContract {
     function getFrameConfig() external view returns (uint256 initialEpoch, uint256 epochsPerFrame);
 
     function getInitialRefSlot() external view returns (uint256);
+
+    function getReportModuleId(address reportProcessor) external view returns (uint256);
 }
 
 abstract contract BaseOracle is
@@ -58,7 +61,6 @@ abstract contract BaseOracle is
     event ReportSubmitted(uint256 indexed refSlot, bytes32 hash, uint256 processingDeadlineTime);
     event ProcessingStarted(uint256 indexed refSlot, bytes32 hash);
     event WarnProcessingMissed(uint256 indexed refSlot);
-    event SetModuleId(uint256 indexed moduleId);
 
     struct ConsensusReport {
         bytes32 hash;
@@ -77,14 +79,6 @@ abstract contract BaseOracle is
     uint256 public SECONDS_PER_SLOT;
 
     uint256 public GENESIS_TIME;
-
-    // Each oracle corresponds to a module ID, which is set by a Multi Hash Consensus contract
-    uint256 public moduleId;
-
-    modifier onlyMultiHashConsensus() {
-        if (consensusContract != msg.sender) revert PermissionDenied();
-        _;
-    }
 
     ///
     /// Descendant contract interface
@@ -204,6 +198,8 @@ abstract contract BaseOracle is
     /// using this same function.
     ///
     function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline, uint256 _moduleId) external {
+        uint256 moduleId = IConsensusContract(consensusContract).getReportModuleId(address(this));
+        console.log("moduleId",moduleId);
         if (moduleId == 0) revert ModuleIdIsZero();
         if (moduleId != _moduleId) revert ModuleIdNotEqual();
 
@@ -235,13 +231,6 @@ abstract contract BaseOracle is
 
         consensusReport = report;
         _handleConsensusReport(report, prevSubmittedRefSlot, prevProcessingRefSlot);
-    }
-
-    /// @notice Associate the Processor's module
-    /// Set the permissions to the Multi Hash Consensus contract
-    function setModuleId(uint256 _moduleId) external onlyMultiHashConsensus {
-        moduleId = _moduleId;
-        emit SetModuleId(_moduleId);
     }
 
     /// @notice Returns the last reference slot for which processing of the report was started.
@@ -284,6 +273,8 @@ abstract contract BaseOracle is
     {
         // If the processing deadline for the current consensus report is missed, an error is reported
         _checkProcessingDeadline();
+
+        uint256 moduleId = IConsensusContract(consensusContract).getReportModuleId(address(this));
 
         if (moduleId == 0) revert ModuleIdIsZero();
         if (moduleId != _moduleId) revert ModuleIdNotEqual();

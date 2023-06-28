@@ -48,9 +48,6 @@ interface IReportAsyncProcessor {
     ///
     function getConsensusVersion() external view returns (uint256);
 
-    /// @notice Associate the Processor's module
-    /// Set the permissions to the Multi Hash Consensus contract
-    function setModuleId(uint256 moduleId) external;
 }
 
 contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
@@ -404,8 +401,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint256 newTotalReportProcessors = reportProcessors.length;
         reportIndices1b[newProcessor] = newTotalReportProcessors;
 
-        _setModuleId(newProcessor, newTotalReportProcessors);
-
         emit ReportProcessorAdd(newProcessor, newTotalReportProcessors);
     }
 
@@ -416,8 +411,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
         uint256 oldIndex = reportIndices1b[oldProcessor] - 1;
         reportProcessors[oldIndex] = newProcessor;
-
-        _setModuleId(newProcessor, oldIndex + 1);
 
         emit ReportProcessorUpdate(oldProcessor, newProcessor, oldIndex + 1);
     }
@@ -913,7 +906,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         return (report, variantIndex, support);
     }
 
-    // todo 考虑BaseOracle是否要存储 moduleId 用来进行hash校验
     function _submitReportForProcessing(ConsensusFrame memory frame, bytes32[] memory report) internal {
         for (uint256 i = 0; i < reportProcessors.length; ++i) {
             IReportAsyncProcessor(reportProcessors[i]).submitConsensusReport(
@@ -928,10 +920,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
     function _getConsensusVersion(address _reportProcessor) internal view returns (uint256) {
         return IReportAsyncProcessor(_reportProcessor).getConsensusVersion();
-    }
-
-    function _setModuleId(address _reportProcessor, uint256 _moduleId) internal {
-        return IReportAsyncProcessor(_reportProcessor).setModuleId(_moduleId);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
