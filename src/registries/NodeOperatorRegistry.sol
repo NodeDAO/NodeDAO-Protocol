@@ -789,4 +789,11 @@ contract NodeOperatorRegistry is
         payable(_to).transfer(_amount);
         emit Transferred(_to, _amount);
     }
+
+    /**
+     * @notice Returns total number of node operators
+     */
+    function getNodeOperatorsCount() external view returns (uint256) {
+        return totalOperators;
+    }
 }
