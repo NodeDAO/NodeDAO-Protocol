@@ -40,7 +40,7 @@ interface ILargeStaking {
     event OperatorSharedRewardClaimed(uint256 _operatorId, uint256 _operatorRewards);
     event DaoPrivateRewardClaimed(uint256 _stakingId, address _daoVaultAddress, uint256 _daoRewards);
     event DaoSharedRewardClaimed(uint256 _operatorId, address daoVaultAddress, uint256 _daoRewards);
-    event LargeStakingSlash(uint256[] _stakingIds, uint256[] _operatorIds, uint256[] _amounts);
+    event LargeStakingSlash(uint256 _stakingIds, uint256 _operatorIds, bytes _pubkey, uint256 _amounts);
     event ValidatorExitReport(uint256 _operatorId, bytes _pubkey);
     event DaoAddressChanged(address _oldDao, address _dao);
     event DaoVaultAddressChanged(address _oldDaoVaultAddress, address _daoVaultAddress);

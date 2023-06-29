@@ -340,7 +340,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
         vm.prank(address(1000));
         largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
-        (uint256 operatorId, address rewardPoolAddr, uint256 rewards) = largeStaking.getRewardPoolInfo(0);
+        (uint256 operatorId, address rewardPoolAddr, uint256 rewards) = largeStaking.getRewardPoolInfo(1);
         console.log("operatorId", operatorId);
         console.log("rewardPoolAddr", rewardPoolAddr);
         console.log("rewards", rewards);
@@ -361,7 +361,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         depositDataRoots[0] = root;
 
         vm.prank(_controllerAddress);
-        largeStaking.registerValidator(0, pubkeys, signatures, depositDataRoots);
+        largeStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
     }
 
     // forge test -vvvv --match-test testLargeStakeOracleReportData
