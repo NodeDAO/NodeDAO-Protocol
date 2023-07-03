@@ -68,7 +68,10 @@ contract BaseOracleWithTimer is BaseOracle {
         return _getCurrentRefSlot();
     }
 
-    function checkConsensusData(uint256 refSlot, uint256 consensusVersion, bytes32 hash) external view {
-        _checkConsensusData(refSlot, consensusVersion, hash);
+    function checkConsensusData(uint256 refSlot, uint256 consensusVersion, bytes32 hash, uint256 _moduleId)
+        external
+        view
+    {
+        _checkConsensusData(refSlot, consensusVersion, hash, _moduleId);
     }
 }

@@ -22,10 +22,8 @@ struct ExitValidatorInfo {
 }
 
 // Validator quits reporting information
-struct CLStakingInfo {
+struct CLStakingExitInfo {
     uint128 stakingId;
-    // Must be an integer multiple of 32 ether, whether it is slashed or not
-    uint128 notReportedUnstakeAmount;
     bytes pubkey;
 }
 

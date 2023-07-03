@@ -5,6 +5,8 @@ pragma solidity 0.8.8;
  * @notice Vault factory
  */
 
+import {CLStakingExitInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
+
 interface ILargeStaking {
     event SharedRewardPoolStart(uint256 _operatorId, address _elRewardPoolAddr);
     event LargeStake(
@@ -38,8 +40,8 @@ interface ILargeStaking {
     event OperatorSharedRewardClaimed(uint256 _operatorId, uint256 _operatorRewards);
     event DaoPrivateRewardClaimed(uint256 _stakingId, address _daoVaultAddress, uint256 _daoRewards);
     event DaoSharedRewardClaimed(uint256 _operatorId, address daoVaultAddress, uint256 _daoRewards);
-    event LargeStakingSlash(uint256[] _stakingIds, uint256[] _operatorIds, uint256[] _amounts);
-    event ValidatorExitReport(uint256 _operatorId, uint256 _notReportedUnstakeAmount);
+    event LargeStakingSlash(uint256 _stakingIds, uint256 _operatorIds, bytes _pubkey, uint256 _amounts);
+    event ValidatorExitReport(uint256 _operatorId, bytes _pubkey);
     event DaoAddressChanged(address _oldDao, address _dao);
     event DaoVaultAddressChanged(address _oldDaoVaultAddress, address _daoVaultAddress);
     event DaoELCommissionRateChanged(uint256 _oldDaoElCommissionRate, uint256 _daoElCommissionRate);
@@ -50,4 +52,9 @@ interface ILargeStaking {
     event MinStakeAmountChange(uint256 _oldMinStakeAmount, uint256 _minStakeAmount);
 
     function getOperatorValidatorCounts(uint256 _operatorId) external view returns (uint256);
+
+    function reportCLStakingData(
+        CLStakingExitInfo[] memory _clStakingExitInfo,
+        CLStakingSlashInfo[] memory _clStakingSlashInfo
+    ) external;
 }

@@ -53,6 +53,11 @@ interface INodeOperatorsRegistry {
         );
 
     /**
+     * @notice Returns total number of node operators
+     */
+    function getNodeOperatorsCount() external view returns (uint256);
+
+    /**
      * @notice Get information about an operator vault contract address
      * @param _id operator id
      */

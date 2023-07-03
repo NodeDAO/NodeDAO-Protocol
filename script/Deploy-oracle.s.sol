@@ -2,7 +2,7 @@
 pragma solidity 0.8.8;
 
 import "src/oracles/WithdrawOracle.sol";
-import "src/oracles/HashConsensus.sol";
+import "src/oracles/MultiHashConsensus.sol";
 import "forge-std/Script.sol";
 import "./utils/DeployProxy.sol";
 
@@ -94,7 +94,7 @@ abstract contract BaseContract {
 
     WithdrawOracle withdrawOracle;
 
-    HashConsensus hashConsensus;
+    MultiHashConsensus hashConsensus;
 
     address hashConsensusProxy;
 
@@ -105,8 +105,8 @@ abstract contract BaseContract {
         // deploy implement
         // =============================================
 
-        // deploy HashConsensus implement
-        hashConsensus = new HashConsensus();
+        // deploy MultiHashConsensus implement
+        hashConsensus = new MultiHashConsensus();
 
         // deploy WithdrawOracle implement
         withdrawOracle = new WithdrawOracle();
@@ -118,7 +118,7 @@ abstract contract BaseContract {
         DeployProxy deployer = new DeployProxy();
         deployer.setType("uups");
 
-        // deploy HashConsensus proxy
+        // deploy MultiHashConsensus proxy
         hashConsensusProxy = deployer.deploy(address(hashConsensus));
         console.log("========hashConsensusProxy: ", hashConsensusProxy);
 
@@ -134,8 +134,8 @@ abstract contract BaseContract {
         // initialize contract
         // =============================================
 
-        // initialize HashConsensus
-        HashConsensus(hashConsensusProxy).initialize(
+        // initialize MultiHashConsensus
+        MultiHashConsensus(hashConsensusProxy).initialize(
             SLOTS_PER_EPOCH,
             SECONDS_PER_SLOT,
             _genesisTime,
@@ -170,7 +170,7 @@ abstract contract BaseContract {
         // configure contract settings
         // =============================================
         // !!! It can be set to a future value after which the contract can be used
-        HashConsensus(hashConsensusProxy).updateInitialEpoch(1);
+        MultiHashConsensus(hashConsensusProxy).updateInitialEpoch(1);
 
         // withdrawOracleProxy setLiquidStaking
         WithdrawOracle(withdrawOracleProxy).setLiquidStaking(_liquidStakingProxy);
@@ -180,7 +180,7 @@ abstract contract BaseContract {
 
         // hashConsensusProxy addOracleMember
         for (uint256 i = 0; i < memberArray.length; ++i) {
-            HashConsensus(hashConsensusProxy).addMember(memberArray[i], _quorum);
+            MultiHashConsensus(hashConsensusProxy).addMember(memberArray[i], _quorum);
         }
     }
 
@@ -191,7 +191,7 @@ abstract contract BaseContract {
         WithdrawOracle(withdrawOracleProxy).setDaoAddress(_daoMultisigContract);
 
         // hashConsensusProxy
-        HashConsensus(hashConsensusProxy).setDaoAddress(_daoMultisigContract);
+        MultiHashConsensus(hashConsensusProxy).setDaoAddress(_daoMultisigContract);
     }
 
     function transferOwnerToTimelock(address timelock) public {
@@ -201,7 +201,7 @@ abstract contract BaseContract {
         WithdrawOracle(withdrawOracleProxy).transferOwnership(timelock);
 
         // hashConsensusProxy
-        HashConsensus(hashConsensusProxy).transferOwnership(timelock);
+        MultiHashConsensus(hashConsensusProxy).transferOwnership(timelock);
     }
 }
 

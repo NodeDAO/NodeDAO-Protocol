@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.8;
 
-import {HashConsensus} from "src/oracles/HashConsensus.sol";
+import {MultiHashConsensus} from "src/oracles/MultiHashConsensus.sol";
 
-contract HashConsensusWithTimer is HashConsensus {
+contract MultiHashConsensusWithTimer is MultiHashConsensus {
     uint256 internal _time = 2513040315;
 
     function _getTime() internal view override returns (uint256) {
@@ -48,7 +48,7 @@ contract HashConsensusWithTimer is HashConsensus {
         _time += SECONDS_PER_SLOT * SLOTS_PER_EPOCH * numEpochs;
     }
 
-    function getConsensusVersion() external view returns (uint256) {
-        return _getConsensusVersion();
+    function getConsensusVersion(address _reportProcessor) external view returns (uint256) {
+        return _getConsensusVersion(_reportProcessor);
     }
 }

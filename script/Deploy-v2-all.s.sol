@@ -14,7 +14,7 @@ import "src/vault/NodeDaoTreasury.sol";
 import "src/OperatorSlash.sol";
 import "src/WithdrawalRequest.sol";
 import "src/vault/VaultManager.sol";
-import "src/oracles/HashConsensus.sol";
+import "src/oracles/MultiHashConsensus.sol";
 import "forge-std/console.sol";
 
 // Goerli settings
@@ -163,7 +163,7 @@ abstract contract BaseContract {
     WithdrawalRequest withdrawalRequest;
     VaultManager vaultManager;
     WithdrawOracle withdrawOracle;
-    HashConsensus hashConsensus;
+    MultiHashConsensus hashConsensus;
 
     address operatorSlashProxy;
     address withdrawalRequestProxy;
@@ -181,7 +181,7 @@ abstract contract BaseContract {
         vaultManager = new VaultManager();
         console.log("===============vaultManager=================", address(vaultManager));
 
-        hashConsensus = new HashConsensus();
+        hashConsensus = new MultiHashConsensus();
         console.log("===============hashConsensus=================", address(hashConsensus));
 
         withdrawOracle = new WithdrawOracle();
@@ -212,8 +212,8 @@ abstract contract BaseContract {
         // =============================================
         // initialize contract
         // =============================================
-        // initialize HashConsensus
-        HashConsensus(hashConsensusProxy).initialize(
+        // initialize MultiHashConsensus
+        MultiHashConsensus(hashConsensusProxy).initialize(
             SLOTS_PER_EPOCH,
             SECONDS_PER_SLOT,
             _genesisTime,
@@ -248,7 +248,7 @@ abstract contract BaseContract {
         // configure contract settings
         // =============================================
         // !!! It can be set to a future value after which the contract can be used
-        HashConsensus(hashConsensusProxy).updateInitialEpoch(1);
+        MultiHashConsensus(hashConsensusProxy).updateInitialEpoch(1);
 
         // withdrawOracleProxy setLiquidStaking
         WithdrawOracle(withdrawOracleProxy).setLiquidStaking(_liquidStakingProxy);
@@ -258,7 +258,7 @@ abstract contract BaseContract {
 
         // hashConsensusProxy addOracleMember
         for (uint256 i = 0; i < memberArray.length; ++i) {
-            HashConsensus(hashConsensusProxy).addMember(memberArray[i], _quorum);
+            MultiHashConsensus(hashConsensusProxy).addMember(memberArray[i], _quorum);
         }
     }
 
@@ -296,7 +296,7 @@ abstract contract BaseContract {
         WithdrawOracle(withdrawOracleProxy).setDaoAddress(_daoMultisigContract);
 
         // hashConsensusProxy
-        HashConsensus(hashConsensusProxy).setDaoAddress(_daoMultisigContract);
+        MultiHashConsensus(hashConsensusProxy).setDaoAddress(_daoMultisigContract);
     }
 
     function transferOwnerToTimelock(address timelock) public {
@@ -304,7 +304,7 @@ abstract contract BaseContract {
 
         WithdrawOracle(withdrawOracleProxy).transferOwnership(timelock);
 
-        HashConsensus(hashConsensusProxy).transferOwnership(timelock);
+        MultiHashConsensus(hashConsensusProxy).transferOwnership(timelock);
 
         OperatorSlash(operatorSlashProxy).transferOwnership(timelock);
 

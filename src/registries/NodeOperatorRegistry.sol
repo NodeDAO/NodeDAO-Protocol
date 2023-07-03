@@ -602,11 +602,9 @@ contract NodeOperatorRegistry is
             totalSlashAmounts += slashAmount;
         }
 
-        if (totalSlashAmounts != 0) {
-            operatorSlashContract.slashReceive{value: totalSlashAmounts}(
-                _slashType, _slashIds, _operatorIds, slashAmounts, _amounts
-            );
-        }
+        operatorSlashContract.slashReceive{value: totalSlashAmounts}(
+            _slashType, _slashIds, _operatorIds, slashAmounts, _amounts
+        );
     }
 
     /**
@@ -723,7 +721,7 @@ contract NodeOperatorRegistry is
     /**
      * @notice set contract setting
      */
-    function setNodeOperatorregistrySetting(
+    function setNodeOperatorRegistrySetting(
         address _dao,
         address _daoVaultAddress,
         address _liquidStakingContractAddress,
@@ -790,5 +788,12 @@ contract NodeOperatorRegistry is
         if (_to == address(0)) revert InvalidAddr();
         payable(_to).transfer(_amount);
         emit Transferred(_to, _amount);
+    }
+
+    /**
+     * @notice Returns total number of node operators
+     */
+    function getNodeOperatorsCount() external view returns (uint256) {
+        return totalOperators;
     }
 }

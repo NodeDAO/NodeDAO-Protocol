@@ -7,7 +7,7 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import "src/utils/Versioned.sol";
 import "src/utils/Dao.sol";
-import {IReportAsyncProcessor} from "src/oracles/HashConsensus.sol";
+import {IReportAsyncProcessor} from "src/oracles/MultiHashConsensus.sol";
 
 interface IConsensusContract {
     function getIsMember(address addr) external view returns (bool);
@@ -34,12 +34,16 @@ abstract contract BaseOracle is
 {
     using SafeCast for uint256;
 
+    error SenderNotAllowed();
     error InvalidAddr();
     error AddressCannotBeZero();
     error AddressCannotBeSame();
     error VersionCannotBeSame();
     error UnexpectedChainConfig();
     error OnlyConsensusContractCanSubmitReport();
+    error ModuleIdIsZero();
+    error ModuleIdNotEqual();
+    error PermissionDenied();
     error InitialRefSlotCannotBeLessThanProcessingOne(uint256 initialRefSlot, uint256 processingRefSlot);
     error RefSlotMustBeGreaterThanProcessingOne(uint256 refSlot, uint256 processingRefSlot);
     error RefSlotCannotDecrease(uint256 refSlot, uint256 prevRefSlot);
@@ -54,6 +58,7 @@ abstract contract BaseOracle is
     event ReportSubmitted(uint256 indexed refSlot, bytes32 hash, uint256 processingDeadlineTime);
     event ProcessingStarted(uint256 indexed refSlot, bytes32 hash);
     event WarnProcessingMissed(uint256 indexed refSlot);
+    event SetModuleId(uint256 indexed moduleId);
 
     struct ConsensusReport {
         bytes32 hash;
@@ -72,6 +77,14 @@ abstract contract BaseOracle is
     uint256 public SECONDS_PER_SLOT;
 
     uint256 public GENESIS_TIME;
+
+    // Each oracle corresponds to a module ID, which is set by a Multi Hash Consensus contract
+    uint256 public moduleId;
+
+    modifier onlyMultiHashConsensus() {
+        if (consensusContract != msg.sender) revert PermissionDenied();
+        _;
+    }
 
     ///
     /// Descendant contract interface
@@ -153,6 +166,11 @@ abstract contract BaseOracle is
         _setConsensusVersion(version);
     }
 
+    /// @notice Sets the oracle contract version.
+    function updateContractVersion(uint256 version) external onlyDao {
+        _updateContractVersion(version);
+    }
+
     ///
     /// Data provider interface
     ///
@@ -185,7 +203,10 @@ abstract contract BaseOracle is
     /// free to reach consensus on another report for the same reporting frame and submit it
     /// using this same function.
     ///
-    function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline) external {
+    function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline, uint256 _moduleId) external {
+        if (moduleId == 0) revert ModuleIdIsZero();
+        if (moduleId != _moduleId) revert ModuleIdNotEqual();
+
         if (_msgSender() != consensusContract) {
             revert OnlyConsensusContractCanSubmitReport();
         }
@@ -216,6 +237,13 @@ abstract contract BaseOracle is
         _handleConsensusReport(report, prevSubmittedRefSlot, prevProcessingRefSlot);
     }
 
+    /// @notice Associate the Processor's module
+    /// Set the permissions to the Multi Hash Consensus contract
+    function setModuleId(uint256 _moduleId) external onlyMultiHashConsensus {
+        moduleId = _moduleId;
+        emit SetModuleId(_moduleId);
+    }
+
     /// @notice Returns the last reference slot for which processing of the report was started.
     ///
     function getLastProcessingRefSlot() external view returns (uint256) {
@@ -240,13 +268,25 @@ abstract contract BaseOracle is
         uint256 prevProcessingRefSlot
     ) internal virtual;
 
+    function _checkMsgSenderIsAllowedToSubmitData() internal view {
+        address sender = _msgSender();
+        if (!_isConsensusMember(sender)) {
+            revert SenderNotAllowed();
+        }
+    }
+
     /// @notice May be called by a descendant contract to check if the received data matches
     /// the currently submitted consensus report, and that processing deadline is not missed.
     /// Reverts otherwise.
-    ///
-    function _checkConsensusData(uint256 refSlot, uint256 _consensusVersion, bytes32 hash) internal view {
+    function _checkConsensusData(uint256 refSlot, uint256 _consensusVersion, bytes32 hash, uint256 _moduleId)
+        internal
+        view
+    {
         // If the processing deadline for the current consensus report is missed, an error is reported
         _checkProcessingDeadline();
+
+        if (moduleId == 0) revert ModuleIdIsZero();
+        if (moduleId != _moduleId) revert ModuleIdNotEqual();
 
         ConsensusReport memory report = consensusReport;
         if (refSlot != report.refSlot) {
