@@ -8,7 +8,6 @@ import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import "src/utils/Versioned.sol";
 import "src/utils/Dao.sol";
 import {IReportAsyncProcessor} from "src/oracles/MultiHashConsensus.sol";
-import {console} from "forge-std/console.sol";
 
 interface IConsensusContract {
     function getIsMember(address addr) external view returns (bool);
@@ -199,7 +198,6 @@ abstract contract BaseOracle is
     ///
     function submitConsensusReport(bytes32 reportHash, uint256 refSlot, uint256 deadline, uint256 _moduleId) external {
         uint256 moduleId = IConsensusContract(consensusContract).getReportModuleId(address(this));
-        console.log("moduleId", moduleId);
         if (moduleId == 0) revert ModuleIdIsZero();
         if (moduleId != _moduleId) revert ModuleIdNotEqual();
 

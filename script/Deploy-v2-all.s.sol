@@ -214,13 +214,7 @@ abstract contract BaseContract {
         // =============================================
         // initialize MultiHashConsensus
         MultiHashConsensus(hashConsensusProxy).initialize(
-            SLOTS_PER_EPOCH,
-            SECONDS_PER_SLOT,
-            _genesisTime,
-            EPOCHS_PER_FRAME,
-            INITIAL_FAST_LANE_LENGTH_SLOTS,
-            _daoEOA,
-            withdrawOracleProxy
+            SLOTS_PER_EPOCH, SECONDS_PER_SLOT, _genesisTime, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, _daoEOA
         );
 
         // initialize WithdrawOracle
