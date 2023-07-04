@@ -37,13 +37,6 @@ interface IOperatorSlash {
         uint256[] memory _operatorIds,
         uint256[] memory _amounts
     ) external;
-    /**
-     * @notice According to the report result of the oracle machine, punish the operator who fails to exit in time
-     * @param _nftExitDelayedTokenIds exit delayed tokenIds
-     * @param _largeExitDelayedRequestIds large exit delayed requestIds
-     */
-    function slashOfExitDelayed(uint256[] memory _nftExitDelayedTokenIds, uint256[] memory _largeExitDelayedRequestIds)
-        external;
 
     /**
      * @notice The receiving function of the penalty, used for the automatic transfer after the operator recharges the margin

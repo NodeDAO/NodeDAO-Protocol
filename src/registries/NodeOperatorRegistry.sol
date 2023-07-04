@@ -541,18 +541,6 @@ contract NodeOperatorRegistry is
         emit PledgeDeposited(msg.value, _operatorId);
     }
 
-    /**
-     * @notice Operators will be penalized when they do not exit validators in time
-     * @param _operatorId operator id
-     * @param _amount slash amount
-     */
-    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external nonReentrant onlyOperatorSlash {
-        uint256 slashAmount = _slash(_operatorId, _amount);
-        if (slashAmount > 0) {
-            operatorSlashContract.slashArrearsReceive{value: slashAmount}(_operatorId, slashAmount);
-        }
-    }
-
     function _slash(uint256 _operatorId, uint256 _amount) internal operatorExists(_operatorId) returns (uint256) {
         uint256 pledgeAmounts = operatorPledgeVaultBalances[_operatorId];
         if (pledgeAmounts == 0) {

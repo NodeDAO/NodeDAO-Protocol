@@ -37,17 +37,19 @@ contract OperatorSlash is
     // The index of the compensation that has been completed is used for the distribution of compensation when replenishing the margin
     uint256 public operatorCompensatedIndex;
 
+    // ------------ Deprecate Deprecate Deprecate ------------
     // delay exit slash
     // When the operator does not nft unstake or large withdrawals for more than 72 hours, the oracle will be punished
-    uint256 public delayedExitSlashStandard;
+    uint256 private delayedExitSlashStandard;
     // Penalty amount for each validator per block
-    uint256 public slashAmountPerBlockPerValidator;
+    uint256 private slashAmountPerBlockPerValidator;
 
     // Record the latest penalty information
     // key is tokenId, value is blockNumber
-    mapping(uint256 => uint256) public nftExitDelayedSlashRecords;
+    mapping(uint256 => uint256) private nftExitDelayedSlashRecords;
     // key is requestId, value is blockNumber
-    mapping(uint256 => uint256) public largeExitDelayedSlashRecords;
+    mapping(uint256 => uint256) private largeExitDelayedSlashRecords;
+    // ------------ Deprecate Deprecate Deprecate ------------
 
     // v2 storage
     address public largeStakingContractAddress;
@@ -150,57 +152,6 @@ contract OperatorSlash is
     ) external onlyLargeStaking {
         if (_stakingIds.length != _amounts.length || _amounts.length == 0) revert InvalidParameter();
         nodeOperatorRegistryContract.slash(slashTypeOfStakingId, _stakingIds, _operatorIds, _amounts);
-    }
-
-    /**
-     * @notice According to the report result of the oracle machine, punish the operator who fails to exit in time
-     * @param _nftExitDelayedTokenIds exit delayed tokenIds
-     * @param _largeExitDelayedRequestIds large exit delayed requestIds
-     */
-    function slashOfExitDelayed(uint256[] memory _nftExitDelayedTokenIds, uint256[] memory _largeExitDelayedRequestIds)
-        external
-        onlyVaultManager
-    {
-        uint256[] memory nftExitHeight = vNFTContract.getNftExitBlockNumbers(_nftExitDelayedTokenIds);
-
-        for (uint256 i = 0; i < _nftExitDelayedTokenIds.length; ++i) {
-            uint256 tokenId = _nftExitDelayedTokenIds[i];
-            uint256 startNumber = withdrawalRequestContract.getNftUnstakeBlockNumber(tokenId);
-            if (startNumber == 0) revert InvalidParameter();
-            if (nftExitDelayedSlashRecords[tokenId] != 0) {
-                startNumber = nftExitDelayedSlashRecords[tokenId];
-            }
-
-            nftExitDelayedSlashRecords[tokenId] = block.number;
-            uint256 operatorId = vNFTContract.operatorOf(tokenId);
-
-            _delaySlash(operatorId, startNumber, nftExitHeight[i] == 0 ? block.number : nftExitHeight[i], 1);
-        }
-
-        for (uint256 i = 0; i < _largeExitDelayedRequestIds.length; ++i) {
-            uint256 requestId = _largeExitDelayedRequestIds[i];
-            uint256 operatorId = 0;
-            uint256 withdrawHeight = 0;
-            uint256 claimEthAmount = 0;
-            (operatorId, withdrawHeight,,, claimEthAmount,,) =
-                withdrawalRequestContract.getWithdrawalOfRequestId(requestId);
-            uint256 startNumber = withdrawHeight;
-            if (largeExitDelayedSlashRecords[requestId] != 0) {
-                startNumber = largeExitDelayedSlashRecords[requestId];
-            }
-            largeExitDelayedSlashRecords[requestId] = block.number;
-
-            _delaySlash(operatorId, startNumber, block.number, (claimEthAmount - claimEthAmount % 32 ether) / 32 ether);
-        }
-    }
-
-    function _delaySlash(uint256 _operatorId, uint256 _startNumber, uint256 _endNumber, uint256 validatorNumber)
-        internal
-    {
-        uint256 slashNumber = _endNumber - _startNumber;
-        if (slashNumber < delayedExitSlashStandard) revert NoSlashNeeded();
-        uint256 _amount = slashNumber * slashAmountPerBlockPerValidator * validatorNumber;
-        nodeOperatorRegistryContract.slashOfExitDelayed(_operatorId, _amount);
     }
 
     /**
@@ -378,16 +329,6 @@ contract OperatorSlash is
         }
 
         return totalCompensated;
-    }
-
-    /**
-     * @notice Set the penalty amount per block per validator
-     * @param _slashAmountPerBlockPerValidator unit penalty amount
-     */
-    function setSlashAmountPerBlockPerValidator(uint256 _slashAmountPerBlockPerValidator) external onlyOwner {
-        if (_slashAmountPerBlockPerValidator > 10000000000000) revert ExcessivePenaltyAmount();
-        emit SlashAmountPerBlockPerValidatorSet(slashAmountPerBlockPerValidator, _slashAmountPerBlockPerValidator);
-        slashAmountPerBlockPerValidator = _slashAmountPerBlockPerValidator;
     }
 
     /**

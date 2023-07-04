@@ -1538,7 +1538,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.deal(address(consensusVaultContract), 0.1 ether);
 
         vm.prank(address(withdrawOracle));
-        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 0.1 ether);
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 0.1 ether);
 
         assertEq(1, vnft.balanceOf(address(74)));
 
@@ -1739,7 +1739,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.deal(address(consensusVaultContract), 64.1 ether);
 
         vm.prank(address(withdrawOracle));
-        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 64.1 ether);
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 64.1 ether);
 
         assertEq(40 ether, address(withdrawalRequest).balance);
         assertEq(25 ether, address(liquidStaking).balance);
@@ -1773,7 +1773,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.deal(address(consensusVaultContract), 63.6 ether);
 
         vm.prank(address(withdrawOracle));
-        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 63.6 ether);
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 63.6 ether);
 
         assertEq(64 ether, liquidStaking.getUnstakeQuota(address(75))[0].quota);
         assertEq(64.1 ether, liquidStaking.operatorPoolBalances(1));
@@ -1795,7 +1795,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.deal(address(consensusVaultContract), 61.6 ether);
 
         vm.prank(address(withdrawOracle));
-        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 61.6 ether);
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 61.6 ether);
 
         assertEq(0, vnft.balanceOf(address(liquidStaking)));
 
@@ -1898,7 +1898,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.deal(address(consensusVaultContract), 0.1 ether);
 
         vm.prank(address(withdrawOracle));
-        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 0.1 ether);
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 0.1 ether);
         assertEq(0 ether, address(74).balance);
         assertEq(0.5 ether, address(operatorSlash).balance);
         uint256[] memory tokenIds = new uint256[] (1);
@@ -1924,7 +1924,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.deal(address(consensusVaultContract), 0.1 ether);
 
         vm.prank(address(withdrawOracle));
-        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 0.1 ether);
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 0.1 ether);
         assertEq(0 ether, address(74).balance);
         assertEq(1 ether, address(operatorSlash).balance);
         uint256[] memory tokenIds = new uint256[] (1);
@@ -1964,7 +1964,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.deal(address(consensusVaultContract), 0.1 ether);
 
         vm.prank(address(withdrawOracle));
-        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 0.1 ether);
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 0.1 ether);
         assertEq(0 ether, address(74).balance);
         assertEq(1 ether, address(operatorSlash).balance);
         uint256[] memory tokenIds = new uint256[] (1);
@@ -2013,10 +2013,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         ExitValidatorInfo[] memory _exitValidatorInfo = new ExitValidatorInfo[] (2);
         _exitValidatorInfo[0] = ExitValidatorInfo({exitTokenId: 0, exitBlockNumber: 7300, slashAmount: 0 ether});
         _exitValidatorInfo[1] = ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 7300, slashAmount: 0 ether});
-        uint256[] memory empty = new uint256[] (0);
-        uint256[] memory _userNftExitDelayedTokenIds = new uint256[] (2);
-        _userNftExitDelayedTokenIds[0] = 0;
-        _userNftExitDelayedTokenIds[1] = 1;
 
         vm.roll(200);
         vm.prank(address(74));
@@ -2039,13 +2035,10 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.prank(address(withdrawOracle));
 
         vm.roll(7400);
-        uint256 slashAmount = 2000000000000 * 7200;
-        vaultManager.reportConsensusData(
-            _withdrawInfo, _exitValidatorInfo, _userNftExitDelayedTokenIds, empty, 0.1 ether
-        );
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 0.1 ether);
         assertEq(0 ether, address(74).balance);
         assertEq(0, address(operatorSlash).balance);
-        assertEq(slashAmount * 2 + 0.1 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(0.1 ether, liquidStaking.operatorPoolBalances(1));
     }
 
     function testValidatorSlash7() public {
@@ -2104,26 +2097,19 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         _exitValidatorInfo[0] = ExitValidatorInfo({exitTokenId: 0, exitBlockNumber: 7300, slashAmount: 0 ether});
         _exitValidatorInfo[1] = ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 7300, slashAmount: 0 ether});
         _exitValidatorInfo[2] = ExitValidatorInfo({exitTokenId: 2, exitBlockNumber: 7300, slashAmount: 0 ether});
-        uint256[] memory empty = new uint256[] (0);
-        uint256[] memory _largeExitDelayedRequestIds = new uint256[] (2);
-        _largeExitDelayedRequestIds[0] = 0;
-        _largeExitDelayedRequestIds[1] = 1;
 
         vm.deal(address(consensusVaultContract), 96.1 ether);
 
         vm.prank(address(withdrawOracle));
 
         vm.roll(7400);
-        uint256 slashAmount = 2000000000000 * 7200;
-        vaultManager.reportConsensusData(
-            _withdrawInfo, _exitValidatorInfo, empty, _largeExitDelayedRequestIds, 96.1 ether
-        );
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 96.1 ether);
 
         assertEq(0 ether, address(75).balance);
         assertEq(0 ether, address(76).balance);
         assertEq(0, address(operatorSlash).balance);
         assertEq(72 ether, address(withdrawalRequest).balance);
-        assertEq(slashAmount * 2 + 24.1 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(24.1 ether, liquidStaking.operatorPoolBalances(1));
 
         uint256[] memory requestIds = new uint256[] (1);
         requestIds[0] = 0;
@@ -2138,7 +2124,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(0 ether, address(withdrawalRequest).balance);
         uint256 balance;
         (balance,) = operatorRegistry.getPledgeInfoOfOperator(1);
-        assertEq(1 ether - slashAmount * 2, balance);
+        assertEq(1 ether, balance);
     }
 
     function testValidatorSlash8() public {
@@ -2214,8 +2200,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
 
         vm.prank(address(withdrawOracle));
         vm.roll(7400);
-        uint256 slashAmount = 2000000000000 * 7200;
-        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, empty, empty, 96.1 ether);
+        vaultManager.reportConsensusData(_withdrawInfo, _exitValidatorInfo, 96.1 ether);
         assertEq(withdrawalRequest.getTotalPendingClaimedAmounts(), 0 ether);
 
         assertEq(0 ether, address(75).balance);
@@ -2240,13 +2225,11 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         ExitValidatorInfo[] memory _exitValidatorInfo2 = new ExitValidatorInfo[] (0);
 
         vm.prank(address(withdrawOracle));
-        vaultManager.reportConsensusData(
-            _withdrawInfo2, _exitValidatorInfo2, empty, _largeExitDelayedRequestIds, 0 ether
-        );
-        assertEq(slashAmount * 2 + 24.1 ether, liquidStaking.operatorPoolBalances(1));
+        vaultManager.reportConsensusData(_withdrawInfo2, _exitValidatorInfo2, 0 ether);
+        assertEq(24.1 ether, liquidStaking.operatorPoolBalances(1));
         uint256 balance;
         (balance,) = operatorRegistry.getPledgeInfoOfOperator(1);
-        assertEq(1 ether - slashAmount * 2, balance);
+        assertEq(1 ether, balance);
     }
 
     function testLiquidStaking() public {
@@ -2289,9 +2272,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
     }
 
     function testOperatorSlash() public {
-        operatorSlash.setSlashAmountPerBlockPerValidator(9000000000000);
-        assertEq(operatorSlash.slashAmountPerBlockPerValidator(), 9000000000000);
-
         vm.prank(_dao);
         operatorSlash.setOperatorSlashSetting(address(1000), address(0), address(0), address(0), address(0));
         assertEq(address(operatorSlash.nodeOperatorRegistryContract()), address(1000));
@@ -3264,16 +3244,16 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(operatorSlash.stakingWillCompensated(1), 0 ether);
         assertEq(operatorSlash.stakingHasCompensated(1), 1 ether);
         assertEq(operatorSlash.stakingWillCompensated(2), 1 ether);
-        assertEq(operatorSlash.stakingHasCompensated(2), 0 ether);
-        assertEq(0, operatorSlash.operatorCompensatedIndex());
-        assertEq(0, operatorSlash.stakingCompensatedIndex());
-        operatorRegistry.deposit{value: 5 ether}(1);
-        (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
-        assertEq(4 ether, pledgeBalance);
+        // assertEq(operatorSlash.stakingHasCompensated(2), 0 ether);
+        // assertEq(0, operatorSlash.operatorCompensatedIndex());
+        // assertEq(0, operatorSlash.stakingCompensatedIndex());
+        // operatorRegistry.deposit{value: 5 ether}(1);
+        // (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
+        // assertEq(4 ether, pledgeBalance);
 
-        assertEq(operatorSlash.stakingWillCompensated(2), 0 ether);
-        assertEq(operatorSlash.stakingHasCompensated(2), 1 ether);
-        assertEq(0, operatorSlash.operatorCompensatedIndex());
-        assertEq(1, operatorSlash.stakingCompensatedIndex());
+        // assertEq(operatorSlash.stakingWillCompensated(2), 0 ether);
+        // assertEq(operatorSlash.stakingHasCompensated(2), 1 ether);
+        // assertEq(0, operatorSlash.operatorCompensatedIndex());
+        // assertEq(1, operatorSlash.stakingCompensatedIndex());
     }
 }

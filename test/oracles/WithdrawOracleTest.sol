@@ -1086,13 +1086,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         // report and settle
         testReportData_3validatorExit_1delayed_1largeExitRequest_1delayed();
 
-        uint256 slashPerBlock = operatorSlash.slashAmountPerBlockPerValidator();
-        // delayedExitSlashStandard = 7200    res = 800 + 900
-        uint256 slashBlock = 28000 + 28100 - (20000 + operatorSlash.delayedExitSlashStandard()) * 2;
-        uint256 pledgeBalanceReduce = slashPerBlock * slashBlock;
-
         // test settle data
         (uint256 pledgeBalanceReport,) = operatorRegistry.getPledgeInfoOfOperator(1);
-        //        assertEq(pledgeBalanceReport, pledgeBalance - pledgeBalanceReduce);
     }
 }

@@ -25,12 +25,6 @@ contract MockLargeOracleProvider is MockMultiOracleProvider {
 
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](0);
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockLargeStakeOracleEmptyReportData(uint256 refSlot)

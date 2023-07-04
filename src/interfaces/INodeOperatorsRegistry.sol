@@ -111,12 +111,6 @@ interface INodeOperatorsRegistry {
     ) external;
 
     /**
-     * @notice Operators will be penalized when they do not exit validators in time
-     * @param _operatorId operator id
-     * @param _amount slash amount
-     */
-    function slashOfExitDelayed(uint256 _operatorId, uint256 _amount) external;
-    /**
      * @notice deposit pledge fund for operator
      * @param _operatorId operator Id
      */
