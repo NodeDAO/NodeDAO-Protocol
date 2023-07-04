@@ -14,6 +14,11 @@ import "src/interfaces/IOperatorSlash.sol";
 import "src/interfaces/ILargeStaking.sol";
 import {CLStakingExitInfo, CLStakingSlashInfo} from "src/library/ConsensusStruct.sol";
 
+/**
+ * @title Large Staking
+ *
+ * Non-custodial large-amount pledge, supporting the migration of verifiers
+ */
 contract LargeStaking is
     ILargeStaking,
     Initializable,
@@ -46,7 +51,7 @@ contract LargeStaking is
 
     uint256 public MIN_STAKE_AMOUNT;
 
-    mapping(uint256 => bytes[]) public validators; // key is stakingId
+    mapping(uint256 => bytes[]) internal validators; // key is stakingId
     // report data
     mapping(bytes => uint256) public validatorExitReportBlock;
     mapping(bytes => uint256) public validatorSlashAmount;
@@ -108,6 +113,9 @@ contract LargeStaking is
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
+    /**
+     * @notice initialize LargeStaking Contract
+     */
     function initialize(
         address _dao,
         address _daoVaultAddress,
@@ -140,6 +148,10 @@ contract LargeStaking is
         MIN_STAKE_AMOUNT = 320 ether;
     }
 
+    /**
+     * @notice The operator starts the shared revenue pool. If the operator is not started,
+     * users cannot use the shared revenue pool for pledge
+     */
     function startupSharedRewardPool(uint256 _operatorId) public {
         (,, address owner,,) = nodeOperatorRegistryContract.getNodeOperator(_operatorId, false);
         if (msg.sender != owner) revert PermissionDenied();
@@ -153,6 +165,12 @@ contract LargeStaking is
         emit SharedRewardPoolStart(_operatorId, elRewardPoolAddr);
     }
 
+    /**
+     * @notice The user initiates a large amount of pledge,
+     * allowing the user to set the owner, withdrawal certificate,
+     * whether to use the shared revenue pool.
+     * Once set, cannot be changed
+     */
     function largeStake(uint256 _operatorId, address _owner, address _withdrawCredentials, bool _isELRewardSharing)
         public
         payable
@@ -173,6 +191,10 @@ contract LargeStaking is
         emit LargeStake(_operatorId, curStakingId, msg.value, _owner, _withdrawCredentials, _isELRewardSharing);
     }
 
+    /**
+     * @notice The user adds pledge funds to an existing pledge order.
+     * Check through the owner and withdrawal certificate to prevent pledge errors
+     */
     function appendLargeStake(uint256 _stakingId, address _owner, address _withdrawCredentials) public payable {
         if (msg.value < 32 ether || msg.value % 32 ether != 0 || _stakingId < 1 || _stakingId > totalLargeStakingCounts)
         {
@@ -202,6 +224,11 @@ contract LargeStaking is
         emit AppendStake(_stakingId, msg.value);
     }
 
+    /**
+     * @notice Users can unstake.
+     * If the funds have not been pledged, the funds will be withdrawn synchronously.
+     * If the funds have been recharged to eth2, the funds will be withdrawn asynchronously and automatically to the withdrawal certificate address
+     */
     function largeUnstake(uint256 _stakingId, uint256 _amount) public {
         StakingInfo storage stakingInfo = largeStakings[_stakingId];
         if (
@@ -245,6 +272,9 @@ contract LargeStaking is
         emit LargeUnstake(_stakingId, _amount);
     }
 
+    /**
+     * @notice Allows the operator to migrate already running validators into the protocol.
+     */
     function migrateStake(
         address _owner,
         address _withdrawCredentials,
@@ -271,6 +301,9 @@ contract LargeStaking is
         emit MigretaStake(operatorId, curStakingId, stakeAmounts, _owner, _withdrawCredentials, _isELRewardSharing);
     }
 
+    /**
+     * @notice Allows the operator to migrate already running validators into existing stake orders.
+     */
     function appendMigrateStake(
         uint256 _stakingId,
         address _owner,
@@ -372,10 +405,16 @@ contract LargeStaking is
         }
     }
 
+    /**
+     * @notice Calculate WithdrawCredentials based on address
+     */
     function getWithdrawCredentials(address _withdrawCredentials) public pure returns (bytes32) {
         return abi.decode(abi.encodePacked(hex"010000000000000000000000", _withdrawCredentials), (bytes32));
     }
 
+    /**
+     * @notice operator registration validators
+     */
     function registerValidator(
         uint256 _stakingId,
         bytes[] calldata _pubkeys,
@@ -412,6 +451,9 @@ contract LargeStaking is
         validatorOfStaking[_pubkey] = _stakingId;
     }
 
+    /**
+     * @notice Get pending rewards
+     */
     function reward(uint256 _stakingId) public view returns (uint256 userReward) {
         StakingInfo memory stakingInfo = largeStakings[_stakingId];
         (uint256 operatorId,, uint256 rewards) = getRewardPoolInfo(_stakingId);
@@ -446,6 +488,9 @@ contract LargeStaking is
         return (userReward);
     }
 
+    /**
+     * @notice Get reward pool information
+     */
     function getRewardPoolInfo(uint256 _stakingId)
         public
         view
@@ -463,6 +508,9 @@ contract LargeStaking is
         return (operatorId, rewardPoolAddr, rewards);
     }
 
+    /**
+     * @notice Settle the shared reward pool. Each operator has only one shared reward pool
+     */
     function settleElSharedReward(uint256 _operatorId) public {
         address rewardPoolAddr = elSharedRewardPool[_operatorId];
         if (address(0) == rewardPoolAddr) revert SharedRewardPoolNotOpened();
@@ -481,6 +529,10 @@ contract LargeStaking is
         emit ELShareingRewardSettle(_operatorId, daoReward, operatorReward, poolReward);
     }
 
+    /**
+     * @notice Settle the private reward pool.
+     * Each pledge sheet of a private reward pool has its own private reward pool
+     */
     function settleElPrivateReward(uint256 _stakingId) public {
         if (_stakingId < 1 || _stakingId > totalLargeStakingCounts) revert InvalidParameter();
 
@@ -513,6 +565,9 @@ contract LargeStaking is
         return (daoReward, operatorReward, poolReward);
     }
 
+    /**
+     * @notice Users claim benefits of the execution layer
+     */
     function claimRewardsOfUser(uint256 _stakingId, address beneficiary, uint256 rewards) public {
         StakingInfo memory stakingInfo = largeStakings[_stakingId];
         if (beneficiary == address(0) || msg.sender != stakingInfo.owner) revert PermissionDenied();
@@ -553,6 +608,9 @@ contract LargeStaking is
         operatorSlashContract.claimCompensatedOfLargeStaking(_stakingIds, beneficiary);
     }
 
+    /**
+     * @notice The operator claim the reward commission
+     */
     function claimRewardsOfOperator(uint256[] memory _privatePoolStakingIds, bool _claimSharePool, uint256 _operatorId)
         external
     {
@@ -627,6 +685,9 @@ contract LargeStaking is
         }
     }
 
+    /**
+     * @notice The Dao claim the reward commission
+     */
     function claimRewardsOfDao(uint256[] memory _privatePoolStakingIds, uint256[] memory _operatorIds) external {
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _privatePoolStakingIds.length; ++i) {
@@ -657,6 +718,9 @@ contract LargeStaking is
         }
     }
 
+    /**
+     * @notice The oracle reports the verifier's exit and slash information.
+     */
     function reportCLStakingData(
         CLStakingExitInfo[] memory _clStakingExitInfo,
         CLStakingSlashInfo[] memory _clStakingSlashInfo
@@ -718,10 +782,17 @@ contract LargeStaking is
         }
     }
 
+    /**
+     * @notice Get the number of verifiers of the operator,
+     * including those who have recharged and those who are waiting for recharge
+     */
     function getOperatorValidatorCounts(uint256 _operatorId) external view returns (uint256) {
         return totalLargeStakeAmounts[_operatorId] / 32 ether;
     }
 
+    /**
+     * @notice Get all the pledge orders of the user
+     */
     function getStakingInfoOfOwner(address _owner) public view returns (StakingInfo[] memory) {
         uint256 number = 0;
         for (uint256 i = 1; i <= totalLargeStakingCounts; ++i) {
@@ -740,6 +811,16 @@ contract LargeStaking is
         return userStakings;
     }
 
+    /**
+     * @notice Get all validators under the pledge order
+     */
+    function getValidatorsOfStakingId(uint256 _stakingId) public view returns (bytes[] memory) {
+        return validators[_stakingId];
+    }
+
+    /**
+     * @notice set contract setting
+     */
     function setLargeStakingSetting(
         address _dao,
         address _daoVaultAddress,
