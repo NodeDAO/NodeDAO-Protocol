@@ -141,6 +141,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     function initializeV2(address _consensus, uint256 _lastProcessingRefSlot) public reinitializer(2) onlyDao {
         _setConsensusContract(_consensus, _lastProcessingRefSlot);
         _updateContractVersion(2);
+        _setConsensusVersion(2);
     }
 
     /// Set the number limit for the validator to report

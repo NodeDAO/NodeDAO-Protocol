@@ -2,6 +2,7 @@
 pragma solidity 0.8.8;
 
 import "src/oracles/WithdrawOracle.sol";
+import "src/oracles/LargeStakeOracle.sol";
 import "src/oracles/MultiHashConsensus.sol";
 import "forge-std/Script.sol";
 import "./utils/DeployProxy.sol";
@@ -87,18 +88,22 @@ abstract contract BaseContract {
     uint256 public constant SECONDS_PER_FRAME = SECONDS_PER_EPOCH * EPOCHS_PER_FRAME;
     uint256 public constant SLOTS_PER_FRAME = EPOCHS_PER_FRAME * SLOTS_PER_EPOCH;
 
-    uint256 public constant CONSENSUS_VERSION = 1;
+    uint256 public constant CONSENSUS_VERSION = 2;
 
     uint256 public constant EXIT_REQUEST_LIMIT = 100;
     uint256 public constant CL_VAULT_MIN_SETTLE_LIMIT = 1e19;
 
     WithdrawOracle withdrawOracle;
 
+    LargeStakeOracle largeStakeOracle;
+
     MultiHashConsensus hashConsensus;
 
     address hashConsensusProxy;
 
     address withdrawOracleProxy;
+
+    address largeStakeOracleProxy;
 
     function deployContracts() public {
         // =============================================
@@ -136,13 +141,7 @@ abstract contract BaseContract {
 
         // initialize MultiHashConsensus
         MultiHashConsensus(hashConsensusProxy).initialize(
-            SLOTS_PER_EPOCH,
-            SECONDS_PER_SLOT,
-            _genesisTime,
-            EPOCHS_PER_FRAME,
-            INITIAL_FAST_LANE_LENGTH_SLOTS,
-            _daoEOA,
-            withdrawOracleProxy
+            SLOTS_PER_EPOCH, SECONDS_PER_SLOT, _genesisTime, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, _daoEOA
         );
 
         // initialize WithdrawOracle
@@ -243,9 +242,11 @@ contract DeployMainnetOracleScript is Script, BaseContract, MainnetHelperContrac
 }
 
 // forge script script/Deploy-oracle.s.sol:UpgradeWithdrawOracleScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify --retries 10 --delay 30
-contract UpgradeWithdrawOracleScript is Script {
-    WithdrawOracle withdrawOracle;
-    address withdrawOracleProxy = address(0x682997ff9D94739bFe52232AEeC82A9Ddd56694C);
+contract UpgradeWithdrawOracleScript is Script, BaseContract, GoerliHelperContract {
+    WithdrawOracle withdrawOracleUpgrade;
+    address withdrawOracleUpgradeProxy = address(0x1E726f6111B58e74CCD63d5b659191A49366CaD9);
+    MultiHashConsensus multiHashConsensus;
+    address multiHashConsensusProxy;
 
     function setUp() public {}
 
@@ -253,9 +254,65 @@ contract UpgradeWithdrawOracleScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        // deploy WithdrawOracle implement
-        withdrawOracle = new WithdrawOracle();
-        //        WithdrawOracle(withdrawOracleProxy).upgradeTo(address(withdrawOracle));
+        //        withdrawOracleUpgrade = new WithdrawOracle();
+        //        console.log("========withdrawOracleUpgrade: ", address(withdrawOracleUpgrade));
+
+        multiHashConsensus = new MultiHashConsensus();
+
+        DeployProxy deployer = new DeployProxy();
+        deployer.setType("uups");
+
+        multiHashConsensusProxy = deployer.deploy(address(multiHashConsensus));
+        console.log("========multiHashConsensusProxy: ", multiHashConsensusProxy);
+
+        // initialize MultiHashConsensus
+        MultiHashConsensus(multiHashConsensusProxy).initialize(
+            SLOTS_PER_EPOCH, SECONDS_PER_SLOT, _genesisTime, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, _daoEOA
+        );
+
+        MultiHashConsensus(multiHashConsensusProxy).updateInitialEpoch(186032);
+
+        // hashConsensusProxy addOracleMember
+        for (uint256 i = 0; i < memberArray.length; ++i) {
+            MultiHashConsensus(hashConsensusProxy).addMember(memberArray[i], QUORUM);
+        }
+
+        WithdrawOracle(withdrawOracleUpgradeProxy).initializeV2(multiHashConsensusProxy, 5936159);
+
+        MultiHashConsensus(multiHashConsensusProxy).transferOwnership(timelock);
+
+        vm.stopBroadcast();
+    }
+}
+
+// forge script script/Deploy-oracle.s.sol:DeployGoerliLargeStakeOracleScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify --retries 10 --delay 30
+contract DeployGoerliLargeStakeOracleScript is Script, BaseContract, GoerliHelperContract {
+    address multiHashConsensusAddress = address(0x9eA34008219d1898269d91b7d04c604CA7324790);
+    address largeStakingAddress = address(0xB71D8903Ae22df40DdDb189AfBcE5e99B23b7077);
+
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        largeStakeOracle = new LargeStakeOracle();
+
+        DeployProxy deployer = new DeployProxy();
+        deployer.setType("uups");
+
+        largeStakeOracleProxy = deployer.deploy(address(largeStakeOracle));
+        console.log("========largeStakeOracleProxy: ", largeStakeOracleProxy);
+
+        LargeStakeOracle(largeStakeOracleProxy).initialize(
+            SECONDS_PER_SLOT,
+            _genesisTime,
+            multiHashConsensusAddress,
+            CONSENSUS_VERSION,
+            0,
+            _daoEOA,
+            largeStakingAddress
+        );
+
+        LargeStakeOracle(largeStakeOracleProxy).transferOwnership(timelock);
 
         vm.stopBroadcast();
     }

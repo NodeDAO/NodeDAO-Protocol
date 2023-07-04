@@ -104,13 +104,7 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     function deployMultiHashConsensusMock() public returns (MultiHashConsensusWithTimer) {
         MultiHashConsensusWithTimer consensus = new MultiHashConsensusWithTimer();
         consensus.initialize(
-            SLOTS_PER_EPOCH,
-            SECONDS_PER_SLOT,
-            GENESIS_TIME,
-            EPOCHS_PER_FRAME,
-            INITIAL_FAST_LANE_LENGTH_SLOTS,
-            DAO,
-            address(0)
+            SLOTS_PER_EPOCH, SECONDS_PER_SLOT, GENESIS_TIME, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, DAO
         );
 
         return consensus;

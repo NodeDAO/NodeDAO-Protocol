@@ -151,8 +151,8 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         consensus.updateInitialEpoch(INITIAL_EPOCH);
         consensus.setTime(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
 
-        consensus.addReportProcessor(address(withdrawOracle));
-        consensus.addReportProcessor(address(reportProcessor1));
+        consensus.addReportProcessor(address(withdrawOracle), 1);
+        consensus.addReportProcessor(address(reportProcessor1), 1);
 
         consensus.addMember(MEMBER_1, 1);
         consensus.addMember(MEMBER_2, 3);

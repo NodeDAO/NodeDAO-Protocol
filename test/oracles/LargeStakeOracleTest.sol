@@ -196,8 +196,8 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         consensus.updateInitialEpoch(INITIAL_EPOCH);
         consensus.setTime(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
 
-        consensus.addReportProcessor(address(withdrawOracle));
-        consensus.addReportProcessor(address(largeStakeOracle));
+        consensus.addReportProcessor(address(withdrawOracle), 1);
+        consensus.addReportProcessor(address(largeStakeOracle), 2);
 
         consensus.addMember(MEMBER_1, 1);
         consensus.addMember(MEMBER_2, 3);
@@ -214,6 +214,14 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         );
 
         vm.stopPrank();
+
+        consensus.setTimeInEpochs(60);
+    }
+
+    // forge test -vvvv --match-test testRefSlot
+    function testRefSlot() public {
+        uint256 time = consensus.getTime();
+        (uint256 refSlot,) = consensus.getCurrentFrame();
     }
 
     /////////////////////////  test 1 consensus 2 oracle report  ///////////////////////////////////////
@@ -460,5 +468,19 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
             largeStakeOracleProcState.processingDeadlineTime, computeTimestampAtSlot(reportProcessingDeadlineSlot2)
         );
         assertTrue(largeStakeOracleProcState.dataSubmitted);
+    }
+
+    // forge test -vvvv --match-test testIsModuleReport
+    function testIsModuleReport() public {
+        consensus.setTimeInEpochs(60);
+
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+        assertTrue(consensus.isModuleReport(1, refSlot));
+        assertTrue(consensus.isModuleReport(2, refSlot));
+
+        consensus.setTimeInEpochs(80);
+        (uint256 refSlot2,) = consensus.getCurrentFrame();
+        assertTrue(consensus.isModuleReport(1, refSlot2));
+        assertFalse(consensus.isModuleReport(2, refSlot2));
     }
 }

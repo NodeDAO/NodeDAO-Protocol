@@ -8,8 +8,6 @@ contract MockMultiReportProcessor is IReportAsyncProcessor {
 
     uint256 internal _consensusVersion;
 
-    uint256 public moduleId;
-
     struct SubmitReportLastCall {
         bytes32 report;
         uint256 refSlot;
@@ -53,18 +51,9 @@ contract MockMultiReportProcessor is IReportAsyncProcessor {
         _submitReportLastCall.refSlot = refSlot;
         _submitReportLastCall.deadline = deadline;
         ++_submitReportLastCall.callCount;
-        if (_moduleId != moduleId) {
-            revert ModuleIdNotEqual();
-        }
     }
 
     function getLastProcessingRefSlot() external view returns (uint256) {
         return _lastProcessingRefSlot;
-    }
-
-    /// @notice Associate the Processor's module
-    /// Set the permissions to the Multi Hash Consensus contract
-    function setModuleId(uint256 _moduleId) external {
-        moduleId = _moduleId;
     }
 }

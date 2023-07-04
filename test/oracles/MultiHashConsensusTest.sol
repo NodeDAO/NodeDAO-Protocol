@@ -21,9 +21,9 @@ contract MultiHashConsensusTest is Test, MockMultiOracleProvider {
         vm.startPrank(DAO);
         consensus.updateInitialEpoch(INITIAL_EPOCH);
         consensus.setTime(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
-        consensus.addReportProcessor(address(reportProcessor1));
-        consensus.addReportProcessor(address(reportProcessor2));
-        consensus.addReportProcessor(address(reportProcessor3));
+        consensus.addReportProcessor(address(reportProcessor1), 1);
+        consensus.addReportProcessor(address(reportProcessor2), 1);
+        consensus.addReportProcessor(address(reportProcessor3), 1);
         vm.stopPrank();
     }
 
@@ -448,9 +448,9 @@ contract MultiHashConsensusTest is Test, MockMultiOracleProvider {
         assertTrue(consensus.getIsReportProcessor(address(reportProcessor1)));
         assertTrue(consensus.getIsReportProcessor(address(reportProcessor2)));
 
-        address[] memory reportProcessors = consensus.getReportProcessors();
-        assertEq(reportProcessors[0], address(reportProcessor1));
-        assertEq(reportProcessors[1], address(reportProcessor2));
+        MultiHashConsensus.ReportProcessor[] memory reportProcessors = consensus.getReportProcessors();
+        assertEq(reportProcessors[0].processor, address(reportProcessor1));
+        assertEq(reportProcessors[1].processor, address(reportProcessor2));
 
         assertEq(consensus.getReportModuleId(address(reportProcessor1)), 1);
         assertEq(consensus.getReportModuleId(address(reportProcessor2)), 2);
@@ -458,13 +458,13 @@ contract MultiHashConsensusTest is Test, MockMultiOracleProvider {
         // checks next processor is not the same as previous
         vm.prank(DAO);
         vm.expectRevert(abi.encodeWithSignature("DuplicateReportProcessor()"));
-        consensus.addReportProcessor(address(reportProcessor1));
+        consensus.addReportProcessor(address(reportProcessor1), 1);
 
         //        vm.prank(DAO);
         MockMultiReportProcessor reportProcessor4 = new MockMultiReportProcessor(CONSENSUS_VERSION);
         vm.prank(DAO);
-        consensus.addReportProcessor(address(reportProcessor4));
-        assertEq(consensus.getReportProcessors()[3], address(reportProcessor4));
+        consensus.addReportProcessor(address(reportProcessor4), 1);
+        assertEq(consensus.getReportProcessors()[3].processor, address(reportProcessor4));
 
         //------test callCount ------
         vm.prank(DAO);

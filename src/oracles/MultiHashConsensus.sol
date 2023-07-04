@@ -47,10 +47,6 @@ interface IReportAsyncProcessor {
     /// one returned from this function.
     ///
     function getConsensusVersion() external view returns (uint256);
-
-    /// @notice Associate the Processor's module
-    /// Set the permissions to the Multi Hash Consensus contract
-    function setModuleId(uint256 moduleId) external;
 }
 
 contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
@@ -59,6 +55,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     error InvalidAddr();
     error NumericOverflow();
     error ReportProcessorCannotBeZero();
+    error FrameMultipleCannotBeZero();
     error DuplicateMember();
     error DuplicateReportProcessor();
     error ReportProcessorNotFound(address reportProcessor);
@@ -72,6 +69,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     error UnexpectedConsensusVersion(uint256 expected, uint256 received);
     error QuorumTooSmall(uint256 minQuorum, uint256 receivedQuorum);
     error InvalidSlot();
+    error OracleIndexReportShouldZeroHash(uint256 refSlot, bytes32[] report, uint256 moduleId, uint64 frameMultiple);
     error DuplicateReport();
     error EmptyReport();
     error ReportLenNotEqualReportProcessorsLen();
@@ -87,8 +85,10 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     event QuorumSet(uint256 newQuorum, uint256 totalMembers, uint256 prevQuorum);
     event ReportReceived(uint256 indexed refSlot, address indexed member, bytes32[] report);
     event ConsensusReached(uint256 indexed refSlot, bytes32[] report, uint256 support);
-    event ReportProcessorAdd(address indexed processor, uint256 indexed moduleId);
-    event ReportProcessorUpdate(address indexed oldProcessor, address indexed newProcessor, uint256 indexed moduleId);
+    event ReportProcessorAdd(address indexed processor, uint256 indexed moduleId, uint64 frameMultiple);
+    event ReportProcessorUpdate(
+        address indexed oldProcessor, address indexed newProcessor, uint256 indexed moduleId, uint64 frameMultiple
+    );
 
     struct FrameConfig {
         uint64 initialEpoch;
@@ -130,6 +130,13 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint64 support;
     }
 
+    struct ReportProcessor {
+        // the report address
+        address processor;
+        // The multiple of the frequency of the Frame(`FrameConfig.epochsPerFrame`).
+        uint64 frameMultiple;
+    }
+
     /// Chain specification
     uint64 internal SLOTS_PER_EPOCH;
     uint64 internal SECONDS_PER_SLOT;
@@ -165,8 +172,10 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     /// @dev The number of report variants
     uint256 internal _reportVariantsLength;
 
-    address[] internal reportProcessors;
+    // @dev Oracle service list
+    ReportProcessor[] internal reportProcessors;
 
+    // @dev The module ID of the report processor, starting with 1
     mapping(address => uint256) internal reportIndices1b;
 
     // Initialization
@@ -176,8 +185,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint256 genesisTime,
         uint256 epochsPerFrame,
         uint256 fastLaneLengthSlots,
-        address _dao,
-        address reportProcessor
+        address _dao
     ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
@@ -191,10 +199,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         dao = _dao;
         uint256 farFutureEpoch = _computeEpochAtTimestamp(type(uint64).max);
         _setFrameConfig(farFutureEpoch, epochsPerFrame, fastLaneLengthSlots, FrameConfig(0, 0, 0));
-
-        if (reportProcessor != address(0)) {
-            addReportProcessor(reportProcessor);
-        }
     }
 
     // set dao address
@@ -384,7 +388,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     /// Report processor
     ///
 
-    function getReportProcessors() external view returns (address[] memory) {
+    function getReportProcessors() external view returns (ReportProcessor[] memory) {
         return reportProcessors;
     }
 
@@ -396,30 +400,41 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         return reportIndices1b[reportProcessor];
     }
 
-    function addReportProcessor(address newProcessor) public onlyDao {
+    function addReportProcessor(address newProcessor, uint64 frameMultiple) public onlyDao {
         if (newProcessor == address(0)) revert ReportProcessorCannotBeZero();
         if (getIsReportProcessor(newProcessor)) revert DuplicateReportProcessor();
+        if (frameMultiple == 0) revert FrameMultipleCannotBeZero();
 
-        reportProcessors.push(newProcessor);
+        reportProcessors.push(ReportProcessor({processor: newProcessor, frameMultiple: frameMultiple}));
         uint256 newTotalReportProcessors = reportProcessors.length;
         reportIndices1b[newProcessor] = newTotalReportProcessors;
 
-        _setModuleId(newProcessor, newTotalReportProcessors);
-
-        emit ReportProcessorAdd(newProcessor, newTotalReportProcessors);
+        emit ReportProcessorAdd(newProcessor, newTotalReportProcessors, frameMultiple);
     }
 
-    function updateReportProcessor(address oldProcessor, address newProcessor) external onlyDao {
+    function updateReportProcessor(address oldProcessor, address newProcessor, uint64 frameMultiple) external onlyDao {
         if (oldProcessor == address(0) || newProcessor == address(0)) revert ReportProcessorCannotBeZero();
         if (getIsReportProcessor(oldProcessor)) revert ReportProcessorNotFound(oldProcessor);
         if (getIsReportProcessor(newProcessor)) revert ReportProcessorExist(newProcessor);
 
         uint256 oldIndex = reportIndices1b[oldProcessor] - 1;
-        reportProcessors[oldIndex] = newProcessor;
+        reportProcessors[oldIndex] = ReportProcessor({processor: newProcessor, frameMultiple: frameMultiple});
 
-        _setModuleId(newProcessor, oldIndex + 1);
+        emit ReportProcessorUpdate(oldProcessor, newProcessor, oldIndex + 1, frameMultiple);
+    }
 
-        emit ReportProcessorUpdate(oldProcessor, newProcessor, oldIndex + 1);
+    function isModuleReport(uint256 moduleId, uint256 slot) public view returns (bool) {
+        if (moduleId == 0) return false;
+        uint256 refSlot = _getCurrentFrame().refSlot;
+        if (slot < refSlot) return false;
+        uint64 frameMultiple = reportProcessors[moduleId - 1].frameMultiple;
+        if (
+            ((slot + 1) - (_frameConfig.initialEpoch * SLOTS_PER_EPOCH))
+                % (frameMultiple * _frameConfig.epochsPerFrame * SLOTS_PER_EPOCH) != 0
+        ) {
+            return false;
+        }
+        return true;
     }
 
     ///
@@ -786,6 +801,8 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
             revert ConsensusReportAlreadyProcessing();
         }
 
+        _checkFrameMultiple(slot, report);
+
         uint256 variantsLength;
 
         if (reportingState.lastReportRefSlot != slot) {
@@ -827,6 +844,20 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
         if (support >= _quorum) {
             _consensusReached(frame, report, varIndex, support);
+        }
+    }
+
+    function _checkFrameMultiple(uint256 slot, bytes32[] calldata report) internal {
+        for (uint256 i = 0; i < report.length; ++i) {
+            uint64 frameMultiple = reportProcessors[i].frameMultiple;
+            if (frameMultiple > 1) {
+                if (
+                    ((slot + 1) - (_frameConfig.initialEpoch * SLOTS_PER_EPOCH))
+                        % (frameMultiple * _frameConfig.epochsPerFrame * SLOTS_PER_EPOCH) != 0 && report[i] != ZERO_HASH
+                ) {
+                    revert OracleIndexReportShouldZeroHash(slot, report, i + 1, frameMultiple);
+                }
+            }
         }
     }
 
@@ -898,7 +929,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
         uint256 variantsLength = _reportVariantsLength;
         variantIndex = -1;
-        //        report = ZERO_HASH;
         support = 0;
 
         for (uint256 i = 0; i < variantsLength && report.length == 0; ++i) {
@@ -913,10 +943,9 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         return (report, variantIndex, support);
     }
 
-    // todo 考虑BaseOracle是否要存储 moduleId 用来进行hash校验
     function _submitReportForProcessing(ConsensusFrame memory frame, bytes32[] memory report) internal {
         for (uint256 i = 0; i < reportProcessors.length; ++i) {
-            IReportAsyncProcessor(reportProcessors[i]).submitConsensusReport(
+            IReportAsyncProcessor(reportProcessors[i].processor).submitConsensusReport(
                 report[i], frame.refSlot, _computeTimestampAtSlot(frame.reportProcessingDeadlineSlot), i + 1
             );
         }
@@ -928,10 +957,6 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
     function _getConsensusVersion(address _reportProcessor) internal view returns (uint256) {
         return IReportAsyncProcessor(_reportProcessor).getConsensusVersion();
-    }
-
-    function _setModuleId(address _reportProcessor, uint256 _moduleId) internal {
-        return IReportAsyncProcessor(_reportProcessor).setModuleId(_moduleId);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
