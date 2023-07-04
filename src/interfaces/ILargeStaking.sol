@@ -50,6 +50,7 @@ interface ILargeStaking {
     event ELRewardFactoryChanged(address _oldElRewardFactory, address _elRewardFactory);
     event OperatorSlashChanged(address _oldOperatorSlashContract, address _operatorSlashContract);
     event MinStakeAmountChange(uint256 _oldMinStakeAmount, uint256 _minStakeAmount);
+    event StakingManager(address _oldManager, address _manager);
 
     function getOperatorValidatorCounts(uint256 _operatorId) external view returns (uint256);
 

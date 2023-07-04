@@ -86,6 +86,9 @@ contract LargeStaking is
     mapping(uint256 => uint256) public daoPrivateRewards; // key is stakingId
     mapping(uint256 => uint256) public unclaimedPrivateRewards; // key is stakingId
 
+    // manager addr for unstake/claim reward
+    mapping(uint256 => address) public stakingMmanager; // key is stakingId
+
     error PermissionDenied();
     error InvalidParameter();
     error InvalidAddr();
@@ -236,7 +239,7 @@ contract LargeStaking is
                 || _amount > stakingInfo.stakingAmount - stakingInfo.unstakeRequestAmount
         ) revert InvalidAmount();
 
-        if (msg.sender != stakingInfo.owner) revert PermissionDenied();
+        if (msg.sender != stakingMmanager[_stakingId] && msg.sender != stakingInfo.owner) revert PermissionDenied();
 
         uint256 _unstakeAmount = 0;
         if (stakingInfo.stakingAmount > stakingInfo.alreadyUsedAmount) {
@@ -372,6 +375,8 @@ contract LargeStaking is
             withdrawCredentials: userWithdrawalCredentials
         });
 
+        stakingMmanager[curStakingId] = _owner;
+
         address elRewardPoolAddr;
         if (!_isELRewardSharing) {
             elRewardPoolAddr = elRewardFactory.create(_operatorId, address(this));
@@ -462,7 +467,7 @@ contract LargeStaking is
             SettleInfo memory settleInfo = eLSharedRewardSettleInfo[_stakingId];
             userReward = settleInfo.rewardBalance;
 
-            if (totalShares[operatorId] == 0 || valuePerShare[operatorId] == settleInfo.valuePerSharePoint) {
+            if (totalShares[operatorId] == 0) {
                 return (userReward);
             }
 
@@ -570,8 +575,9 @@ contract LargeStaking is
      */
     function claimRewardsOfUser(uint256 _stakingId, address beneficiary, uint256 rewards) public {
         StakingInfo memory stakingInfo = largeStakings[_stakingId];
-        if (beneficiary == address(0) || msg.sender != stakingInfo.owner) revert PermissionDenied();
-
+        if (beneficiary == address(0) || msg.sender != stakingMmanager[_stakingId] && msg.sender != stakingInfo.owner) {
+            revert PermissionDenied();
+        }
         SettleInfo storage settleInfo = eLSharedRewardSettleInfo[_stakingId];
 
         address rewardPoolAddr;
@@ -816,6 +822,16 @@ contract LargeStaking is
      */
     function getValidatorsOfStakingId(uint256 _stakingId) public view returns (bytes[] memory) {
         return validators[_stakingId];
+    }
+
+    /**
+     * @notice Allows to set the manager address for unstaking and claim benefits
+     */
+    function setStakingManager(uint256 _stakingId, address _manager) public {
+        StakingInfo memory stakingInfo = largeStakings[_stakingId];
+        if (msg.sender != stakingInfo.owner) revert PermissionDenied();
+        emit StakingManager(stakingMmanager[_stakingId], _manager);
+        stakingMmanager[_stakingId] = _manager;
     }
 
     /**
