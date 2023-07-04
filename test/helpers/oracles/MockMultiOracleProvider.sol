@@ -395,12 +395,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
 
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](0);
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportDataHash_1(uint256 refSlot) public pure returns (bytes32[] memory) {
@@ -440,12 +434,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         exitValidatorInfos[1] = exitValidatorInfo2;
         exitValidatorInfos[2] = exitValidatorInfo3;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportData_3validatorExit_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
@@ -485,13 +473,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         exitValidatorInfos[1] = exitValidatorInfo2;
         exitValidatorInfos[2] = exitValidatorInfo3;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](1);
-        delayedExitTokenIds[0] = 2;
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportData_3validatorExit_1delayed_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
@@ -535,14 +516,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         exitValidatorInfos[2] = exitValidatorInfo3;
         exitValidatorInfos[3] = exitValidatorInfo4;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](1);
-        delayedExitTokenIds[0] = 2;
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](1);
-        largeExitDelayedRequestIds[0] = 0;
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed_hash(uint256 refSlot)
@@ -583,12 +556,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
 
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](0);
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportData_OperatorReward_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
@@ -635,10 +602,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
 
         reportData.withdrawInfos = withdrawInfos;
         reportData.exitValidatorInfos = exitValidatorInfos;
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportData_batch100_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
@@ -680,12 +643,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
 
         reportData.withdrawInfos = withdrawInfos;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportData_batch100_normal_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
@@ -727,12 +684,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
 
         reportData.withdrawInfos = withdrawInfos;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportData_20Nft_20Operator_hash(uint256 refSlot) public pure returns (bytes32[] memory) {

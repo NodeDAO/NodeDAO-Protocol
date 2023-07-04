@@ -93,8 +93,6 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      * @notice Receive the oracle machine consensus layer information, initiate re-investment consensus layer rewards, trigger and update the exited nft
      * @param _withdrawInfo withdraw info
      * @param _exitValidatorInfo exit validator info
-     * @param _userNftExitDelayedTokenIds nft with delayed exit
-     * @param _largeExitDelayedRequestIds large Requests for Delayed Exit
      * @param _thisTotalWithdrawAmount The total settlement amount reported this time
      */
     function reportConsensusData(
@@ -106,14 +104,6 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         // including whether it was penalized.
         // It contains the protocol and all nft held by the user
         ExitValidatorInfo[] memory _exitValidatorInfo,
-        // The user's nft has applied for unstakeNFT,
-        // and the operator should complete the withdrawal of the nft within the specified time,
-        // otherwise it will be punished.
-        uint256[] memory _userNftExitDelayedTokenIds,
-        // For holders of neth, after initiating a large amount of withdrawal,
-        // the operator should complete it within the specified time,
-        // otherwise they will face punishment
-        uint256[] memory _largeExitDelayedRequestIds,
         // The amount of this settlement is the sum of the cumulative funds of clReward and clCapital in _withdrawInfo
         uint256 _thisTotalWithdrawAmount
     ) external onlyWithdrawOracle {
@@ -139,10 +129,14 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256 systemTotalSlashAmounts = 0;
         uint256 systemTotalExitNumber = 0;
         address system = address(liquidStakingContract);
+        bool isHasSlash = false;
         for (uint256 i = 0; i < _exitValidatorInfo.length; ++i) {
             ExitValidatorInfo memory vInfo = _exitValidatorInfo[i];
             exitTokenIds[i] = vInfo.exitTokenId;
             slashAmounts[i] = vInfo.slashAmount;
+            if (!isHasSlash && vInfo.slashAmount != 0) {
+                isHasSlash = true;
+            }
             exitBlockNumbers[i] = vInfo.exitBlockNumber;
             if (vNFTContract.ownerOf(vInfo.exitTokenId) == system) {
                 systemTotalSlashAmounts += vInfo.slashAmount;
@@ -156,13 +150,12 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         liquidStakingContract.reinvestClRewards(operatorIds, amounts, totalAmount);
 
-        if (_userNftExitDelayedTokenIds.length != 0 || _largeExitDelayedRequestIds.length != 0) {
-            operatorSlashContract.slashOfExitDelayed(_userNftExitDelayedTokenIds, _largeExitDelayedRequestIds);
-        }
-
         if (exitTokenIds.length != 0) {
-            // eth2 slash
-            operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
+            if (isHasSlash) {
+                // eth2 slash
+                operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
+            }
+
             // nft exit
             liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
         }

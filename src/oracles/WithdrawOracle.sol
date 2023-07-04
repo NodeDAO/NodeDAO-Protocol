@@ -78,10 +78,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         WithdrawInfo[] withdrawInfos;
         // To exit the validator's info
         ExitValidatorInfo[] exitValidatorInfos;
-        // The validator does not exit in time. Procedure
-        uint256[] delayedExitTokenIds;
-        //nETH reported a large exit
-        uint256[] largeExitDelayedRequestIds;
     }
 
     DataProcessingState internal dataProcessingState;
@@ -275,11 +271,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
         // Invoke vault Manager to process the reported data
         IVaultManager(vaultManager).reportConsensusData(
-            data.withdrawInfos,
-            data.exitValidatorInfos,
-            data.delayedExitTokenIds,
-            data.largeExitDelayedRequestIds,
-            data.clSettleAmount
+            data.withdrawInfos, data.exitValidatorInfos, data.clSettleAmount
         );
 
         // oracle maintains the necessary data
