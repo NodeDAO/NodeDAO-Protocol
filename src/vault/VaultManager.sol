@@ -44,6 +44,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
     event DaoElCommissionRateSet(uint256 oldDaoElCommissionRate, uint256 _daoElCommissionRate);
     event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
+    event Neth2ETHExchangeRateChanged(uint256 _exchangeRate, uint256 _newExchangeRate);
 
     error PermissionDenied();
     error InvalidParameter();
@@ -148,6 +149,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             revert SlashAmountCheckFailed();
         }
 
+        uint256 exchangeRate = liquidStakingContract.getExchangeRate();
+
         liquidStakingContract.reinvestClRewards(operatorIds, amounts, totalAmount);
 
         if (exitTokenIds.length != 0) {
@@ -161,6 +164,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         }
 
         _settleAndReinvestElReward(operatorIds);
+        uint256 newExchangeRate = liquidStakingContract.getExchangeRate();
+        emit Neth2ETHExchangeRateChanged(exchangeRate, newExchangeRate);
     }
 
     /**
