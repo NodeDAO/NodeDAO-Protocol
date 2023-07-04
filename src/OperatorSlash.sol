@@ -176,6 +176,9 @@ contract OperatorSlash is
 
         if (_slashType == slashTypeOfNft) {
             for (uint256 i = 0; i < _slashIds.length; ++i) {
+                if (_requireAmounts[i] == 0) {
+                    continue;
+                }
                 uint256 tokenId = _slashIds[i];
                 uint256 operatorId = _operatorIds[i];
                 if (vNFTContract.ownerOf(tokenId) == address(liquidStakingContract)) {
@@ -199,6 +202,10 @@ contract OperatorSlash is
             if (_slashType != slashTypeOfStakingId) revert InvalidParameter();
 
             for (uint256 i = 0; i < _slashIds.length; ++i) {
+                if (_requireAmounts[i] == 0) {
+                    continue;
+                }
+
                 uint256 stakingId = _slashIds[i];
                 uint256 operatorId = _operatorIds[i];
                 uint256 requireAmount = _requireAmounts[i];

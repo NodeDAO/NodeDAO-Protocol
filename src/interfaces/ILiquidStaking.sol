@@ -118,6 +118,11 @@ interface ILiquidStaking {
      */
     function claimRewardsOfDao(uint256[] memory _operatorIds, uint256[] memory _rewards) external;
 
+    /**
+     * @notice nETH to ETH exchange rate
+     */
+    function getExchangeRate() external view returns (uint256);
+
     event OperatorAssigned(uint256 indexed _blacklistOperatorId, uint256 _operatorId, uint256 _totalAmount);
     event EthStake(uint256 indexed _operatorId, address indexed _from, uint256 _amount, uint256 _amountOut);
     event EthUnstake(
