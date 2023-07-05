@@ -128,6 +128,12 @@ interface INodeOperatorsRegistry {
      */
     function isQuitOperator(uint256 _id) external view returns (bool);
 
+    /**
+     * @notice Determine whether the operator meets the pledge requirements
+     * @param _operatorId operator id
+     */
+    function isConformBasicPledge(uint256 _operatorId) external view returns (bool);
+
     event NodeOperatorRegistered(
         uint256 _id,
         string _name,

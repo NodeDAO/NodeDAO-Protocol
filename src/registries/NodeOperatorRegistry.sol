@@ -596,6 +596,14 @@ contract NodeOperatorRegistry is
     }
 
     /**
+     * @notice Determine whether the operator meets the pledge requirements
+     * @param _operatorId operator id
+     */
+    function isConformBasicPledge(uint256 _operatorId) external view returns (bool) {
+        return operatorPledgeVaultBalances[_operatorId] >= BASIC_PLEDGE;
+    }
+
+    /**
      * @notice operator pledge balance
      * @param _operatorId operator id
      */

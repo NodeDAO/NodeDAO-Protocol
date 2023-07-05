@@ -286,6 +286,9 @@ contract LiquidStaking is
         // operatorId must be a trusted operator
         if (!nodeOperatorRegistryContract.isTrustedOperator(_operatorId)) revert RequireOperatorTrusted();
 
+        // Must meet the basic mortgage funds before being allowed to be entrusted
+        if (!nodeOperatorRegistryContract.isConformBasicPledge(_operatorId)) revert InsufficientMargin();
+
         // When the deposit rate is not 0, charge the fee
         uint256 depositFeeAmount;
         uint256 depositPoolAmount;
@@ -425,6 +428,9 @@ contract LiquidStaking is
         // operatorId must be a trusted operator
         if (!nodeOperatorRegistryContract.isTrustedOperator(_operatorId)) revert RequireOperatorTrusted();
         if (msg.value == 0 || msg.value % DEPOSIT_SIZE != 0) revert InvalidAmount();
+
+        // Must meet the basic mortgage funds before being allowed to be entrusted
+        if (!nodeOperatorRegistryContract.isConformBasicPledge(_operatorId)) revert InsufficientMargin();
 
         bytes memory userWithdrawalCredentials =
             bytes.concat(hex"010000000000000000000000", abi.encodePacked(withdrawalCredentialsAddress));
