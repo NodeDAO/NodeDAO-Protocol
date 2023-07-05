@@ -5,7 +5,6 @@ import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "openzeppelin-contracts-upgradeable/security/PausableUpgradeable.sol";
 import "src/interfaces/IELRewardFactory.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
 import "src/interfaces/IDepositContract.sol";
@@ -24,8 +23,7 @@ contract LargeStaking is
     Initializable,
     OwnableUpgradeable,
     UUPSUpgradeable,
-    ReentrancyGuardUpgradeable,
-    PausableUpgradeable
+    ReentrancyGuardUpgradeable
 {
     IOperatorSlash public operatorSlashContract;
     INodeOperatorsRegistry public nodeOperatorRegistryContract;
@@ -42,6 +40,7 @@ contract LargeStaking is
         uint256 unstakeRequestAmount; // The amount the user requested to withdraw
         uint256 unstakeAmount; // Amount the user has withdrawn
         address owner; // The owner of the staking order，used for claim execution layer reward
+        address elRewardAddr; // Address to receive el rewards
         bytes32 withdrawCredentials; // Withdrawal certificate
     }
 
@@ -85,9 +84,6 @@ contract LargeStaking is
     mapping(uint256 => uint256) public operatorPrivateRewards; // key is stakingId
     mapping(uint256 => uint256) public daoPrivateRewards; // key is stakingId
     mapping(uint256 => uint256) public unclaimedPrivateRewards; // key is stakingId
-
-    // manager addr for unstake/claim reward
-    mapping(uint256 => address) public stakingMmanager; // key is stakingId
 
     error PermissionDenied();
     error InvalidParameter();
@@ -174,10 +170,12 @@ contract LargeStaking is
      * whether to use the shared revenue pool.
      * Once set, cannot be changed
      */
-    function largeStake(uint256 _operatorId, address _owner, address _withdrawCredentials, bool _isELRewardSharing)
-        public
-        payable
-    {
+    function largeStake(
+        uint256 _operatorId,
+        address _elRewardAddr,
+        address _withdrawCredentials,
+        bool _isELRewardSharing
+    ) public payable {
         if (msg.value < MIN_STAKE_AMOUNT || msg.value % 32 ether != 0) revert InvalidAmount();
         // operatorId must be a trusted operator
         if (!nodeOperatorRegistryContract.isTrustedOperator(_operatorId)) revert RequireOperatorTrusted();
@@ -189,9 +187,11 @@ contract LargeStaking is
         uint256 curStakingId;
         address elRewardPoolAddr;
         (curStakingId, elRewardPoolAddr) =
-            _stake(_operatorId, _owner, _withdrawCredentials, _isELRewardSharing, msg.value, false);
+            _stake(_operatorId, msg.sender, _elRewardAddr, _withdrawCredentials, _isELRewardSharing, msg.value, false);
         totalLargeStakeAmounts[_operatorId] += msg.value;
-        emit LargeStake(_operatorId, curStakingId, msg.value, _owner, _withdrawCredentials, _isELRewardSharing);
+        emit LargeStake(
+            _operatorId, curStakingId, msg.value, msg.sender, _elRewardAddr, _withdrawCredentials, _isELRewardSharing
+            );
     }
 
     /**
@@ -232,14 +232,14 @@ contract LargeStaking is
      * If the funds have not been pledged, the funds will be withdrawn synchronously.
      * If the funds have been recharged to eth2, the funds will be withdrawn asynchronously and automatically to the withdrawal certificate address
      */
-    function largeUnstake(uint256 _stakingId, uint256 _amount) public {
+    function largeUnstake(uint256 _stakingId, uint256 _amount) public nonReentrant {
         StakingInfo storage stakingInfo = largeStakings[_stakingId];
         if (
             _amount < 32 ether || _amount % 32 ether != 0
                 || _amount > stakingInfo.stakingAmount - stakingInfo.unstakeRequestAmount
         ) revert InvalidAmount();
 
-        if (msg.sender != stakingMmanager[_stakingId] && msg.sender != stakingInfo.owner) revert PermissionDenied();
+        if (msg.sender != stakingInfo.owner) revert PermissionDenied();
 
         uint256 _unstakeAmount = 0;
         if (stakingInfo.stakingAmount > stakingInfo.alreadyUsedAmount) {
@@ -280,6 +280,7 @@ contract LargeStaking is
      */
     function migrateStake(
         address _owner,
+        address _elRewardAddr,
         address _withdrawCredentials,
         bool _isELRewardSharing,
         bytes[] calldata _pubKeys
@@ -295,13 +296,15 @@ contract LargeStaking is
         address elRewardPoolAddr;
         uint256 stakeAmounts = _pubKeys.length * 32 ether;
         (curStakingId, elRewardPoolAddr) =
-            _stake(operatorId, _owner, _withdrawCredentials, _isELRewardSharing, stakeAmounts, true);
+            _stake(operatorId, _owner, _elRewardAddr, _withdrawCredentials, _isELRewardSharing, stakeAmounts, true);
         for (uint256 i = 0; i < _pubKeys.length; ++i) {
             _savePubKey(curStakingId, _pubKeys[i]);
         }
         totalLargeStakeAmounts[operatorId] += stakeAmounts;
 
-        emit MigretaStake(operatorId, curStakingId, stakeAmounts, _owner, _withdrawCredentials, _isELRewardSharing);
+        emit MigretaStake(
+            operatorId, curStakingId, stakeAmounts, _owner, _elRewardAddr, _withdrawCredentials, _isELRewardSharing
+            );
     }
 
     /**
@@ -350,6 +353,7 @@ contract LargeStaking is
     function _stake(
         uint256 _operatorId,
         address _owner,
+        address _elRewardAddr,
         address _withdrawCredentials,
         bool _isELRewardSharing,
         uint256 _stakingAmount,
@@ -372,10 +376,9 @@ contract LargeStaking is
             unstakeRequestAmount: 0,
             unstakeAmount: 0,
             owner: _owner,
+            elRewardAddr: _elRewardAddr,
             withdrawCredentials: userWithdrawalCredentials
         });
-
-        stakingMmanager[curStakingId] = _owner;
 
         address elRewardPoolAddr;
         if (!_isELRewardSharing) {
@@ -425,7 +428,7 @@ contract LargeStaking is
         bytes[] calldata _pubkeys,
         bytes[] calldata _signatures,
         bytes32[] calldata _depositDataRoots
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant {
         if (_pubkeys.length != _signatures.length || _pubkeys.length != _depositDataRoots.length) {
             revert InvalidParameter();
         }
@@ -521,9 +524,8 @@ contract LargeStaking is
         if (address(0) == rewardPoolAddr) revert SharedRewardPoolNotOpened();
 
         uint256 rewards = rewardPoolAddr.balance - unclaimedSharedRewards[_operatorId];
-
+        if (rewards == 0) return;
         (uint256 daoReward, uint256 operatorReward, uint256 poolReward) = _calcElReward(rewards, _operatorId);
-        if (poolReward == 0 || totalShares[_operatorId] == 0) return;
 
         operatorSharedRewards[_operatorId] += operatorReward;
         daoSharedRewards[_operatorId] += daoReward;
@@ -544,8 +546,9 @@ contract LargeStaking is
         address rewardPoolAddr = elPrivateRewardPool[_stakingId];
         uint256 _operatorId = largeStakings[_stakingId].operatorId;
         uint256 rewards = rewardPoolAddr.balance - unclaimedPrivateRewards[_stakingId];
+        if (rewards == 0) return;
+
         (uint256 daoReward, uint256 operatorReward, uint256 poolReward) = _calcElReward(rewards, _operatorId);
-        if (poolReward == 0) return;
         unclaimedPrivateRewards[_stakingId] = rewardPoolAddr.balance;
         operatorPrivateRewards[_stakingId] += operatorReward;
         daoPrivateRewards[_stakingId] += daoReward;
@@ -558,8 +561,6 @@ contract LargeStaking is
         view
         returns (uint256 daoReward, uint256 operatorReward, uint256 poolReward)
     {
-        if (rewards == 0) return (0, 0, 0);
-
         uint256[] memory _operatorIds = new uint256[] (1);
         _operatorIds[0] = _operatorId;
         uint256[] memory operatorElCommissionRate;
@@ -573,11 +574,8 @@ contract LargeStaking is
     /**
      * @notice Users claim benefits of the execution layer
      */
-    function claimRewardsOfUser(uint256 _stakingId, address beneficiary, uint256 rewards) public {
+    function claimRewardsOfUser(uint256 _stakingId, uint256 rewards) public nonReentrant {
         StakingInfo memory stakingInfo = largeStakings[_stakingId];
-        if (beneficiary == address(0) || msg.sender != stakingMmanager[_stakingId] && msg.sender != stakingInfo.owner) {
-            revert PermissionDenied();
-        }
         SettleInfo storage settleInfo = eLSharedRewardSettleInfo[_stakingId];
 
         address rewardPoolAddr;
@@ -606,19 +604,20 @@ contract LargeStaking is
             unclaimedPrivateRewards[_stakingId] -= rewards;
         }
 
-        IELReward(rewardPoolAddr).transfer(rewards, beneficiary);
-        emit UserRewardClaimed(_stakingId, beneficiary, rewards);
+        _transfer(rewardPoolAddr, stakingInfo.elRewardAddr, rewards);
+        emit UserRewardClaimed(_stakingId, stakingInfo.elRewardAddr, rewards);
 
         uint256[] memory _stakingIds = new uint256[] (1);
         _stakingIds[0] = _stakingId;
-        operatorSlashContract.claimCompensatedOfLargeStaking(_stakingIds, beneficiary);
+        operatorSlashContract.claimCompensatedOfLargeStaking(_stakingIds, stakingInfo.elRewardAddr);
     }
 
     /**
      * @notice The operator claim the reward commission
      */
-    function claimRewardsOfOperator(uint256[] memory _privatePoolStakingIds, bool _claimSharePool, uint256 _operatorId)
+    function claimRewardsOfOperator(uint256[] memory _privatePoolStakingIds, uint256 _operatorId)
         external
+        nonReentrant
     {
         StakingInfo memory stakingInfo;
         uint256 pledgeBalance = 0;
@@ -643,7 +642,7 @@ contract LargeStaking is
             _distributeOperatorRewards(elPrivateRewardPool[stakingId], operatorRewards, stakingInfo.operatorId);
         }
 
-        if (_claimSharePool) {
+        if (_operatorId != 0) {
             (pledgeBalance, requirBalance) = nodeOperatorRegistryContract.getPledgeInfoOfOperator(_operatorId);
             if (pledgeBalance < requirBalance) revert InsufficientMargin();
             settleElSharedReward(_operatorId);
@@ -686,7 +685,7 @@ contract LargeStaking is
         if (totalRatios != 100) revert InvalidRewardRatio();
 
         for (uint256 j = 0; j < rewardAddresses.length; ++j) {
-            IELReward(_elRewardContract).transfer(rewardAmounts[j], rewardAddresses[j]);
+            _transfer(_elRewardContract, rewardAddresses[j], rewardAmounts[j]);
             emit OperatorRewardClaimed(_operatorId, rewardAddresses[j], rewardAmounts[j]);
         }
     }
@@ -694,7 +693,10 @@ contract LargeStaking is
     /**
      * @notice The Dao claim the reward commission
      */
-    function claimRewardsOfDao(uint256[] memory _privatePoolStakingIds, uint256[] memory _operatorIds) external {
+    function claimRewardsOfDao(uint256[] memory _privatePoolStakingIds, uint256[] memory _operatorIds)
+        external
+        nonReentrant
+    {
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _privatePoolStakingIds.length; ++i) {
             uint256 stakingId = _privatePoolStakingIds[i];
@@ -708,7 +710,7 @@ contract LargeStaking is
             daoPrivateRewards[stakingId] = 0;
             unclaimedPrivateRewards[stakingId] -= daoRewards;
 
-            IELReward(elPrivateRewardPool[stakingId]).transfer(daoRewards, daoVaultAddress);
+            _transfer(elPrivateRewardPool[stakingId], daoVaultAddress, daoRewards);
             emit DaoPrivateRewardClaimed(stakingId, daoVaultAddress, daoRewards);
         }
 
@@ -719,9 +721,13 @@ contract LargeStaking is
             daoSharedRewards[operatorId] = 0;
             unclaimedSharedRewards[operatorId] -= daoRewards;
 
-            IELReward(elSharedRewardPool[operatorId]).transfer(daoRewards, daoVaultAddress);
+            _transfer(elSharedRewardPool[operatorId], daoVaultAddress, daoRewards);
             emit DaoSharedRewardClaimed(operatorId, daoVaultAddress, daoRewards);
         }
+    }
+
+    function _transfer(address _poolAddr, address _to, uint256 _amounts) internal {
+        IELReward(_poolAddr).transfer(_amounts, _to);
     }
 
     /**
@@ -822,16 +828,6 @@ contract LargeStaking is
      */
     function getValidatorsOfStakingId(uint256 _stakingId) public view returns (bytes[] memory) {
         return validators[_stakingId];
-    }
-
-    /**
-     * @notice Allows to set the manager address for unstaking and claim benefits
-     */
-    function setStakingManager(uint256 _stakingId, address _manager) public {
-        StakingInfo memory stakingInfo = largeStakings[_stakingId];
-        if (msg.sender != stakingInfo.owner) revert PermissionDenied();
-        emit StakingManager(stakingMmanager[_stakingId], _manager);
-        stakingMmanager[_stakingId] = _manager;
     }
 
     /**
