@@ -264,15 +264,14 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
             address(elRewardFactor),
             address(depositContract)
         );
-        vm.prank(_dao);
         operatorRegistry.initializeV3(address(largeStaking));
 
         vm.prank(_dao);
         largeStaking.setLargeStakingSetting(
             address(0), address(0), 300, 0, address(0), address(0), address(0), address(0)
         );
-        vm.prank(_dao);
         operatorSlash.initializeV2(address(largeStaking));
+        vaultManager.initializeV2(address(neth));
     }
 
     function testStakeETH() public {
@@ -2564,6 +2563,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
             uint256 unstakeRequestAmount,
             uint256 unstakeAmount,
             ,
+            ,
         ) = largeStaking.largeStakings(_stakingId);
 
         assertEq(_isELRewardSharing, isELRewardSharing);
@@ -2575,7 +2575,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
     }
 
     function checkStakingInfoPermissions(uint256 _stakingId, address _owner, bytes32 _withdrawCredentials) public {
-        (,,,,,,, address owner, bytes32 withdrawCredentials) = largeStaking.largeStakings(_stakingId);
+        (,,,,,,, address owner,, bytes32 withdrawCredentials) = largeStaking.largeStakings(_stakingId);
 
         assertEq(_owner, owner);
         assertEq(_withdrawCredentials, withdrawCredentials);
@@ -2716,12 +2716,12 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
 
         // claim reward
         vm.prank(address(1000));
-        largeStaking.claimRewardsOfUser(1, address(1000), 4.5 ether);
+        largeStaking.claimRewardsOfUser(1, 4.5 ether);
         assertEq(largeStaking.reward(1), 0 ether);
         assertEq(address(1000).balance, 4.5 ether);
 
         vm.prank(address(1002));
-        largeStaking.claimRewardsOfUser(3, address(1002), 4.5 ether);
+        largeStaking.claimRewardsOfUser(3, 4.5 ether);
         assertEq(largeStaking.reward(2), 0 ether);
         assertEq(address(1002).balance, 4.5 ether);
 
@@ -2836,7 +2836,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(largeStaking.getOperatorValidatorCounts(1), 15);
 
         vm.prank(address(1001));
-        largeStaking.claimRewardsOfUser(1, address(1001), 9 ether);
+        largeStaking.claimRewardsOfUser(1, 9 ether);
         assertEq(largeStaking.reward(1), 0 ether);
         assertEq(address(1001).balance, 489 ether);
         assertEq(largeStaking.unclaimedPrivateRewards(1), 1 ether);
@@ -2878,7 +2878,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(largeStaking.unclaimedSharedRewards(1), 10 ether);
 
         vm.prank(address(1000));
-        largeStaking.claimRewardsOfUser(2, address(1000), 9 ether);
+        largeStaking.claimRewardsOfUser(2, 9 ether);
         assertEq(largeStaking.reward(2), 0 ether);
         assertEq(largeStaking.unclaimedSharedRewards(1), 1 ether);
         assertEq(address(1000).balance, 169 ether);
@@ -2890,7 +2890,11 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         pubkeys[0] =
             bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920539a2");
         largeStaking.migrateStake(
-            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, false, pubkeys
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            false,
+            pubkeys
         );
     }
 
@@ -2901,7 +2905,11 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
             bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920539a2");
         vm.prank(_controllerAddress);
         largeStaking.migrateStake(
-            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, false, pubkeys
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            false,
+            pubkeys
         );
     }
 
@@ -2914,7 +2922,11 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
             bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920539a2");
         vm.prank(_controllerAddress);
         largeStaking.migrateStake(
-            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true, pubkeys
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            true,
+            pubkeys
         );
     }
 
@@ -2930,7 +2942,11 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
 
         vm.prank(_controllerAddress);
         largeStaking.migrateStake(
-            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true, pubkeys
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc,
+            true,
+            pubkeys
         );
         checkStakingInfo(1, true, 1, 64 ether, 64 ether, 0, 0);
         checkStakingInfoPermissions(
@@ -2990,7 +3006,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(largeStaking.getOperatorValidatorCounts(1), 15);
 
         vm.prank(address(1001));
-        largeStaking.claimRewardsOfUser(1, address(1001), 9 ether);
+        largeStaking.claimRewardsOfUser(1, 9 ether);
         assertEq(largeStaking.reward(1), 0 ether);
         assertEq(address(1001).balance, 489 ether);
         assertEq(largeStaking.unclaimedPrivateRewards(1), 1 ether);

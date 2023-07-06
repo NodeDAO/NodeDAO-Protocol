@@ -172,15 +172,14 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
             address(elRewardFactor),
             address(depositContract)
         );
-        vm.prank(_dao);
         operatorRegistry.initializeV3(address(largeStaking));
 
         vm.prank(_dao);
         largeStaking.setLargeStakingSetting(
             address(0), address(0), 300, 0, address(0), address(0), address(0), address(0)
         );
-        vm.prank(_dao);
         operatorSlash.initializeV2(address(largeStaking));
+        vaultManager.initializeV2(address(neth));
     }
 
     ////////////////////////////////////////////////////////////////
