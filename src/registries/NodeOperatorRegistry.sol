@@ -184,7 +184,7 @@ contract NodeOperatorRegistry is
         }
     }
 
-    function initializeV3(address _largeStakingContractAddress) public reinitializer(3) onlyDao {
+    function initializeV3(address _largeStakingContractAddress) public reinitializer(3) onlyOwner {
         largeStakingContract = ILargeStaking(_largeStakingContractAddress);
     }
 

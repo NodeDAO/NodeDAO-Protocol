@@ -119,7 +119,7 @@ contract OperatorSlash is
         slashAmountPerBlockPerValidator = 2000000000000;
     }
 
-    function initializeV2(address _largeStakingContractAddress) public reinitializer(2) onlyDao {
+    function initializeV2(address _largeStakingContractAddress) public reinitializer(2) onlyOwner {
         emit LargeStakingChanged(largeStakingContractAddress, _largeStakingContractAddress);
         largeStakingContractAddress = _largeStakingContractAddress;
     }
