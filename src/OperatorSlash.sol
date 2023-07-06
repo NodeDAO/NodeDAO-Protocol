@@ -305,13 +305,15 @@ contract OperatorSlash is
         for (uint256 i = 0; i < _tokenIds.length; ++i) {
             uint256 tokenId = _tokenIds[i];
             if (nftHasCompensated[tokenId] != 0) {
-                totalCompensated += nftHasCompensated[tokenId];
+                uint256 compensatedAmount = nftHasCompensated[tokenId];
+                totalCompensated += compensatedAmount;
                 nftHasCompensated[tokenId] = 0;
+                emit CompensatedClaimedOfNft(_owner, tokenId, compensatedAmount);
             }
         }
+
         if (totalCompensated != 0) {
             payable(_owner).transfer(totalCompensated);
-            emit CompensatedClaimedOfNft(_owner, totalCompensated);
         }
 
         return totalCompensated;
@@ -326,13 +328,15 @@ contract OperatorSlash is
         for (uint256 i = 0; i < _stakingIds.length; ++i) {
             uint256 stakingId = _stakingIds[i];
             if (stakingHasCompensated[stakingId] != 0) {
-                totalCompensated += stakingHasCompensated[stakingId];
+                uint256 compensatedAmount = stakingHasCompensated[stakingId];
+                totalCompensated += compensatedAmount;
                 stakingHasCompensated[stakingId] = 0;
+                emit CompensatedClaimedOfLargeStaking(_owner, stakingId, compensatedAmount);
             }
         }
+
         if (totalCompensated != 0) {
             payable(_owner).transfer(totalCompensated);
-            emit CompensatedClaimedOfLargeStaking(_owner, totalCompensated);
         }
 
         return totalCompensated;
