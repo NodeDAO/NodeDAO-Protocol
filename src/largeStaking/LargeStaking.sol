@@ -85,6 +85,9 @@ contract LargeStaking is
     mapping(uint256 => uint256) public daoPrivateRewards; // key is stakingId
     mapping(uint256 => uint256) public unclaimedPrivateRewards; // key is stakingId
 
+    // validator registry block height
+    mapping(bytes => uint256) public validatorRegisterBlock;
+
     error PermissionDenied();
     error InvalidParameter();
     error InvalidAddr();
@@ -457,6 +460,7 @@ contract LargeStaking is
         if (validatorOfStaking[_pubkey] != 0) revert DuplicatePubKey();
         validators[_stakingId].push(_pubkey);
         validatorOfStaking[_pubkey] = _stakingId;
+        validatorRegisterBlock[_pubkey] = block.number;
     }
 
     /**
