@@ -33,7 +33,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
     event ELRewardSettleAndReinvest(uint256[] _operatorIds, uint256[] _reinvestAmounts);
     event Settle(uint256 _blockNumber, uint256 _settleRewards, uint256 _operatorNftCounts, uint256 _averageRewards);
-    event RewardClaimed(address _owner, uint256 _amount);
+    event RewardClaimed(address _owner, uint256 _tokenId, uint256 _amount);
     event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
     event NodeOperatorRegistryContractSet(
@@ -255,7 +255,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      */
     function claimRewardsOfUser(uint256[] memory _tokenIds) external {
         address owner = vNFTContract.ownerOf(_tokenIds[0]);
-        uint256 totalCompensated = operatorSlashContract.claimCompensated(_tokenIds, owner);
+        operatorSlashContract.claimCompensated(_tokenIds, owner);
 
         uint256 operatorId = vNFTContract.operatorOf(_tokenIds[0]);
         uint256[] memory gasHeights = vNFTContract.getUserNftGasHeight(_tokenIds);
@@ -269,6 +269,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             uint256 nftRewards = _rewards(operatorId, gasHeights[i], exitBlockNumbers[i]);
             amounts[i] = nftRewards;
             totalNftRewards += nftRewards;
+
+            emit RewardClaimed(owner, tokenId, nftRewards);
         }
 
         if (totalNftRewards == 0) {
@@ -278,7 +280,6 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         unclaimedRewardsMap[operatorId] -= totalNftRewards;
         uint256 gasHeight = settleCumArrMap[operatorId][settleCumArrMap[operatorId].length - 1].height;
         liquidStakingContract.claimRewardsOfUser(operatorId, _tokenIds, totalNftRewards, gasHeight, owner);
-        emit RewardClaimed(owner, totalNftRewards + totalCompensated);
     }
 
     /**
