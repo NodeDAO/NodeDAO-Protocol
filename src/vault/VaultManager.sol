@@ -10,6 +10,7 @@ import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 import "src/interfaces/IOperatorSlash.sol";
+import "src/interfaces/INETH.sol";
 
 contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     ILiquidStaking public liquidStakingContract;
@@ -31,6 +32,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     mapping(uint256 => uint256) public operatorRewardsMap;
     mapping(uint256 => uint256) public daoRewardsMap;
 
+    // v2 storage
+    INETH public nETHContract;
+
     event ELRewardSettleAndReinvest(uint256[] _operatorIds, uint256[] _reinvestAmounts);
     event Settle(uint256 _blockNumber, uint256 _settleRewards, uint256 _operatorNftCounts, uint256 _averageRewards);
     event RewardClaimed(address _owner, uint256 _tokenId, uint256 _amount);
@@ -44,7 +48,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
     event DaoElCommissionRateSet(uint256 oldDaoElCommissionRate, uint256 _daoElCommissionRate);
     event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
-    event Neth2ETHExchangeRateChanged(uint256 _exchangeRate, uint256 _newExchangeRate);
+    event Neth2ETHExchangeRateChanged(
+        uint256 _exchangeRate, uint256 _newExchangeRate, uint256 _totalEth, uint256 _newTotalEth, uint256 nethSupply
+    );
+    event NethChanged(address _oldNethContract, address _NethAddress);
 
     error PermissionDenied();
     error InvalidParameter();
@@ -88,6 +95,11 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         dao = _dao;
         daoElCommissionRate = 1000;
+    }
+
+    function initializeV2(address _nethContractAddress) public reinitializer(2) onlyOwner {
+        emit NethChanged(address(nETHContract), _nethContractAddress);
+        nETHContract = INETH(_nethContractAddress);
     }
 
     /**
@@ -149,7 +161,12 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             revert SlashAmountCheckFailed();
         }
 
+        // exchangeRate = 1 ether * (totalEth) / (nethSupply);
+        // totalEth = exchangeRate * nethSupply / 1 ether;
         uint256 exchangeRate = liquidStakingContract.getExchangeRate();
+
+        uint256 nethSupply = nETHContract.totalSupply();
+        uint256 totalEth = exchangeRate * nethSupply / 1 ether;
 
         liquidStakingContract.reinvestClRewards(operatorIds, amounts, totalAmount);
 
@@ -164,8 +181,11 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         }
 
         _settleAndReinvestElReward(operatorIds);
+
         uint256 newExchangeRate = liquidStakingContract.getExchangeRate();
-        emit Neth2ETHExchangeRateChanged(exchangeRate, newExchangeRate);
+        uint256 newTotalEth = newExchangeRate * nethSupply / 1 ether;
+
+        emit Neth2ETHExchangeRateChanged(exchangeRate, newExchangeRate, totalEth, newTotalEth, nethSupply);
     }
 
     /**
