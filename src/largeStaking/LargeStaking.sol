@@ -49,12 +49,17 @@ contract LargeStaking is
     mapping(uint256 => uint256) internal totalLargeStakeAmounts; // key is operatorId
 
     uint256 public MIN_STAKE_AMOUNT;
+    uint256 public MAX_SLASH_AMOUNT;
 
     mapping(uint256 => bytes[]) internal validators; // key is stakingId
-    // report data
-    mapping(bytes => uint256) public validatorExitReportBlock;
-    mapping(bytes => uint256) public validatorSlashAmount;
-    mapping(bytes => uint256) public validatorOfStaking; // key is pubkey, value is staking
+
+    struct ValidatorInfo {
+        uint256 stakingId;
+        uint256 registerBlock;
+        uint256 exitBlock;
+        uint256 slashAmount;
+    }
+    mapping(bytes => ValidatorInfo) public validatorInfo; // key is pubkey
 
     // dao address
     address public dao;
@@ -84,9 +89,6 @@ contract LargeStaking is
     mapping(uint256 => uint256) public operatorPrivateRewards; // key is stakingId
     mapping(uint256 => uint256) public daoPrivateRewards; // key is stakingId
     mapping(uint256 => uint256) public unclaimedPrivateRewards; // key is stakingId
-
-    // validator registry block height
-    mapping(bytes => uint256) public validatorRegisterBlock;
 
     error PermissionDenied();
     error InvalidParameter();
@@ -147,7 +149,8 @@ contract LargeStaking is
         dao = _dao;
         daoVaultAddress = _daoVaultAddress;
         daoElCommissionRate = 1000;
-        MIN_STAKE_AMOUNT = 320 ether;
+        MIN_STAKE_AMOUNT = 32 ether;
+        MAX_SLASH_AMOUNT = 2 ether;
     }
 
     /**
@@ -432,9 +435,6 @@ contract LargeStaking is
         bytes[] calldata _signatures,
         bytes32[] calldata _depositDataRoots
     ) external nonReentrant {
-        if (_pubkeys.length != _signatures.length || _pubkeys.length != _depositDataRoots.length) {
-            revert InvalidParameter();
-        }
         // must be a trusted operator
         uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
         if (operatorId == 0) revert RequireOperatorTrusted();
@@ -445,9 +445,11 @@ contract LargeStaking is
             revert InsufficientFunds();
         }
 
+        bytes memory withdrawCredentials = abi.encodePacked(stakingInfo.withdrawCredentials);
+
         for (uint256 i = 0; i < _pubkeys.length; ++i) {
             depositContract.deposit{value: 32 ether}(
-                _pubkeys[i], abi.encodePacked(stakingInfo.withdrawCredentials), _signatures[i], _depositDataRoots[i]
+                _pubkeys[i], withdrawCredentials, _signatures[i], _depositDataRoots[i]
             );
             emit ValidatorRegistered(operatorId, _stakingId, _pubkeys[i]);
             _savePubKey(_stakingId, _pubkeys[i]);
@@ -457,10 +459,10 @@ contract LargeStaking is
     }
 
     function _savePubKey(uint256 _stakingId, bytes memory _pubkey) internal {
-        if (validatorOfStaking[_pubkey] != 0) revert DuplicatePubKey();
+        if (validatorInfo[_pubkey].stakingId != 0) revert DuplicatePubKey();
         validators[_stakingId].push(_pubkey);
-        validatorOfStaking[_pubkey] = _stakingId;
-        validatorRegisterBlock[_pubkey] = block.number;
+        validatorInfo[_pubkey] =
+            ValidatorInfo({stakingId: _stakingId, registerBlock: block.number, exitBlock: 0, slashAmount: 0});
     }
 
     /**
@@ -741,11 +743,12 @@ contract LargeStaking is
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _clStakingExitInfo.length; ++i) {
             CLStakingExitInfo memory sInfo = _clStakingExitInfo[i];
+            ValidatorInfo memory vInfo = validatorInfo[sInfo.pubkey];
 
-            if (validatorOfStaking[sInfo.pubkey] != sInfo.stakingId || validatorExitReportBlock[sInfo.pubkey] != 0) {
+            if (vInfo.stakingId != sInfo.stakingId || vInfo.exitBlock != 0) {
                 revert InvalidReport();
             }
-            validatorExitReportBlock[sInfo.pubkey] = block.number;
+            validatorInfo[sInfo.pubkey].exitBlock = block.number;
 
             stakingInfo = largeStakings[sInfo.stakingId];
             uint256 newUnstakeAmount = stakingInfo.unstakeAmount + 32 ether;
@@ -779,14 +782,16 @@ contract LargeStaking is
         uint256[] memory _amounts = new uint256[] (_clStakingSlashInfo.length);
         for (uint256 i = 0; i < _clStakingSlashInfo.length; ++i) {
             CLStakingSlashInfo memory sInfo = _clStakingSlashInfo[i];
-            if (validatorOfStaking[sInfo.pubkey] != sInfo.stakingId || validatorSlashAmount[sInfo.pubkey] != 0) {
+            ValidatorInfo memory vInfo = validatorInfo[sInfo.pubkey];
+
+            if (vInfo.stakingId != sInfo.stakingId || vInfo.slashAmount + sInfo.slashAmount > MAX_SLASH_AMOUNT) {
                 revert InvalidReport();
             }
 
             _stakingIds[i] = sInfo.stakingId;
             _operatorIds[i] = largeStakings[sInfo.stakingId].operatorId;
             _amounts[i] = sInfo.slashAmount;
-            validatorSlashAmount[sInfo.pubkey] = sInfo.slashAmount;
+            validatorInfo[sInfo.pubkey].slashAmount += sInfo.slashAmount;
             emit LargeStakingSlash(_stakingIds[i], _operatorIds[i], sInfo.pubkey, _amounts[i]);
         }
 
