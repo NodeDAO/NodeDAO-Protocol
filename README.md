@@ -2,7 +2,7 @@
 
 Made by:
 
-[![HashKing](https://www.hashking.fi/images/logo.svg)](https://www.hashking.fi)
+[![HashKing](./docs/images/HashKingLogo.svg)](https://www.hashking.fi)
 
 ![node](https://img.shields.io/badge/node-v10.15.3-green)
 ![npm](https://img.shields.io/badge/npm-v6.9.0-green)
