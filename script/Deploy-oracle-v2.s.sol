@@ -2,6 +2,7 @@ import "src/oracles/WithdrawOracle.sol";
 import "src/oracles/LargeStakeOracle.sol";
 import "src/oracles/MultiHashConsensus.sol";
 import "forge-std/Script.sol";
+import "forge-std/console.sol";
 import "./utils/DeployProxy.sol";
 
 // forge script script/Deploy-oracle-v2.s.sol:DeployGoerliMultiHashConsensusScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify --retries 10 --delay 30
@@ -21,9 +22,9 @@ contract DeployGoerliMultiHashConsensusScript is Script {
     uint64 _genesisTime = 1616508000;
     // oracle member
     address[] memberArray = [
-    0xe583DC38863aB4b5A94da77A6628e2119eaD4B18,
-    0x3357c09eCf74C281B6f9CCfAf4D894979349AC4B,
-    0x143848A303d424FD75995e5827358ba6d30a1801
+        0xe583DC38863aB4b5A94da77A6628e2119eaD4B18,
+        0x3357c09eCf74C281B6f9CCfAf4D894979349AC4B,
+        0x143848A303d424FD75995e5827358ba6d30a1801
     ];
     uint256 public constant QUORUM = 2;
 
@@ -77,6 +78,29 @@ contract DeployGoerliMultiHashConsensusScript is Script {
         }
 
         MultiHashConsensus(multiHashConsensusProxy).transferOwnership(timelock);
+
+        vm.stopBroadcast();
+    }
+}
+
+// forge script script/Deploy-oracle-v2.s.sol:DeployImplScript  --rpc-url $GOERLI_RPC_URL --broadcast --verify --retries 10 --delay 30
+contract DeployImplScript is Script {
+    WithdrawOracle withdrawOracle;
+    MultiHashConsensus multiHashConsensus;
+    LargeStakeOracle largeStakeOracle;
+
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        multiHashConsensus = new MultiHashConsensus();
+        console.log("========multiHashConsensus impl: ", address(multiHashConsensus));
+
+        withdrawOracle = new WithdrawOracle();
+        console.log("========withdrawOracle impl: ", address(withdrawOracle));
+
+        largeStakeOracle = new LargeStakeOracle();
+        console.log("========largeStakeOracle impl: ", address(largeStakeOracle));
 
         vm.stopBroadcast();
     }

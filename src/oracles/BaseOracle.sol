@@ -57,8 +57,6 @@ abstract contract BaseOracle is
 
     event ConsensusHashContractSet(address indexed addr, address indexed prevAddr);
     event ConsensusVersionSet(uint256 indexed version, uint256 indexed prevVersion);
-    event ReportSubmitted(uint256 indexed refSlot, bytes32 hash, uint256 processingDeadlineTime);
-    event ProcessingStarted(uint256 indexed refSlot, bytes32 hash);
     event WarnProcessingMissed(uint256 indexed refSlot);
 
     struct ConsensusReport {
@@ -219,8 +217,6 @@ abstract contract BaseOracle is
             emit WarnProcessingMissed(prevSubmittedRefSlot);
         }
 
-        emit ReportSubmitted(refSlot, reportHash, deadline);
-
         ConsensusReport memory report = ConsensusReport({
             hash: reportHash,
             refSlot: refSlot.toUint64(),
@@ -312,8 +308,6 @@ abstract contract BaseOracle is
         }
 
         lastProcessingRefSlot = report.refSlot;
-
-        emit ProcessingStarted(report.refSlot, report.hash);
         return prevProcessingRefSlot;
     }
 

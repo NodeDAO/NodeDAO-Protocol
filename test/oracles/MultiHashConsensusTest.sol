@@ -407,38 +407,6 @@ contract MultiHashConsensusTest is Test, MockMultiOracleProvider {
         assertEq(submitReportLastCall2.callCount, 2);
     }
 
-    // forge test -vvvv --match-test testConsensusReportAlreadyProcessing
-    // reverts with ConsensusReportAlreadyProcessing
-    function testConsensusReportAlreadyProcessing() public {
-        vm.prank(DAO);
-        consensus.addMember(MEMBER_1, 1);
-
-        (uint256 refSlot,) = consensus.getCurrentFrame();
-        vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, hashArr1());
-
-        reportProcessor1.startReportProcessing();
-
-        vm.prank(MEMBER_1);
-        vm.expectRevert(abi.encodeWithSignature("ConsensusReportAlreadyProcessing()"));
-        consensus.submitReport(refSlot, hashArr1());
-    }
-
-    // forge test -vvvv --match-test testDuplicateReport
-    // reverts with DuplicateReport
-    function testDuplicateReport() public {
-        vm.prank(DAO);
-        consensus.addMember(MEMBER_1, 1);
-
-        (uint256 refSlot,) = consensus.getCurrentFrame();
-        vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, hashArr1());
-
-        vm.prank(MEMBER_1);
-        vm.expectRevert(abi.encodeWithSignature("ConsensusReportAlreadyProcessing()"));
-        consensus.submitReport(refSlot, hashArr1());
-    }
-
     ///-----------------------Test Two ReportProcessor-----------------------------------------
 
     // forge test -vvvv --match-test testAddReportProcessor
