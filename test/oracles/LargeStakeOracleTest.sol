@@ -472,10 +472,20 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
     // forge test -vvvv --match-test testIsModuleReport
     function testIsModuleReport() public {
         consensus.setTimeInEpochs(60);
+        (, uint256 epochsPerFrame,) = consensus.getFrameConfig();
+        (uint256 slotsPerEpoch,,) = consensus.getChainConfig();
 
         (uint256 refSlot,) = consensus.getCurrentFrame();
         assertTrue(consensus.isModuleReport(1, refSlot));
         assertTrue(consensus.isModuleReport(2, refSlot));
+
+        (bool isCurrentFrameReport,, uint256 nextCanReportSlot) = consensus.moduleReportFrameMultiple(1);
+        assertTrue(isCurrentFrameReport);
+        assertEq(nextCanReportSlot, refSlot + epochsPerFrame * slotsPerEpoch);
+
+        (bool isCurrentFrameReport2,, uint256 nextCanReportSlot2) = consensus.moduleReportFrameMultiple(2);
+        assertTrue(isCurrentFrameReport2);
+        assertEq(nextCanReportSlot2, refSlot + 2 * epochsPerFrame * slotsPerEpoch);
 
         consensus.setTimeInEpochs(80);
         (uint256 refSlot2,) = consensus.getCurrentFrame();

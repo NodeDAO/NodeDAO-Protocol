@@ -53,6 +53,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     using SafeCast for uint256;
 
     error InvalidAddr();
+    error InvalidModuleId();
     error NumericOverflow();
     error ReportProcessorCannotBeZero();
     error FrameMultipleCannotBeZero();
@@ -82,7 +83,9 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
     event MemberAdded(address indexed addr, uint256 newTotalMembers, uint256 newQuorum);
     event MemberRemoved(address indexed addr, uint256 newTotalMembers, uint256 newQuorum);
     event QuorumSet(uint256 newQuorum, uint256 totalMembers, uint256 prevQuorum);
-    event ReportReceived(uint256 indexed refSlot, address indexed member, bytes32[] report);
+    event ConsensusReportReceived(
+        uint256 indexed refSlot, address indexed member, bytes32[] report, bool isReached, uint256 support
+    );
     event ConsensusReached(uint256 indexed refSlot, bytes32[] report, uint256 support);
     event ReportProcessorAdd(address indexed processor, uint256 indexed moduleId, uint64 frameMultiple);
     event ReportProcessorUpdate(
@@ -442,6 +445,31 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
             return false;
         }
         return true;
+    }
+
+    // @notice Whether the Oracle module needs to report data.
+    // @param moduleId Oracle module ID
+    // @return isCurrentFrameReport Whether the oracle needs to report in the current frame?
+    // @return frameMultiple Oracle's reporting frequency (frameMultiple * frame)
+    // @return nextCanReportSlot The next slot that Oracle can escalate
+    function moduleReportFrameMultiple(uint256 moduleId)
+        public
+        view
+        returns (bool isCurrentFrameReport, uint64 frameMultiple, uint256 nextCanReportSlot)
+    {
+        if (moduleId == 0) revert InvalidModuleId();
+        uint256 currentSlot = _getCurrentFrame().refSlot;
+        isCurrentFrameReport = isModuleReport(moduleId, currentSlot);
+        frameMultiple = reportProcessors[moduleId - 1].frameMultiple;
+
+        uint256 nextSlot = currentSlot;
+        for (;;) {
+            nextSlot += _frameConfig.epochsPerFrame * SLOTS_PER_EPOCH;
+            if (isModuleReport(moduleId, nextSlot)) {
+                nextCanReportSlot = nextSlot;
+                break;
+            }
+        }
     }
 
     ///
@@ -841,10 +869,10 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
         _memberStates[memberIndex] = MemberState({lastReportRefSlot: uint64(slot), lastReportVariantIndex: varIndex});
 
-        emit ReportReceived(slot, _msgSender(), report);
-
         if (support >= _quorum) {
             _consensusReached(frame, report, varIndex, support);
+        } else {
+            emit ConsensusReportReceived(slot, _msgSender(), report, false, support);
         }
     }
 
@@ -877,7 +905,7 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
 
             _submitReportForProcessing(frame, report);
 
-            emit ConsensusReached(frame.refSlot, report, support);
+            emit ConsensusReportReceived(frame.refSlot, _msgSender(), report, true, support);
         }
     }
 

@@ -102,4 +102,3 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
         vm.stopBroadcast();
     }
 }
-
