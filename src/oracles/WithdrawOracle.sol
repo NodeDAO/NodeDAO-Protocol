@@ -10,7 +10,6 @@ import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     using SafeCast for uint256;
 
-    event WarnDataIncompleteProcessing(uint256 indexed refSlot, uint256 exitRequestLimit, uint256 reportExitedCount);
     event UpdateExitRequestLimit(uint256 exitRequestLimit);
     event UpdateTotalBalanceTolerate(uint256 old, uint256 totalBalanceTolerate);
     event UpdateClVaultMinSettleLimit(uint256 clVaultMinSettleLimit);
@@ -319,15 +318,15 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         lastClSettleAmount = _clSettleAmount;
     }
 
-    // use for submitConsensusReport
+    /// @notice Called when oracle gets a new consensus report from the HashConsensus contract.
+    ///
+    /// Keep in mind that, until you call `_startProcessing`, the oracle committee is free to
+    /// reach consensus on another report for the same reporting frame and re-submit it using
+    /// this function.
+    /// use for submitConsensusReport
     function _handleConsensusReport(
-        ConsensusReport memory, /* report */
-        uint256, /* prevSubmittedRefSlot */
+        ConsensusReport memory report,
+        uint256 prevSubmittedRefSlot,
         uint256 prevProcessingRefSlot
-    ) internal override {
-        DataProcessingState memory state = dataProcessingState;
-        if (state.refSlot == prevProcessingRefSlot && state.reportExitedCount <= exitRequestLimit) {
-            emit WarnDataIncompleteProcessing(prevProcessingRefSlot, exitRequestLimit, state.reportExitedCount);
-        }
-    }
+    ) internal override {}
 }

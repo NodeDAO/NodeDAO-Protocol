@@ -96,17 +96,7 @@ contract LargeStakeOracle is BaseOracle {
     ///
     /// @param data The data. See the `ReportData` structure's docs for details.
     /// @param _contractVersion Expected version of the oracle contract.
-    ///
-    /// Reverts if:
-    /// - The caller is not a member of the oracle committee and doesn't possess the
-    ///   SUBMIT_DATA_ROLE.
-    /// - The provided contract version is different from the current one.
-    /// - The provided consensus version is different from the expected one.
-    /// - The provided reference slot differs from the current consensus frame's one.
-    /// - The processing deadline for the current consensus frame is missed.
-    /// - The keccak256 hash of the ABI-encoded data is different from the last hash
-    ///   provided by the hash consensus contract.
-    /// - The provided data doesn't meet safety checks.
+    /// @param _moduleId oracle module id.
     function submitReportData(ReportData calldata data, uint256 _contractVersion, uint256 _moduleId)
         external
         whenNotPaused
