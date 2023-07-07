@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.8;
 
-import {IReportAsyncProcessor} from "src/oracles/HashConsensus.sol";
+import {IReportAsyncProcessor} from "src/oracles/MultiHashConsensus.sol";
 
-contract MockReportProcessor is IReportAsyncProcessor {
+contract MockMultiReportProcessor is IReportAsyncProcessor {
+    error ModuleIdNotEqual();
+
     uint256 internal _consensusVersion;
 
     struct SubmitReportLastCall {
@@ -44,7 +46,7 @@ contract MockReportProcessor is IReportAsyncProcessor {
         return _consensusVersion;
     }
 
-    function submitConsensusReport(bytes32 report, uint256 refSlot, uint256 deadline) external {
+    function submitConsensusReport(bytes32 report, uint256 refSlot, uint256 deadline, uint256 _moduleId) external {
         _submitReportLastCall.report = report;
         _submitReportLastCall.refSlot = refSlot;
         _submitReportLastCall.deadline = deadline;

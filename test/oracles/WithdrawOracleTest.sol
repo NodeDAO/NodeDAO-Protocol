@@ -2,8 +2,8 @@
 pragma solidity 0.8.8;
 
 import "forge-std/Test.sol";
-import "test/helpers/oracles/HashConsensusWithTimer.sol";
-import "test/helpers/oracles/MockOracleProvider.sol";
+import "test/helpers/oracles/MultiHashConsensusWithTimer.sol";
+import "test/helpers/oracles/MockMultiOracleProvider.sol";
 import "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import "src/LiquidStaking.sol";
 import "src/vault/VaultManager.sol";
@@ -17,13 +17,18 @@ import "src/vault/ELVaultFactory.sol";
 import "src/vault/ConsensusVault.sol";
 import "src/OperatorSlash.sol";
 import "src/WithdrawalRequest.sol";
+import "src/largeStaking/LargeStaking.sol";
+import "src/largeStaking/ELReward.sol";
+import "src/largeStaking/ELRewardFactory.sol";
+import "src/utils/Array.sol";
 
 // forge test --match-path  test/oracles/WithdrawOracleTest.sol
-contract WithdrawOracleTest is Test, MockOracleProvider {
+contract WithdrawOracleTest is Test, MockMultiOracleProvider {
     using SafeCast for uint256;
 
-    HashConsensusWithTimer consensus;
+    MultiHashConsensusWithTimer consensus;
     WithdrawOracleWithTimer withdrawOracle;
+    MockMultiReportProcessor reportProcessor1;
 
     address USER_1 = address(0xe583DC38863aB4b5A94da77A6628e2119eaD4B18);
     address withdrawalAddress = address(0x3357c09eCf74C281B6f9CCfAf4D894979349AC4B);
@@ -43,6 +48,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     address payable consensusVaultContractAddr;
     OperatorSlash operatorSlash;
     WithdrawalRequest withdrawalRequest;
+    LargeStaking largeStaking;
+    ELReward elReward;
+    ELRewardFactory elRewardFactor;
 
     address _dao = DAO;
     address _daoValutAddress = address(2);
@@ -51,6 +59,7 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     address _controllerAddress2 = address(1001);
     address[] _rewardAddresses = new address[] (1);
     uint256[] _ratios = new uint256[] (1);
+    uint256 moduleId = 1;
 
     function initAndSetOtherContract() public {
         _rewardAddresses[0] = address(5);
@@ -75,7 +84,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         operatorRegistry = new NodeOperatorRegistry();
         operatorRegistry.initialize(_dao, _daoValutAddress, address(vaultFactoryContract), address(vnft));
         vm.prank(_dao);
-        operatorRegistry.setLiquidStaking(address(liquidStaking));
+        operatorRegistry.setNodeOperatorRegistrySetting(
+            address(0), address(0), address(liquidStaking), address(0), address(0), address(0), 0, 0, 0
+        );
         vaultFactoryContract.setNodeOperatorRegistry(address(operatorRegistry));
 
         depositContract = new DepositContract();
@@ -124,7 +135,9 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         );
 
         vm.prank(_dao);
-        operatorRegistry.setOperatorSlashContract(address(operatorSlash));
+        operatorRegistry.setNodeOperatorRegistrySetting(
+            address(0), address(0), address(0), address(operatorSlash), address(0), address(0), 0, 0, 0
+        );
         vm.prank(_dao);
         liquidStaking.initializeV2(
             _operatorIds,
@@ -145,18 +158,40 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
             address(withdrawOracle),
             address(operatorSlash)
         );
+
+        elReward = new ELReward();
+        elRewardFactor = new ELRewardFactory();
+        elRewardFactor.initialize(address(elReward), _dao);
+        largeStaking = new LargeStaking();
+        largeStaking.initialize(
+            _dao,
+            _daoValutAddress,
+            address(operatorRegistry),
+            address(operatorSlash),
+            address(withdrawOracle),
+            address(elRewardFactor),
+            address(depositContract)
+        );
+        operatorRegistry.initializeV3(address(largeStaking));
+        operatorSlash.initializeV2(address(largeStaking));
+        vaultManager.initializeV2(address(neth));
     }
 
     ////////////////////////////////////////////////////////////////
 
     function setUp() public {
-        (consensus, withdrawOracle) = deployWithdrawOracleMock();
+        consensus = deployMultiHashConsensusMock();
+        withdrawOracle = deployWithdrawOracleMock(address(consensus));
+        reportProcessor1 = new MockMultiReportProcessor(CONSENSUS_VERSION);
 
         initAndSetOtherContract();
 
         vm.startPrank(DAO);
         consensus.updateInitialEpoch(INITIAL_EPOCH);
         consensus.setTime(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
+
+        consensus.addReportProcessor(address(withdrawOracle), 1);
+        consensus.addReportProcessor(address(reportProcessor1), 1);
 
         consensus.addMember(MEMBER_1, 1);
         consensus.addMember(MEMBER_2, 3);
@@ -165,6 +200,7 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
 
         withdrawOracle.setLiquidStaking(address(liquidStaking));
         withdrawOracle.setVaultManager(address(vaultManager));
+        withdrawOracle.updateContractVersion(WITHDRAW_ORACLE_CONTRACT_VERSION);
 
         vm.stopPrank();
     }
@@ -172,30 +208,34 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     function triggerConsensusOnHash() public {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
-        bytes32 hash = mockWithdrawOracleReportDataMock1Hash_1(refSlot);
+        bytes32[] memory hash = mockWithdrawOracleReportDataMock1Hash_1(refSlot);
 
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
-        (, bytes32 consensusReport, bool isReportProcessing) = consensus.getConsensusState();
-        assertEq(consensusReport, ZERO_HASH);
+        consensus.submitReport(refSlot, hash);
+        (, bytes32[] memory consensusReport) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(consensusReport, hashArrZero()));
+
+        bool isReportProcessing = consensus.getIsReportProcessing(address(withdrawOracle));
         assertFalse(isReportProcessing);
 
         vm.prank(MEMBER_2);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hash);
         vm.prank(MEMBER_3);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hash);
 
         // committee reaches consensus
         console.log("committee reaches consensus");
 
-        (uint256 refSlot2, bytes32 consensusReport2, bool isReportProcessing2) = consensus.getConsensusState();
-        assertEq(consensusReport2, hash);
+        (uint256 refSlot2, bytes32[] memory consensusReport2) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(consensusReport2, hash));
         assertEq(refSlot2, refSlot);
+
+        bool isReportProcessing2 = consensus.getIsReportProcessing(address(withdrawOracle));
         assertFalse(isReportProcessing2);
 
         (bytes32 reportHash, uint256 reportRefSlot, uint256 reportProcessingDeadlineTime, bool reportProcessingStarted)
         = withdrawOracle.getConsensusReport();
-        assertEq(reportHash, hash);
+        assertEq(reportHash, hash[0]);
         assertEq(reportRefSlot, refSlot);
         assertEq(reportProcessingDeadlineTime, computeTimestampAtSlot(refSlot + SLOTS_PER_FRAME));
         assertFalse(reportProcessingStarted);
@@ -230,43 +270,47 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         // Two structures array and array + Property hash
         console.log("-------struct hash 1 compare 2----------");
         assertFalse(
-            mockWithdrawOracleReportDataMock1Hash_1(refSlot) == mockWithdrawOracleReportDataMock1Hash_2(refSlot)
+            mockWithdrawOracleReportDataMock1Hash_1(refSlot)[0] == mockWithdrawOracleReportDataMock1Hash_2(refSlot)[0]
         );
         console.log("-------struct hash 1 compare 3----------");
         assertFalse(
-            mockWithdrawOracleReportDataMock1Hash_1(refSlot) == mockWithdrawOracleReportDataMock1Hash_3(refSlot)
+            mockWithdrawOracleReportDataMock1Hash_1(refSlot)[0] == mockWithdrawOracleReportDataMock1Hash_3(refSlot)[0]
         );
         console.log("-------struct hash 2 compare 3----------");
         assertFalse(
-            mockWithdrawOracleReportDataMock1Hash_2(refSlot) == mockWithdrawOracleReportDataMock1Hash_3(refSlot)
+            mockWithdrawOracleReportDataMock1Hash_2(refSlot)[0] == mockWithdrawOracleReportDataMock1Hash_3(refSlot)[0]
         );
     }
 
-    function reportDataConsensusReached(bytes32 hash) public {
+    function reportDataConsensusReached(bytes32[] memory hash) public {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
-        (, bytes32 consensusReport, bool isReportProcessing) = consensus.getConsensusState();
-        assertEq(consensusReport, ZERO_HASH);
+        consensus.submitReport(refSlot, hash);
+        (, bytes32[] memory consensusReport) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(consensusReport, hashArrZero()));
+
+        bool isReportProcessing = consensus.getIsReportProcessing(address(withdrawOracle));
         assertFalse(isReportProcessing);
 
         vm.prank(MEMBER_2);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hash);
         vm.prank(MEMBER_3);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hash);
 
         // committee reaches consensus
         console.log("committee reaches consensus");
 
-        (uint256 refSlot2, bytes32 consensusReport2, bool isReportProcessing2) = consensus.getConsensusState();
-        assertEq(consensusReport2, hash);
+        (uint256 refSlot2, bytes32[] memory consensusReport2) = consensus.getConsensusState();
+        assertTrue(Array.compareBytes32Arrays(consensusReport2, hash));
         assertEq(refSlot2, refSlot);
+
+        bool isReportProcessing2 = consensus.getIsReportProcessing(address(withdrawOracle));
         assertFalse(isReportProcessing2);
 
         (bytes32 reportHash, uint256 reportRefSlot, uint256 reportProcessingDeadlineTime, bool reportProcessingStarted)
         = withdrawOracle.getConsensusReport();
-        assertEq(reportHash, hash);
+        assertEq(reportHash, hash[0]);
         assertEq(reportRefSlot, refSlot);
         assertEq(reportProcessingDeadlineTime, computeTimestampAtSlot(refSlot + SLOTS_PER_FRAME));
         assertFalse(reportProcessingStarted);
@@ -336,22 +380,22 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         vm.expectRevert(
             abi.encodeWithSignature(
                 "UnexpectedDataHash(bytes32,bytes32)",
-                mockWithdrawOracleReportDataMock1Hash_1(refSlot),
-                mockWithdrawOracleReportDataMock1Hash_2(refSlot)
+                mockWithdrawOracleReportDataMock1Hash_1(refSlot)[0],
+                mockWithdrawOracleReportDataMock1Hash_2(refSlot)[0]
             )
         );
-        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_2(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_2(refSlot), CONSENSUS_VERSION, moduleId);
 
         console.log("-------mockWithdrawOracleReportDataMock1_3----------");
         vm.prank(MEMBER_1);
         vm.expectRevert(
             abi.encodeWithSignature(
                 "UnexpectedDataHash(bytes32,bytes32)",
-                mockWithdrawOracleReportDataMock1Hash_1(refSlot),
-                mockWithdrawOracleReportDataMock1Hash_3(refSlot)
+                mockWithdrawOracleReportDataMock1Hash_1(refSlot)[0],
+                mockWithdrawOracleReportDataMock1Hash_3(refSlot)[0]
             )
         );
-        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_3(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_3(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     // forge test -vvvv --match-test testReportDataMock1Success
@@ -362,7 +406,7 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_1(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportDataMock1(mockWithdrawOracleReportDataMock1_1(refSlot), CONSENSUS_VERSION, moduleId);
 
         WithdrawOracleWithTimer.ProcessingState memory procState = withdrawOracle.getProcessingState();
         assertTrue(procState.dataSubmitted);
@@ -405,18 +449,18 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         uint256 exitCount = 10000;
         uint256 opsCount = 1000;
 
-        bytes32 hash = mockWithdrawOracleReportDataMock1_countHash(refSlot, exitCount, opsCount);
+        bytes32[] memory hash = mockWithdrawOracleReportDataMock1_countHash(refSlot, exitCount, opsCount);
 
         vm.prank(MEMBER_1);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hash);
         vm.prank(MEMBER_2);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hash);
         vm.prank(MEMBER_3);
-        consensus.submitReport(refSlot, hash, CONSENSUS_VERSION);
+        consensus.submitReport(refSlot, hash);
 
         vm.prank(MEMBER_1);
         withdrawOracle.submitReportDataMock1(
-            mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION
+            mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount), CONSENSUS_VERSION, moduleId
         );
     }
 
@@ -617,11 +661,11 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
     function testReportData_notExit() public {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
-        bytes32 hash = mockFinalReportDataHash_1(refSlot);
+        bytes32[] memory hash = mockFinalReportDataHash_1(refSlot);
         reportDataConsensusReached(hash);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_1(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_1(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     // forge test -vvvv --match-test testCheckTotalClBalance
@@ -661,7 +705,7 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         withdrawalRequest.unstakeNFT(needUnstakeTokenIds);
         vm.stopPrank();
 
-        bytes32 hash = mockFinalReportData_3validatorExit_hash(refSlot);
+        bytes32[] memory hash = mockFinalReportData_3validatorExit_hash(refSlot);
         reportDataConsensusReached(hash);
 
         // transfer to clVault
@@ -670,7 +714,7 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         vm.roll(20200);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_3validatorExit(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_3validatorExit(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     //    ----------------------------- ReportData for 3 NFT exit and 1 delayed  -----------------------------------
@@ -697,13 +741,15 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         withdrawalRequest.unstakeNFT(needUnstakeTokenIds);
         vm.stopPrank();
 
-        bytes32 hash = mockFinalReportData_3validatorExit_1delayed_hash(refSlot);
+        bytes32[] memory hash = mockFinalReportData_3validatorExit_1delayed_hash(refSlot);
         reportDataConsensusReached(hash);
 
         vm.roll(30200);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_3validatorExit_1delayed(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(
+            mockFinalReportData_3validatorExit_1delayed(refSlot), CONSENSUS_VERSION, moduleId
+        );
     }
 
     // ----------------------------- ReportData for 3 NFT exit; 1 largeExitRequest while delayed  -----------------------------------
@@ -738,14 +784,14 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         // set consensusVault exit's amount
         vm.deal(address(consensusVaultContract), 500 ether);
 
-        bytes32 hash = mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed_hash(refSlot);
+        bytes32[] memory hash = mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed_hash(refSlot);
         reportDataConsensusReached(hash);
 
         vm.roll(30200);
 
         vm.prank(MEMBER_1);
         withdrawOracle.submitReportData(
-            mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed(refSlot), CONSENSUS_VERSION
+            mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed(refSlot), CONSENSUS_VERSION, moduleId
         );
     }
 
@@ -761,13 +807,13 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         // set clVault reward
         vm.deal(address(consensusVaultContract), 11 ether);
 
-        bytes32 hash = mockFinalReportData_OperatorReward_hash(refSlot);
+        bytes32[] memory hash = mockFinalReportData_OperatorReward_hash(refSlot);
         reportDataConsensusReached(hash);
 
         vm.roll(20000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_OperatorReward(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_OperatorReward(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -939,13 +985,13 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         // set clVault reward
         vm.deal(address(consensusVaultContract), 20 ether);
 
-        bytes32 hash = mockFinalReportData_batch100_hash(refSlot);
+        bytes32[] memory hash = mockFinalReportData_batch100_hash(refSlot);
         reportDataConsensusReached(hash);
 
         vm.roll(30000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_batch100(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_batch100(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -978,13 +1024,13 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         // set clVault reward
         vm.deal(address(consensusVaultContract), 20 ether);
 
-        bytes32 hash = mockFinalReportData_batch100_normal_hash(refSlot);
+        bytes32[] memory hash = mockFinalReportData_batch100_normal_hash(refSlot);
         reportDataConsensusReached(hash);
 
         vm.roll(30000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_batch100_normal(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_batch100_normal(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     // see gas: 1875255
@@ -1011,13 +1057,13 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         // set clVault reward
         vm.deal(address(consensusVaultContract), 20 ether);
 
-        bytes32 hash = mockFinalReportData_20Nft_20Operator_hash(refSlot);
+        bytes32[] memory hash = mockFinalReportData_20Nft_20Operator_hash(refSlot);
         reportDataConsensusReached(hash);
 
         vm.roll(30000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_20Nft_20Operator(refSlot), CONSENSUS_VERSION);
+        withdrawOracle.submitReportData(mockFinalReportData_20Nft_20Operator(refSlot), CONSENSUS_VERSION, moduleId);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -1041,13 +1087,7 @@ contract WithdrawOracleTest is Test, MockOracleProvider {
         // report and settle
         testReportData_3validatorExit_1delayed_1largeExitRequest_1delayed();
 
-        uint256 slashPerBlock = operatorSlash.slashAmountPerBlockPerValidator();
-        // delayedExitSlashStandard = 7200    res = 800 + 900
-        uint256 slashBlock = 28000 + 28100 - (20000 + operatorSlash.delayedExitSlashStandard()) * 2;
-        uint256 pledgeBalanceReduce = slashPerBlock * slashBlock;
-
         // test settle data
         (uint256 pledgeBalanceReport,) = operatorRegistry.getPledgeInfoOfOperator(1);
-        //        assertEq(pledgeBalanceReport, pledgeBalance - pledgeBalanceReduce);
     }
 }

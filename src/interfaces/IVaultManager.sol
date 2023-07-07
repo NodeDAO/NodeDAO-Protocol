@@ -19,15 +19,11 @@ interface IVaultManager {
      * @notice Receive the oracle machine consensus layer information, initiate re-investment consensus layer rewards, trigger and update the exited nft
      * @param _withdrawInfo withdraw info
      * @param _exitValidatorInfo exit validator info
-     * @param _nftExitDelayedTokenIds nft with delayed exit
-     * @param _largeExitDelayedRequestIds large Requests for Delayed Exit
      * @param _thisTotalWithdrawAmount The total settlement amount reported this time
      */
     function reportConsensusData(
         WithdrawInfo[] memory _withdrawInfo,
         ExitValidatorInfo[] memory _exitValidatorInfo,
-        uint256[] memory _nftExitDelayedTokenIds, // user nft
-        uint256[] memory _largeExitDelayedRequestIds, // large unstake request id
         uint256 _thisTotalWithdrawAmount
     ) external;
 }

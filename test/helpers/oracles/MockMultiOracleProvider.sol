@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.8;
 
-import "test/helpers/oracles/HashConsensusWithTimer.sol";
-import "test/helpers/oracles/MockReportProcessor.sol";
-import {MockWithdrawInfo, WithdrawOracleWithTimer} from "test/helpers/oracles/WithdrawOracleWithTimer.sol";
+import "test/helpers/oracles/MultiHashConsensusWithTimer.sol";
+import "test/helpers/oracles/MockMultiReportProcessor.sol";
 import "test/helpers/CommonConstantProvider.sol";
+import {MockWithdrawInfo, WithdrawOracleWithTimer} from "test/helpers/oracles/WithdrawOracleWithTimer.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
+import "src/oracles/LargeStakeOracle.sol";
+import "src/oracles/WithdrawOracle.sol";
 
 // Provide baseline data for the Hash Consensus contract test
-contract MockOracleProvider is CommonConstantProvider {
+contract MockMultiOracleProvider is CommonConstantProvider {
     uint256 public constant SLOTS_PER_EPOCH = 32;
     uint256 public constant SECONDS_PER_SLOT = 12;
     // goerli: 1616508000
@@ -22,7 +24,10 @@ contract MockOracleProvider is CommonConstantProvider {
     uint256 public constant SECONDS_PER_FRAME = SECONDS_PER_EPOCH * EPOCHS_PER_FRAME;
     uint256 public constant SLOTS_PER_FRAME = EPOCHS_PER_FRAME * SLOTS_PER_EPOCH;
 
-    uint256 public constant CONSENSUS_VERSION = 1;
+    uint256 public constant CONSENSUS_VERSION = 2;
+
+    uint256 public constant WITHDRAW_ORACLE_CONTRACT_VERSION = 2;
+    uint256 public constant LARGE_STAKE_ORACLE_CONTRACT_VERSION = 1;
 
     address public constant MEMBER_1 = address(11);
     address public constant MEMBER_2 = address(12);
@@ -62,11 +67,11 @@ contract MockOracleProvider is CommonConstantProvider {
         return computeSlotAt(_time) / SLOTS_PER_EPOCH;
     }
 
-    function setTimeToFrame0(HashConsensusWithTimer consensus) public {
+    function setTimeToFrame0(MultiHashConsensusWithTimer consensus) public {
         consensus.setTimeInEpochs(INITIAL_EPOCH);
     }
 
-    function getFastLaneLengthSlotsLimit(HashConsensusWithTimer consensus)
+    function getFastLaneLengthSlotsLimit(MultiHashConsensusWithTimer consensus)
         public
         view
         returns (uint256 fastLaneLengthSlotsLimit)
@@ -76,39 +81,41 @@ contract MockOracleProvider is CommonConstantProvider {
         fastLaneLengthSlotsLimit = slotsPerEpoch * epochsPerFrame;
     }
 
-    function deployHashConsensusMock() public returns (HashConsensusWithTimer, MockReportProcessor) {
-        MockReportProcessor reportProcessor = new MockReportProcessor(CONSENSUS_VERSION);
-        HashConsensusWithTimer consensus = new HashConsensusWithTimer();
-        consensus.initialize(
-            SLOTS_PER_EPOCH,
-            SECONDS_PER_SLOT,
-            GENESIS_TIME,
-            EPOCHS_PER_FRAME,
-            INITIAL_FAST_LANE_LENGTH_SLOTS,
-            DAO,
-            address(reportProcessor)
-        );
-
-        return (consensus, reportProcessor);
+    function hashArr1() public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](3);
+        hashArr[0] = HASH_1;
+        hashArr[1] = HASH_2;
+        hashArr[2] = HASH_3;
+        return hashArr;
     }
 
-    function deployWithdrawOracleMock() public returns (HashConsensusWithTimer, WithdrawOracleWithTimer) {
-        HashConsensusWithTimer consensus = new HashConsensusWithTimer();
-        WithdrawOracleWithTimer oracle = new WithdrawOracleWithTimer();
+    function hashArr2() public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](3);
+        hashArr[0] = HASH_1;
+        hashArr[1] = HASH_3;
+        hashArr[2] = HASH_2;
+        return hashArr;
+    }
+
+    function hashArrZero() public pure returns (bytes32[] memory) {
+        return new bytes32[](0);
+    }
+
+    function deployMultiHashConsensusMock() public returns (MultiHashConsensusWithTimer) {
+        MultiHashConsensusWithTimer consensus = new MultiHashConsensusWithTimer();
         consensus.initialize(
-            SLOTS_PER_EPOCH,
-            SECONDS_PER_SLOT,
-            GENESIS_TIME,
-            EPOCHS_PER_FRAME,
-            INITIAL_FAST_LANE_LENGTH_SLOTS,
-            DAO,
-            address(oracle)
+            SLOTS_PER_EPOCH, SECONDS_PER_SLOT, GENESIS_TIME, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, DAO
         );
 
+        return consensus;
+    }
+
+    function deployWithdrawOracleMock(address consensus) public returns (WithdrawOracleWithTimer) {
+        WithdrawOracleWithTimer oracle = new WithdrawOracleWithTimer();
         oracle.initialize(
             SECONDS_PER_SLOT,
             GENESIS_TIME,
-            address(consensus),
+            consensus,
             CONSENSUS_VERSION,
             0,
             DAO,
@@ -117,12 +124,38 @@ contract MockOracleProvider is CommonConstantProvider {
             CL_BALANCE,
             PENDING_BALANCE
         );
-
-        return (consensus, oracle);
+        return oracle;
     }
 
-    function mockWithdrawOracleReportDataMock1Hash_1(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_1(refSlot)));
+    function deployWithdrawOracle(address consensus) public returns (WithdrawOracle) {
+        WithdrawOracle oracle = new WithdrawOracle();
+        oracle.initialize(
+            SECONDS_PER_SLOT,
+            GENESIS_TIME,
+            consensus,
+            CONSENSUS_VERSION,
+            0,
+            DAO,
+            EXIT_REQUEST_LIMIT,
+            CL_VAULT_MIN_SETTLE_LIMIT,
+            CL_BALANCE,
+            PENDING_BALANCE
+        );
+        return oracle;
+    }
+
+    function deployLargeStakeOracle(address consensus, address largeStake) public returns (LargeStakeOracle) {
+        LargeStakeOracle oracle = new LargeStakeOracle();
+        oracle.initialize(SECONDS_PER_SLOT, GENESIS_TIME, consensus, CONSENSUS_VERSION, 0, DAO, largeStake);
+        return oracle;
+    }
+
+    function mockWithdrawOracleReportDataMock1Hash_1(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_1(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     function mockWithdrawOracleReportDataMock1_2(uint256 refSlot)
@@ -157,8 +190,12 @@ contract MockOracleProvider is CommonConstantProvider {
         reportData.withdrawInfos = withdrawInfos;
     }
 
-    function mockWithdrawOracleReportDataMock1Hash_2(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_2(refSlot)));
+    function mockWithdrawOracleReportDataMock1Hash_2(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_2(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     function mockWithdrawOracleReportDataMock1_3(uint256 refSlot)
@@ -195,8 +232,12 @@ contract MockOracleProvider is CommonConstantProvider {
         reportData.withdrawInfos = withdrawInfos;
     }
 
-    function mockWithdrawOracleReportDataMock1Hash_3(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_3(refSlot)));
+    function mockWithdrawOracleReportDataMock1Hash_3(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_3(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     function mockDifferentStructHashIsSame() public pure returns (bool) {
@@ -288,9 +329,13 @@ contract MockOracleProvider is CommonConstantProvider {
     function mockWithdrawOracleReportDataMock1_countHash(uint256 refSlot, uint256 exitCount, uint256 opsCount)
         public
         pure
-        returns (bytes32 hash)
+        returns (bytes32[] memory)
     {
-        hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount)));
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockWithdrawOracleReportDataMock1_count(refSlot, exitCount, opsCount)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     function mockWithdrawOracleReportDataMock1_1(uint256 refSlot)
@@ -350,16 +395,14 @@ contract MockOracleProvider is CommonConstantProvider {
 
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](0);
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
-    function mockFinalReportDataHash_1(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockFinalReportData_1(refSlot)));
+    function mockFinalReportDataHash_1(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockFinalReportData_1(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     //----------------------------- ReportData for 3 validator exit  -----------------------------------
@@ -391,16 +434,14 @@ contract MockOracleProvider is CommonConstantProvider {
         exitValidatorInfos[1] = exitValidatorInfo2;
         exitValidatorInfos[2] = exitValidatorInfo3;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
-    function mockFinalReportData_3validatorExit_hash(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockFinalReportData_3validatorExit(refSlot)));
+    function mockFinalReportData_3validatorExit_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockFinalReportData_3validatorExit(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     //----------------------------- ReportData for 3 validator exit and 1 delayed  -----------------------------------
@@ -432,17 +473,14 @@ contract MockOracleProvider is CommonConstantProvider {
         exitValidatorInfos[1] = exitValidatorInfo2;
         exitValidatorInfos[2] = exitValidatorInfo3;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](1);
-        delayedExitTokenIds[0] = 2;
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
-    function mockFinalReportData_3validatorExit_1delayed_hash(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockFinalReportData_3validatorExit_1delayed(refSlot)));
+    function mockFinalReportData_3validatorExit_1delayed_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockFinalReportData_3validatorExit_1delayed(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     //----------------------------- ReportData for 3 NFT exit while 1 delayed; 1 largeExitRequest while 1 delayed  -----------------------------------
@@ -478,22 +516,19 @@ contract MockOracleProvider is CommonConstantProvider {
         exitValidatorInfos[2] = exitValidatorInfo3;
         exitValidatorInfos[3] = exitValidatorInfo4;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](1);
-        delayedExitTokenIds[0] = 2;
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](1);
-        largeExitDelayedRequestIds[0] = 0;
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
     function mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed_hash(uint256 refSlot)
         public
         pure
-        returns (bytes32 hash)
+        returns (bytes32[] memory)
     {
-        hash = keccak256(abi.encode(mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed(refSlot)));
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash =
+            keccak256(abi.encode(mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     //----------------------------- ReportData for OperatorReward  -----------------------------------
@@ -521,16 +556,14 @@ contract MockOracleProvider is CommonConstantProvider {
 
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](0);
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
-    function mockFinalReportData_OperatorReward_hash(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockFinalReportData_OperatorReward(refSlot)));
+    function mockFinalReportData_OperatorReward_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockFinalReportData_OperatorReward(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     ////////////////////////////////////////////////////////////////
@@ -569,14 +602,14 @@ contract MockOracleProvider is CommonConstantProvider {
 
         reportData.withdrawInfos = withdrawInfos;
         reportData.exitValidatorInfos = exitValidatorInfos;
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
-    function mockFinalReportData_batch100_hash(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockFinalReportData_batch100(refSlot)));
+    function mockFinalReportData_batch100_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockFinalReportData_batch100(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     function mockFinalReportData_batch100_normal(uint256 refSlot)
@@ -610,16 +643,14 @@ contract MockOracleProvider is CommonConstantProvider {
 
         reportData.withdrawInfos = withdrawInfos;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
-    function mockFinalReportData_batch100_normal_hash(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockFinalReportData_batch100_normal(refSlot)));
+    function mockFinalReportData_batch100_normal_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockFinalReportData_batch100_normal(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 
     function mockFinalReportData_20Nft_20Operator(uint256 refSlot)
@@ -653,15 +684,13 @@ contract MockOracleProvider is CommonConstantProvider {
 
         reportData.withdrawInfos = withdrawInfos;
         reportData.exitValidatorInfos = exitValidatorInfos;
-
-        uint256[] memory delayedExitTokenIds = new uint256[](0);
-        reportData.delayedExitTokenIds = delayedExitTokenIds;
-
-        uint256[] memory largeExitDelayedRequestIds = new uint256[](0);
-        reportData.largeExitDelayedRequestIds = largeExitDelayedRequestIds;
     }
 
-    function mockFinalReportData_20Nft_20Operator_hash(uint256 refSlot) public pure returns (bytes32 hash) {
-        hash = keccak256(abi.encode(mockFinalReportData_20Nft_20Operator(refSlot)));
+    function mockFinalReportData_20Nft_20Operator_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockFinalReportData_20Nft_20Operator(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
     }
 }

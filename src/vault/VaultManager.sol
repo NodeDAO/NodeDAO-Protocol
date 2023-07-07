@@ -10,6 +10,7 @@ import "src/interfaces/ILiquidStaking.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
 import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 import "src/interfaces/IOperatorSlash.sol";
+import "src/interfaces/INETH.sol";
 
 contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardUpgradeable {
     ILiquidStaking public liquidStakingContract;
@@ -31,9 +32,13 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     mapping(uint256 => uint256) public operatorRewardsMap;
     mapping(uint256 => uint256) public daoRewardsMap;
 
+    // v2 storage
+    INETH public nETHContract;
+    uint256 public MAX_SLASH_AMOUNT;
+
     event ELRewardSettleAndReinvest(uint256[] _operatorIds, uint256[] _reinvestAmounts);
     event Settle(uint256 _blockNumber, uint256 _settleRewards, uint256 _operatorNftCounts, uint256 _averageRewards);
-    event RewardClaimed(address _owner, uint256 _amount);
+    event RewardClaimed(address _owner, uint256 _tokenId, uint256 _amount);
     event OperatorClaimRewards(uint256 _operatorId, uint256 _rewards);
     event DaoClaimRewards(uint256 _operatorId, uint256 _rewards);
     event NodeOperatorRegistryContractSet(
@@ -44,6 +49,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
     event DaoElCommissionRateSet(uint256 oldDaoElCommissionRate, uint256 _daoElCommissionRate);
     event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
+    event Neth2ETHExchangeRateChanged(uint256 _exchangeRate, uint256 _totalEth, uint256 nethSupply);
+    event NethChanged(address _oldNethContract, address _NethAddress);
+    event MaxSlashAmountChanged(uint256 _oldMaxSlashAmount, uint256 _maxSlashAmount);
 
     error PermissionDenied();
     error InvalidParameter();
@@ -54,6 +62,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     error InsufficientMargin();
     error InvalidRewardAddr();
     error InvalidRewardRatio();
+    error InvalidReport();
 
     modifier onlyWithdrawOracle() {
         if (withdrawOracleContractAddress != msg.sender) revert PermissionDenied();
@@ -89,12 +98,16 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         daoElCommissionRate = 1000;
     }
 
+    function initializeV2(address _nethContractAddress) public reinitializer(2) onlyOwner {
+        emit NethChanged(address(nETHContract), _nethContractAddress);
+        nETHContract = INETH(_nethContractAddress);
+        MAX_SLASH_AMOUNT = 2 ether;
+    }
+
     /**
      * @notice Receive the oracle machine consensus layer information, initiate re-investment consensus layer rewards, trigger and update the exited nft
      * @param _withdrawInfo withdraw info
      * @param _exitValidatorInfo exit validator info
-     * @param _userNftExitDelayedTokenIds nft with delayed exit
-     * @param _largeExitDelayedRequestIds large Requests for Delayed Exit
      * @param _thisTotalWithdrawAmount The total settlement amount reported this time
      */
     function reportConsensusData(
@@ -106,14 +119,6 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         // including whether it was penalized.
         // It contains the protocol and all nft held by the user
         ExitValidatorInfo[] memory _exitValidatorInfo,
-        // The user's nft has applied for unstakeNFT,
-        // and the operator should complete the withdrawal of the nft within the specified time,
-        // otherwise it will be punished.
-        uint256[] memory _userNftExitDelayedTokenIds,
-        // For holders of neth, after initiating a large amount of withdrawal,
-        // the operator should complete it within the specified time,
-        // otherwise they will face punishment
-        uint256[] memory _largeExitDelayedRequestIds,
         // The amount of this settlement is the sum of the cumulative funds of clReward and clCapital in _withdrawInfo
         uint256 _thisTotalWithdrawAmount
     ) external onlyWithdrawOracle {
@@ -139,10 +144,17 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         uint256 systemTotalSlashAmounts = 0;
         uint256 systemTotalExitNumber = 0;
         address system = address(liquidStakingContract);
+        bool isHasSlash = false;
         for (uint256 i = 0; i < _exitValidatorInfo.length; ++i) {
             ExitValidatorInfo memory vInfo = _exitValidatorInfo[i];
             exitTokenIds[i] = vInfo.exitTokenId;
             slashAmounts[i] = vInfo.slashAmount;
+            if (vInfo.slashAmount > MAX_SLASH_AMOUNT) {
+                revert InvalidReport();
+            }
+            if (!isHasSlash && vInfo.slashAmount != 0) {
+                isHasSlash = true;
+            }
             exitBlockNumbers[i] = vInfo.exitBlockNumber;
             if (vNFTContract.ownerOf(vInfo.exitTokenId) == system) {
                 systemTotalSlashAmounts += vInfo.slashAmount;
@@ -156,18 +168,26 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         liquidStakingContract.reinvestClRewards(operatorIds, amounts, totalAmount);
 
-        if (_userNftExitDelayedTokenIds.length != 0 || _largeExitDelayedRequestIds.length != 0) {
-            operatorSlashContract.slashOfExitDelayed(_userNftExitDelayedTokenIds, _largeExitDelayedRequestIds);
-        }
-
         if (exitTokenIds.length != 0) {
-            // eth2 slash
-            operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
+            if (isHasSlash) {
+                // eth2 slash
+                operatorSlashContract.slashOperator(exitTokenIds, slashAmounts);
+            }
+
             // nft exit
             liquidStakingContract.nftExitHandle(exitTokenIds, exitBlockNumbers);
         }
 
         _settleAndReinvestElReward(operatorIds);
+
+        // exchangeRate = 1 ether * (totalEth) / (nethSupply);
+        // totalEth = exchangeRate * nethSupply / 1 ether;
+        uint256 exchangeRate = liquidStakingContract.getExchangeRate();
+
+        uint256 nethSupply = nETHContract.totalSupply();
+        uint256 totalEth = exchangeRate * nethSupply / 1 ether;
+
+        emit Neth2ETHExchangeRateChanged(exchangeRate, totalEth, nethSupply);
     }
 
     /**
@@ -257,7 +277,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      */
     function claimRewardsOfUser(uint256[] memory _tokenIds) external {
         address owner = vNFTContract.ownerOf(_tokenIds[0]);
-        uint256 totalCompensated = operatorSlashContract.claimCompensated(_tokenIds, owner);
+        operatorSlashContract.claimCompensated(_tokenIds, owner);
 
         uint256 operatorId = vNFTContract.operatorOf(_tokenIds[0]);
         uint256[] memory gasHeights = vNFTContract.getUserNftGasHeight(_tokenIds);
@@ -271,6 +291,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             uint256 nftRewards = _rewards(operatorId, gasHeights[i], exitBlockNumbers[i]);
             amounts[i] = nftRewards;
             totalNftRewards += nftRewards;
+
+            emit RewardClaimed(owner, tokenId, nftRewards);
         }
 
         if (totalNftRewards == 0) {
@@ -280,7 +302,6 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         unclaimedRewardsMap[operatorId] -= totalNftRewards;
         uint256 gasHeight = settleCumArrMap[operatorId][settleCumArrMap[operatorId].length - 1].height;
         liquidStakingContract.claimRewardsOfUser(operatorId, _tokenIds, totalNftRewards, gasHeight, owner);
-        emit RewardClaimed(owner, totalNftRewards + totalCompensated);
     }
 
     /**
@@ -344,6 +365,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             highIndex = high - 1;
         }
         // At this point `low` is the exclusive upper bound. We will use it.
+        if (cumArr[highIndex].value < cumArr[lowIndex].value) {
+            return 0;
+        }
+
         return cumArr[highIndex].value - cumArr[lowIndex].value;
     }
 
@@ -405,40 +430,45 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     }
 
     /**
-     * @notice Set new nodeOperatorRegistryContract address
-     * @param _nodeOperatorRegistryContract new withdrawalCredentials
+     * @notice set contract setting
      */
-    function setNodeOperatorRegistryContract(address _nodeOperatorRegistryContract) external onlyDao {
-        emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
-        nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
-    }
+    function setVaultManagerSetting(
+        uint256 _daoElCommissionRate,
+        uint256 _MAX_SLASH_AMOUNT,
+        address _liquidStakingContractAddress,
+        address _operatorSlashContract,
+        address _withdrawOracleContractAddress,
+        address _nodeOperatorRegistryContract
+    ) public onlyDao {
+        if (_daoElCommissionRate != 0) {
+            if (_daoElCommissionRate > 5000) revert InvalidParameter();
+            emit DaoElCommissionRateSet(daoElCommissionRate, _daoElCommissionRate);
 
-    /**
-     * @notice Set new withdrawOracleContract address
-     * @param _withdrawOracleContractAddress new withdrawOracleContract address
-     */
-    function setWithdrawOracleContractAddress(address _withdrawOracleContractAddress) external onlyDao {
-        emit WithdrawOracleContractSet(withdrawOracleContractAddress, _withdrawOracleContractAddress);
-        withdrawOracleContractAddress = _withdrawOracleContractAddress;
-    }
+            daoElCommissionRate = _daoElCommissionRate;
+        }
+        if (_MAX_SLASH_AMOUNT != 0) {
+            emit MaxSlashAmountChanged(MAX_SLASH_AMOUNT, _MAX_SLASH_AMOUNT);
+            MAX_SLASH_AMOUNT = _MAX_SLASH_AMOUNT;
+        }
 
-    /**
-     * @notice Set new operatorSlashContract address
-     * @param _operatorSlashContract new operatorSlashContract address
-     */
-    function setOperatorSlashContract(address _operatorSlashContract) external onlyDao {
-        emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContract);
-        operatorSlashContract = IOperatorSlash(_operatorSlashContract);
-    }
+        if (_liquidStakingContractAddress != address(0)) {
+            emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
+            liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+        }
 
-    /**
-     * @notice Set proxy address of LiquidStaking
-     * @param _liquidStakingContractAddress proxy address of LiquidStaking
-     * @dev will only allow call of function by the address registered as the owner
-     */
-    function setLiquidStaking(address _liquidStakingContractAddress) external onlyDao {
-        emit LiquidStakingChanged(address(liquidStakingContract), _liquidStakingContractAddress);
-        liquidStakingContract = ILiquidStaking(_liquidStakingContractAddress);
+        if (_operatorSlashContract != address(0)) {
+            emit OperatorSlashContractSet(address(operatorSlashContract), _operatorSlashContract);
+            operatorSlashContract = IOperatorSlash(_operatorSlashContract);
+        }
+        if (_withdrawOracleContractAddress != address(0)) {
+            emit WithdrawOracleContractSet(withdrawOracleContractAddress, _withdrawOracleContractAddress);
+            withdrawOracleContractAddress = _withdrawOracleContractAddress;
+        }
+
+        if (_nodeOperatorRegistryContract != address(0)) {
+            emit NodeOperatorRegistryContractSet(address(nodeOperatorRegistryContract), _nodeOperatorRegistryContract);
+            nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
+        }
     }
 
     /**
@@ -449,16 +479,5 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         if (_dao == address(0)) revert InvalidParameter();
         emit DaoAddressChanged(dao, _dao);
         dao = _dao;
-    }
-
-    /**
-     * @notice set  daoElCommissionRate
-     * @param _daoElCommissionRate new _daoElCommissionRate
-     */
-    function setDaoElCommissionRate(uint256 _daoElCommissionRate) external onlyDao {
-        if (_daoElCommissionRate > 5000) revert InvalidParameter();
-        emit DaoElCommissionRateSet(daoElCommissionRate, _daoElCommissionRate);
-
-        daoElCommissionRate = _daoElCommissionRate;
     }
 }

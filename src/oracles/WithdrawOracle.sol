@@ -10,7 +10,6 @@ import {WithdrawInfo, ExitValidatorInfo} from "src/library/ConsensusStruct.sol";
 contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     using SafeCast for uint256;
 
-    event WarnDataIncompleteProcessing(uint256 indexed refSlot, uint256 exitRequestLimit, uint256 reportExitedCount);
     event UpdateExitRequestLimit(uint256 exitRequestLimit);
     event UpdateTotalBalanceTolerate(uint256 old, uint256 totalBalanceTolerate);
     event UpdateClVaultMinSettleLimit(uint256 clVaultMinSettleLimit);
@@ -22,8 +21,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 indexed refSlot, uint256 reportExitedCount, uint256 clBalance, uint256 clVaultBalance
     );
 
-    error PermissionDenied();
-    error SenderNotAllowed();
     error UnsupportedRequestsDataFormat(uint256 format);
     error InvalidRequestsData();
     error InvalidRequestsDataLength();
@@ -80,10 +77,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         WithdrawInfo[] withdrawInfos;
         // To exit the validator's info
         ExitValidatorInfo[] exitValidatorInfos;
-        // The validator does not exit in time. Procedure
-        uint256[] delayedExitTokenIds;
-        //nETH reported a large exit
-        uint256[] largeExitDelayedRequestIds;
     }
 
     DataProcessingState internal dataProcessingState;
@@ -138,6 +131,12 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         clVaultMinSettleLimit = _clVaultMinSettleLimit;
         clBalances = _clBalance;
         pendingBalances = _pendingBalance;
+    }
+
+    function initializeV2(address _consensus, uint256 _lastProcessingRefSlot) public reinitializer(2) onlyDao {
+        _setConsensusContract(_consensus, _lastProcessingRefSlot);
+        _updateContractVersion(2);
+        _setConsensusVersion(2);
     }
 
     /// Set the number limit for the validator to report
@@ -227,11 +226,14 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// - The keccak256 hash of the ABI-encoded data is different from the last hash
     ///   provided by the hash consensus contract.
     /// - The provided data doesn't meet safety checks.
-    function submitReportData(ReportData calldata data, uint256 _contractVersion) external whenNotPaused {
+    function submitReportData(ReportData calldata data, uint256 _contractVersion, uint256 _moduleId)
+        external
+        whenNotPaused
+    {
         _checkMsgSenderIsAllowedToSubmitData();
         _checkContractVersion(_contractVersion);
         // it's a waste of gas to copy the whole calldata into mem but seems there's no way around
-        _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)));
+        _checkConsensusData(data.refSlot, data.consensusVersion, keccak256(abi.encode(data)), _moduleId);
         _startProcessing();
         _handleConsensusReportData(data);
     }
@@ -259,13 +261,6 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         result.reportExitedCount = procState.reportExitedCount;
     }
 
-    function _checkMsgSenderIsAllowedToSubmitData() internal view {
-        address sender = _msgSender();
-        if (!_isConsensusMember(sender)) {
-            revert SenderNotAllowed();
-        }
-    }
-
     function _handleConsensusReportData(ReportData calldata data) internal {
         if (data.exitValidatorInfos.length != data.reportExitedCount) revert InvalidRequestsDataLength();
         if (data.reportExitedCount > exitRequestLimit) revert UnexpectedRequestsDataLength();
@@ -275,11 +270,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
 
         // Invoke vault Manager to process the reported data
         IVaultManager(vaultManager).reportConsensusData(
-            data.withdrawInfos,
-            data.exitValidatorInfos,
-            data.delayedExitTokenIds,
-            data.largeExitDelayedRequestIds,
-            data.clSettleAmount
+            data.withdrawInfos, data.exitValidatorInfos, data.clSettleAmount
         );
 
         // oracle maintains the necessary data
@@ -327,15 +318,15 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         lastClSettleAmount = _clSettleAmount;
     }
 
-    // use for submitConsensusReport
+    /// @notice Called when oracle gets a new consensus report from the HashConsensus contract.
+    ///
+    /// Keep in mind that, until you call `_startProcessing`, the oracle committee is free to
+    /// reach consensus on another report for the same reporting frame and re-submit it using
+    /// this function.
+    /// use for submitConsensusReport
     function _handleConsensusReport(
-        ConsensusReport memory, /* report */
-        uint256, /* prevSubmittedRefSlot */
+        ConsensusReport memory report,
+        uint256 prevSubmittedRefSlot,
         uint256 prevProcessingRefSlot
-    ) internal override {
-        DataProcessingState memory state = dataProcessingState;
-        if (state.refSlot == prevProcessingRefSlot && state.reportExitedCount <= exitRequestLimit) {
-            emit WarnDataIncompleteProcessing(prevProcessingRefSlot, exitRequestLimit, state.reportExitedCount);
-        }
-    }
+    ) internal override {}
 }
