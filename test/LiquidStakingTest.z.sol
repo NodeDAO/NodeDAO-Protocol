@@ -230,7 +230,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
             address(operatorSlash)
         );
         vm.prank(_dao);
-        vaultManager.setDaoElCommissionRate(300);
+        vaultManager.setVaultManagerSetting(300, 0, address(0), address(0), address(0), address(0));
 
         uint256[] memory _resetVaultOperatorIds = new uint256[] (1);
         _resetVaultOperatorIds[0] = 1;
@@ -268,7 +268,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
 
         vm.prank(_dao);
         largeStaking.setLargeStakingSetting(
-            address(0), address(0), 300, 0, address(0), address(0), address(0), address(0)
+            address(0), address(0), 300, 0, 0, address(0), address(0), address(0), address(0)
         );
         operatorSlash.initializeV2(address(largeStaking));
         vaultManager.initializeV2(address(neth));
@@ -2309,26 +2309,26 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
 
     function testVaultManager2() public {
         vm.prank(_dao);
-        vaultManager.setNodeOperatorRegistryContract(address(1000));
+        vaultManager.setVaultManagerSetting(0, 0, address(0), address(0), address(0), address(1000));
         assertEq(address(vaultManager.nodeOperatorRegistryContract()), address(1000));
 
         vm.prank(_dao);
-        vaultManager.setWithdrawOracleContractAddress(address(1000));
+        vaultManager.setVaultManagerSetting(0, 0, address(0), address(0), address(1000), address(0));
         assertEq(address(vaultManager.withdrawOracleContractAddress()), address(1000));
 
         vm.prank(_dao);
-        vaultManager.setOperatorSlashContract(address(1000));
+        vaultManager.setVaultManagerSetting(0, 0, address(0), address(1000), address(0), address(0));
         assertEq(address(vaultManager.operatorSlashContract()), address(1000));
 
         vaultManager.setDaoAddress(address(1000));
         assertEq(address(vaultManager.dao()), address(1000));
 
         vm.prank(address(1000));
-        vaultManager.setDaoElCommissionRate(1000);
+        vaultManager.setVaultManagerSetting(1000, 0, address(0), address(0), address(0), address(0));
         assertEq(vaultManager.daoElCommissionRate(), 1000);
 
         vm.prank(address(1000));
-        vaultManager.setLiquidStaking(address(1000));
+        vaultManager.setVaultManagerSetting(0, 0, address(1000), address(0), address(0), address(0));
         assertEq(address(vaultManager.liquidStakingContract()), address(1000));
     }
 

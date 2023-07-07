@@ -845,6 +845,7 @@ contract LargeStaking is
         address _daoVaultAddress,
         uint256 _daoElCommissionRate,
         uint256 _MIN_STAKE_AMOUNT,
+        uint256 _MAX_SLASH_AMOUNT,
         address _nodeOperatorRegistryAddress,
         address _consensusOracleContractAddr,
         address _elRewardFactory,
@@ -866,8 +867,13 @@ contract LargeStaking is
         }
 
         if (_MIN_STAKE_AMOUNT != 0) {
-            emit MinStakeAmountChange(MIN_STAKE_AMOUNT, _MIN_STAKE_AMOUNT);
+            emit MinStakeAmountChanged(MIN_STAKE_AMOUNT, _MIN_STAKE_AMOUNT);
             MIN_STAKE_AMOUNT = _MIN_STAKE_AMOUNT;
+        }
+
+        if (_MAX_SLASH_AMOUNT != 0) {
+            emit MaxSlashAmountChanged(MAX_SLASH_AMOUNT, _MAX_SLASH_AMOUNT);
+            MAX_SLASH_AMOUNT = _MAX_SLASH_AMOUNT;
         }
 
         if (_nodeOperatorRegistryAddress != address(0)) {
