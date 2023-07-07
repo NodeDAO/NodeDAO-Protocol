@@ -1955,8 +1955,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         _withdrawInfo[0] = WithdrawInfo({operatorId: 1, clReward: 0.1 ether, clCapital: 0 ether});
         ExitValidatorInfo[] memory _exitValidatorInfo = new ExitValidatorInfo[] (2);
         _exitValidatorInfo[0] = ExitValidatorInfo({exitTokenId: 0, exitBlockNumber: 200, slashAmount: 2 ether});
-        _exitValidatorInfo[1] = ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 200, slashAmount: 3 ether});
-        uint256[] memory empty = new uint256[] (0);
+        _exitValidatorInfo[1] = ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 200, slashAmount: 2 ether});
 
         vm.roll(210);
 
@@ -1978,7 +1977,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         operatorRegistry.deposit{value: 2 ether}(1);
         assertEq(1 ether, operatorSlash.nftHasCompensated(0));
         assertEq(0 ether, operatorSlash.nftWillCompensated(0));
-        assertEq(2 ether, operatorSlash.nftWillCompensated(1));
+        assertEq(1 ether, operatorSlash.nftWillCompensated(1));
         assertEq(1 ether, operatorSlash.nftHasCompensated(1));
         vaultManager.claimRewardsOfUser(tokenIds);
         assertEq(2 ether, address(74).balance);
@@ -1993,15 +1992,15 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(0 ether, operatorSlash.nftHasCompensated(0));
         assertEq(0 ether, operatorSlash.nftWillCompensated(0));
         assertEq(0 ether, operatorSlash.nftWillCompensated(1));
-        assertEq(3 ether, operatorSlash.nftHasCompensated(1));
+        assertEq(2 ether, operatorSlash.nftHasCompensated(1));
         assertEq(2, operatorSlash.operatorCompensatedIndex());
         tokenIds[0] = 1;
         vaultManager.claimRewardsOfUser(tokenIds);
-        assertEq(3 ether, address(24).balance);
+        assertEq(2 ether, address(24).balance);
         assertEq(0, operatorSlash.nftHasCompensated(1));
         assertEq(2, operatorSlash.operatorCompensatedIndex());
         (balance,) = operatorRegistry.getPledgeInfoOfOperator(1);
-        assertEq(1 ether, balance);
+        assertEq(2 ether, balance);
     }
 
     function testValidatorSlash6() public {

@@ -148,10 +148,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             ExitValidatorInfo memory vInfo = _exitValidatorInfo[i];
             exitTokenIds[i] = vInfo.exitTokenId;
             slashAmounts[i] = vInfo.slashAmount;
+            if (vInfo.slashAmount > MAX_SLASH_AMOUNT) {
+                revert InvalidReport();
+            }
             if (!isHasSlash && vInfo.slashAmount != 0) {
-                if (vInfo.slashAmount > MAX_SLASH_AMOUNT) {
-                    revert InvalidReport();
-                }
                 isHasSlash = true;
             }
             exitBlockNumbers[i] = vInfo.exitBlockNumber;
