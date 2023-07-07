@@ -4,7 +4,7 @@ pragma solidity 0.8.8;
 import {SafeCast} from "openzeppelin-contracts/utils/math/SafeCast.sol";
 import "openzeppelin-contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "openzeppelin-contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Math} from "src/library/Math.sol";
+import {MathUtil} from "src/library/Math.sol";
 import "src/utils/Dao.sol";
 import "src/utils/Array.sol";
 
@@ -776,7 +776,8 @@ contract MultiHashConsensus is OwnableUpgradeable, UUPSUpgradeable, Dao {
         uint256 totalMembers = _memberStates.length;
         (uint256 flLeft, uint256 flPastRight) = _getFastLaneSubset(frameIndex, totalMembers);
         unchecked {
-            return (flPastRight != 0 && Math.pointInClosedIntervalModN(index, flLeft, flPastRight - 1, totalMembers));
+            return
+                (flPastRight != 0 && MathUtil.pointInClosedIntervalModN(index, flLeft, flPastRight - 1, totalMembers));
         }
     }
 

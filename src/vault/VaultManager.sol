@@ -366,7 +366,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         if (cumArr[highIndex].value < cumArr[lowIndex].value) {
             return 0;
         }
-        
+
         return cumArr[highIndex].value - cumArr[lowIndex].value;
     }
 
