@@ -34,6 +34,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
     // v2 storage
     INETH public nETHContract;
+    uint256 public MAX_SLASH_AMOUNT;
 
     event ELRewardSettleAndReinvest(uint256[] _operatorIds, uint256[] _reinvestAmounts);
     event Settle(uint256 _blockNumber, uint256 _settleRewards, uint256 _operatorNftCounts, uint256 _averageRewards);
@@ -48,9 +49,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
     event DaoElCommissionRateSet(uint256 oldDaoElCommissionRate, uint256 _daoElCommissionRate);
     event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
-    event Neth2ETHExchangeRateChanged(
-        uint256 _exchangeRate, uint256 _newExchangeRate, uint256 _totalEth, uint256 _newTotalEth, uint256 nethSupply
-    );
+    event Neth2ETHExchangeRateChanged(uint256 _exchangeRate, uint256 _totalEth, uint256 nethSupply);
     event NethChanged(address _oldNethContract, address _NethAddress);
 
     error PermissionDenied();
@@ -62,6 +61,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     error InsufficientMargin();
     error InvalidRewardAddr();
     error InvalidRewardRatio();
+    error InvalidReport();
 
     modifier onlyWithdrawOracle() {
         if (withdrawOracleContractAddress != msg.sender) revert PermissionDenied();
@@ -100,6 +100,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     function initializeV2(address _nethContractAddress) public reinitializer(2) onlyOwner {
         emit NethChanged(address(nETHContract), _nethContractAddress);
         nETHContract = INETH(_nethContractAddress);
+        MAX_SLASH_AMOUNT = 2 ether;
     }
 
     /**
@@ -148,6 +149,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             exitTokenIds[i] = vInfo.exitTokenId;
             slashAmounts[i] = vInfo.slashAmount;
             if (!isHasSlash && vInfo.slashAmount != 0) {
+                if (vInfo.slashAmount > MAX_SLASH_AMOUNT) {
+                    revert InvalidReport();
+                }
                 isHasSlash = true;
             }
             exitBlockNumbers[i] = vInfo.exitBlockNumber;
@@ -160,13 +164,6 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         if (systemTotalExitNumber * 32 ether != systemTotalExitCapital + systemTotalSlashAmounts) {
             revert SlashAmountCheckFailed();
         }
-
-        // exchangeRate = 1 ether * (totalEth) / (nethSupply);
-        // totalEth = exchangeRate * nethSupply / 1 ether;
-        uint256 exchangeRate = liquidStakingContract.getExchangeRate();
-
-        uint256 nethSupply = nETHContract.totalSupply();
-        uint256 totalEth = exchangeRate * nethSupply / 1 ether;
 
         liquidStakingContract.reinvestClRewards(operatorIds, amounts, totalAmount);
 
@@ -182,10 +179,14 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         _settleAndReinvestElReward(operatorIds);
 
-        uint256 newExchangeRate = liquidStakingContract.getExchangeRate();
-        uint256 newTotalEth = newExchangeRate * nethSupply / 1 ether;
+        // exchangeRate = 1 ether * (totalEth) / (nethSupply);
+        // totalEth = exchangeRate * nethSupply / 1 ether;
+        uint256 exchangeRate = liquidStakingContract.getExchangeRate();
 
-        emit Neth2ETHExchangeRateChanged(exchangeRate, newExchangeRate, totalEth, newTotalEth, nethSupply);
+        uint256 nethSupply = nETHContract.totalSupply();
+        uint256 totalEth = exchangeRate * nethSupply / 1 ether;
+
+        emit Neth2ETHExchangeRateChanged(exchangeRate, totalEth, nethSupply);
     }
 
     /**
@@ -366,7 +367,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         if (cumArr[highIndex].value < cumArr[lowIndex].value) {
             return 0;
         }
-        
+
         return cumArr[highIndex].value - cumArr[lowIndex].value;
     }
 
