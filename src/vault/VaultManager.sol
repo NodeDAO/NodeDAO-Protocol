@@ -363,6 +363,10 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
             highIndex = high - 1;
         }
         // At this point `low` is the exclusive upper bound. We will use it.
+        if (cumArr[highIndex].value < cumArr[lowIndex].value) {
+            return 0;
+        }
+        
         return cumArr[highIndex].value - cumArr[lowIndex].value;
     }
 
