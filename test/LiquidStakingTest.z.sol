@@ -3260,16 +3260,309 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(operatorSlash.stakingWillCompensated(1), 0 ether);
         assertEq(operatorSlash.stakingHasCompensated(1), 1 ether);
         assertEq(operatorSlash.stakingWillCompensated(2), 1 ether);
-        // assertEq(operatorSlash.stakingHasCompensated(2), 0 ether);
-        // assertEq(0, operatorSlash.operatorCompensatedIndex());
-        // assertEq(0, operatorSlash.stakingCompensatedIndex());
-        // operatorRegistry.deposit{value: 5 ether}(1);
-        // (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
-        // assertEq(4 ether, pledgeBalance);
+        assertEq(operatorSlash.stakingHasCompensated(2), 0 ether);
+        assertEq(0, operatorSlash.operatorCompensatedIndex());
+        assertEq(0, operatorSlash.stakingCompensatedIndex());
+        operatorRegistry.deposit{value: 5 ether}(1);
+        (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
+        assertEq(4 ether, pledgeBalance);
 
-        // assertEq(operatorSlash.stakingWillCompensated(2), 0 ether);
-        // assertEq(operatorSlash.stakingHasCompensated(2), 1 ether);
-        // assertEq(0, operatorSlash.operatorCompensatedIndex());
-        // assertEq(1, operatorSlash.stakingCompensatedIndex());
+        assertEq(operatorSlash.stakingWillCompensated(2), 0 ether);
+        assertEq(operatorSlash.stakingHasCompensated(2), 1 ether);
+        assertEq(0, operatorSlash.operatorCompensatedIndex());
+        assertEq(1, operatorSlash.stakingCompensatedIndex());
+
+        assertEq(0 ether, address(1001).balance);
+        assertEq(0 ether, address(1000).balance);
+        largeStaking.claimRewardsOfUser(1, 0 ether);
+        largeStaking.claimRewardsOfUser(2, 0 ether);
+        assertEq(1 ether, address(1001).balance);
+        assertEq(1 ether, address(1000).balance);
+    }
+
+    function registerOperator() public returns (uint256) {
+        address[] memory _rewardAddresses3 = new address[] (3);
+        uint256[] memory _ratios3 = new uint256[] (3);
+        _rewardAddresses3[0] = address(70);
+        _rewardAddresses3[1] = address(71);
+        _rewardAddresses3[2] = address(72);
+        _ratios3[0] = 70;
+        _ratios3[1] = 20;
+        _ratios3[2] = 10;
+
+        address _controllerAddress3 = address(80);
+        address _owner3 = address(81);
+
+        uint256 operatorId = operatorRegistry.registerOperator{value: 100 ether}(
+            "test1", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
+        );
+
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId);
+        return operatorId;
+    }
+
+    function registerValidator1() public {
+        bytes[] memory pubkeys = new bytes[](5);
+        bytes[] memory signatures = new bytes[](5);
+        bytes32[] memory depositDataRoots = new bytes32[](5);
+
+        bytes memory sign = bytes(
+            hex"8c9270550945d18f6500e11d0db074d52408cde8a3a30108c8e341ba6e0b92a4d82efb24097dc808313a0145ba096e0c16455aa1c3a7a1019ae34ddf540d9fa121e498c43f757bc6f4105fe31dd5ea8d67483ab435e5a371874dddffa5e65b58"
+        );
+        bytes32 root = bytes32(hex"2c6181bcae0df24f047332b10657ee75faa7c42657b6577d7efac6672376bc33");
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+        signatures[1] = sign;
+        depositDataRoots[1] = root;
+        signatures[2] = sign;
+        depositDataRoots[2] = root;
+        signatures[3] = sign;
+        depositDataRoots[3] = root;
+        signatures[4] = sign;
+        depositDataRoots[4] = root;
+        pubkeys[0] =
+            bytes(hex"9200d672c314c389a88c1d7695d790ec73181cc60978c548c80c3c4787ee8da817e38904e3d0b6105679ba7f2e4f3d7a");
+        pubkeys[1] =
+            bytes(hex"9832164ad7eaeb6e649600d1ff7f25faf1ad7a829b6dc6133011bc38a5920761182a5b861345fb315d16dd0841eebc1a");
+        pubkeys[2] =
+            bytes(hex"a11d4b964034b0a9a825cd6de67e4f23749f81bc38594b21126ad606e59f1acc2eb64d058f7c9ac662e0f7288c9fbd5e");
+        pubkeys[3] =
+            bytes(hex"87ad33e8fffe7c62177d2c860228d5de2cd5041484bdbbe05241fa9ef72feb9dbc201010e4ce9e6d1807d08216b22d0a");
+        pubkeys[4] =
+            bytes(hex"8186b51b20e581a988482f2ab6b1d8084c151fd7eabdc161c5b6a5e512bd098d771c5d96c1ffaabed4a0d570227050fb");
+        vm.prank(address(80));
+        largeStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
+    }
+
+    function registerValidator2() public {
+        bytes[] memory pubkeys = new bytes[](5);
+        bytes[] memory signatures = new bytes[](5);
+        bytes32[] memory depositDataRoots = new bytes32[](5);
+
+        bytes memory sign = bytes(
+            hex"8c9270550945d18f6500e11d0db074d52408cde8a3a30108c8e341ba6e0b92a4d82efb24097dc808313a0145ba096e0c16455aa1c3a7a1019ae34ddf540d9fa121e498c43f757bc6f4105fe31dd5ea8d67483ab435e5a371874dddffa5e65b58"
+        );
+        bytes32 root = bytes32(hex"2c6181bcae0df24f047332b10657ee75faa7c42657b6577d7efac6672376bc33");
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+        signatures[1] = sign;
+        depositDataRoots[1] = root;
+        signatures[2] = sign;
+        depositDataRoots[2] = root;
+        signatures[3] = sign;
+        depositDataRoots[3] = root;
+        signatures[4] = sign;
+        depositDataRoots[4] = root;
+        pubkeys[0] =
+            bytes(hex"940e72e632c583a6408508b7b44e652e8df5d44500b9a7ac973eb745c8384ac0af47f42c3bedf1c0c6a108e161417644");
+        pubkeys[1] =
+            bytes(hex"85b439eb322da37c2ad5464fbdff59c02605e87f482a757290dc122e6e8ad357ee6a65e7c0bfff15640ab4635f08d980");
+        pubkeys[2] =
+            bytes(hex"8795a9313c70d890c83487f0678d4029a5d446dc14e1c4a174d7f1994cbcb0e10273c132289b662c11167d2e8cdf05d0");
+        pubkeys[3] =
+            bytes(hex"b2644215136c7f2f40984ccb38d350ee4a6a5588117002b484973c1f9ef6e6fff03fc67726958ee1f4dfe126f17ccbc3");
+        pubkeys[4] =
+            bytes(hex"941ec8768f177fe3df50c0016314e19fc76cf49877e9b0e7eceaf55a86f6cbe2b93925eca52bb0c3d7a916097746c47a");
+        vm.prank(address(80));
+        largeStaking.registerValidator(2, pubkeys, signatures, depositDataRoots);
+    }
+
+    function registerValidator3() public {
+        bytes[] memory pubkeys = new bytes[](5);
+        bytes[] memory signatures = new bytes[](5);
+        bytes32[] memory depositDataRoots = new bytes32[](5);
+
+        bytes memory sign = bytes(
+            hex"8c9270550945d18f6500e11d0db074d52408cde8a3a30108c8e341ba6e0b92a4d82efb24097dc808313a0145ba096e0c16455aa1c3a7a1019ae34ddf540d9fa121e498c43f757bc6f4105fe31dd5ea8d67483ab435e5a371874dddffa5e65b58"
+        );
+        bytes32 root = bytes32(hex"2c6181bcae0df24f047332b10657ee75faa7c42657b6577d7efac6672376bc33");
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+        signatures[1] = sign;
+        depositDataRoots[1] = root;
+        signatures[2] = sign;
+        depositDataRoots[2] = root;
+        signatures[3] = sign;
+        depositDataRoots[3] = root;
+        signatures[4] = sign;
+        depositDataRoots[4] = root;
+        pubkeys[0] =
+            bytes(hex"8cdc04bde1a2dc4ba76ae49868404288c43c1d2dbf5ddad2b15515090de3518e3a73eb6102d81eaaf9e0bbea74091dc6");
+        pubkeys[1] =
+            bytes(hex"b356b100d56ddd40b0db8627c7e4d19bb826525916fa8f72f5f378a1e2abd24ba7828b005ba1cce021c9059c71ebec3e");
+        pubkeys[2] =
+            bytes(hex"a13519e896849440bed8a2bde763d857490c3a24c9209ba0b057c086f1b7455eb82540a415187655593d4639997ebc59");
+        pubkeys[3] =
+            bytes(hex"a4886aa0756c23afecef392b69d091a0a4c450e8805422a46cddb5416e40ada47e3216db62fcbc8873c86819a2ea8878");
+        pubkeys[4] =
+            bytes(hex"8a7dad13cb2d198b2c5773fc9dfcf92bffbb994ca46ca3798c6efe4b308097cb0760505cb748525e8c20bc155d675239");
+        vm.prank(address(80));
+        largeStaking.registerValidator(3, pubkeys, signatures, depositDataRoots);
+    }
+
+    function testLargeStakingAll() public {
+        uint256 operatorId = registerOperator();
+
+        vm.deal(address(1000), 960 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1000));
+        largeStaking.largeStake{value: 960 ether}(
+            operatorId, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, false
+        );
+        checkStakingInfo(1, false, operatorId, 960 ether, 0, 0, 0);
+
+        // shared reward
+        vm.prank(address(81));
+        largeStaking.startupSharedRewardPool(operatorId);
+
+        vm.deal(address(1001), 640 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1001));
+        largeStaking.largeStake{value: 640 ether}(
+            operatorId, address(1001), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true
+        );
+        checkStakingInfo(2, true, operatorId, 640 ether, 0, 0, 0);
+
+        registerValidator1();
+        checkStakingInfo(1, false, operatorId, 960 ether, 160 ether, 0, 0);
+
+        registerValidator2();
+        checkStakingInfo(2, true, operatorId, 640 ether, 160 ether, 0, 0);
+
+        uint256 userReward = largeStaking.reward(2);
+        assertEq(0 ether, userReward);
+
+        // reward
+        (uint256 operatorId2, address rewardPoolAddr, uint256 rewards) = largeStaking.getRewardPoolInfo(2);
+        console.log("operatorId2", operatorId2);
+        console.log("rewardPoolAddr2", rewardPoolAddr);
+        console.log("rewards2", rewards);
+        vm.deal(address(rewardPoolAddr), 10 ether);
+
+        userReward = largeStaking.reward(2);
+        assertEq(9 ether, userReward);
+
+        vm.deal(address(1002), 320 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1002));
+        largeStaking.largeStake{value: 320 ether}(
+            operatorId, address(1002), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true
+        );
+        checkStakingInfo(3, true, operatorId, 320 ether, 0, 0, 0);
+
+        // largeStake will settle
+
+        assertEq(largeStaking.daoSharedRewards(operatorId), 0.3 ether);
+        assertEq(largeStaking.operatorSharedRewards(operatorId), 0.7 ether);
+        assertEq(largeStaking.unclaimedSharedRewards(operatorId), 10 ether);
+
+        registerValidator3();
+        checkStakingInfo(3, true, operatorId, 320 ether, 160 ether, 0, 0);
+
+        // operator claim
+
+        uint256[] memory _privatePoolStakingIds = new uint256[] (1);
+        _privatePoolStakingIds[0] = 1;
+        largeStaking.claimRewardsOfOperator(operatorId, _privatePoolStakingIds);
+        assertEq(0.49 ether, address(70).balance); // 0.7 * 0.7
+        assertEq(0.14 ether, address(71).balance); // 0.7 * 0.2
+        assertEq(0.07 ether, address(72).balance); // 0.7 * 0.1
+        assertEq(largeStaking.unclaimedSharedRewards(operatorId), 9.3 ether);
+
+        assertEq(largeStaking.totalShares(operatorId), 960 ether);
+
+        vm.deal(address(rewardPoolAddr), 19.3 ether);
+        // 10 reward, totaoShares = 320 + 640 ether, valuePerShare = 9 ether * 1 ether / 640 ether
+
+        userReward = largeStaking.reward(2);
+        assertEq(9 ether + 9 ether * 1 ether / 960 ether * 640 ether / 1 ether, userReward);
+        uint256 userReward3 = largeStaking.reward(3);
+        assertEq(9 ether * 1 ether / 960 ether * 320 ether / 1 ether, userReward3);
+
+        largeStaking.claimRewardsOfUser(2, userReward);
+        assertEq(address(1001).balance, userReward);
+        largeStaking.claimRewardsOfUser(3, userReward3);
+        assertEq(address(1002).balance, userReward3);
+
+        largeStaking.claimRewardsOfOperator(operatorId, _privatePoolStakingIds);
+        assertEq(0.49 ether * 2, address(70).balance); // 0.7 * 0.7
+        assertEq(0.14 ether * 2, address(71).balance); // 0.7 * 0.2
+        assertEq(0.07 ether * 2, address(72).balance); // 0.7 * 0.1
+
+        assertEq(largeStaking.unclaimedSharedRewards(operatorId), 0.6 ether);
+
+        (uint256 operatorId1, address rewardPoolAddr1, uint256 rewards1) = largeStaking.getRewardPoolInfo(1);
+        console.log("operatorId1", operatorId1);
+        console.log("rewardPoolAddr1", rewardPoolAddr1);
+        console.log("rewards1", rewards1);
+
+        vm.deal(address(rewardPoolAddr1), 10 ether);
+        uint256 userReward1 = largeStaking.reward(1);
+        assertEq(9 ether, userReward1);
+
+        uint256[] memory _stakingIds = new uint256[] (3);
+        _stakingIds[0] = 2;
+        _stakingIds[1] = 3;
+        _stakingIds[2] = 1;
+        largeStaking.claimRewardsOfDao(_stakingIds);
+        assertEq(largeStaking.unclaimedSharedRewards(operatorId), 0 ether);
+        assertEq(largeStaking.daoVaultAddress().balance, 1.1 ether); //0.6 ether + 0.2 ether+ 0.3 ether
+
+        largeStaking.claimRewardsOfOperator(operatorId, _privatePoolStakingIds);
+        assertEq(0.49 ether * 3, address(70).balance); // 0.7 * 0.7
+        assertEq(0.14 ether * 3, address(71).balance); // 0.7 * 0.2
+        assertEq(0.07 ether * 3, address(72).balance); // 0.7 * 0.1
+
+        largeStaking.claimRewardsOfUser(1, userReward1);
+        assertEq(address(1000).balance, userReward1);
+
+        assertEq(address(rewardPoolAddr).balance, 0);
+        vm.deal(address(rewardPoolAddr), 10 ether);
+
+        // will settle
+        vm.prank(address(1001));
+        largeStaking.largeUnstake(2, 320 ether);
+        checkStakingInfo(2, true, operatorId, 640 ether, 480 ether, 320 ether, 320 ether);
+
+        assertEq(largeStaking.totalShares(operatorId), 640 ether);
+
+        userReward = largeStaking.reward(2);
+        assertEq(9 ether * 1 ether / 960 ether * 640 ether / 1 ether, userReward);
+        userReward3 = largeStaking.reward(3);
+        assertEq(9 ether * 1 ether / 960 ether * 320 ether / 1 ether, userReward3);
+        assertEq(largeStaking.unclaimedSharedRewards(operatorId), 10 ether);
+
+        vm.deal(address(rewardPoolAddr), 20 ether);
+
+        largeStaking.settleElSharedReward(operatorId);
+
+        userReward = largeStaking.reward(2);
+        assertEq(
+            9 ether * 1 ether / 960 ether * 640 ether / 1 ether + 9 ether * 1 ether / 640 ether * 320 ether / 1 ether,
+            userReward
+        );
+        userReward3 = largeStaking.reward(3);
+        assertEq(
+            9 ether * 1 ether / 960 ether * 320 ether / 1 ether + 9 ether * 1 ether / 640 ether * 320 ether / 1 ether,
+            userReward3
+        );
+        assertEq(largeStaking.unclaimedSharedRewards(operatorId), 20 ether);
+
+        // claim
+        largeStaking.claimRewardsOfOperator(operatorId, _privatePoolStakingIds);
+        assertEq(0.49 ether * 5, address(70).balance); // 0.7 * 0.7
+        assertEq(0.14 ether * 5, address(71).balance); // 0.7 * 0.2
+        assertEq(0.07 ether * 5, address(72).balance); // 0.7 * 0.1
+        largeStaking.claimRewardsOfDao(_stakingIds);
+        assertEq(largeStaking.daoVaultAddress().balance, 1.7 ether); //0.6 ether + 0.2 ether+ 0.3 ether
+
+        largeStaking.claimRewardsOfUser(
+            2, 9 ether * 1 ether / 960 ether * 640 ether / 1 ether + 9 ether * 1 ether / 640 ether * 320 ether / 1 ether
+        );
+        largeStaking.claimRewardsOfUser(
+            3, 9 ether * 1 ether / 960 ether * 320 ether / 1 ether + 9 ether * 1 ether / 640 ether * 320 ether / 1 ether
+        );
+        assertEq(largeStaking.unclaimedSharedRewards(operatorId), 0 ether);
     }
 }
