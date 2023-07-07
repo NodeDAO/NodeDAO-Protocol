@@ -59,6 +59,7 @@ contract LargeStaking is
         uint256 exitBlock;
         uint256 slashAmount;
     }
+
     mapping(bytes => ValidatorInfo) public validatorInfo; // key is pubkey
 
     // dao address

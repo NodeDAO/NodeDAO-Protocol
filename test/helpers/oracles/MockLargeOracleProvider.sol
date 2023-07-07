@@ -69,7 +69,7 @@ contract MockLargeOracleProvider is MockMultiOracleProvider {
 
         CLStakingSlashInfo[] memory clStakingSlashInfos = new CLStakingSlashInfo[](1);
         CLStakingSlashInfo memory clStakingSlashInfo =
-            CLStakingSlashInfo({stakingId: 1, slashAmount: 32 ether, pubkey: pubkey});
+            CLStakingSlashInfo({stakingId: 1, slashAmount: 2 ether, pubkey: pubkey});
         clStakingSlashInfos[0] = clStakingSlashInfo;
         reportData.clStakingSlashInfos = clStakingSlashInfos;
     }
