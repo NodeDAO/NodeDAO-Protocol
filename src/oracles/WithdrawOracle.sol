@@ -133,7 +133,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         pendingBalances = _pendingBalance;
     }
 
-    function initializeV2(address _consensus, uint256 _lastProcessingRefSlot) public reinitializer(2) onlyDao {
+    function initializeV2(address _consensus, uint256 _lastProcessingRefSlot) public reinitializer(2) onlyOwner {
         _setConsensusContract(_consensus, _lastProcessingRefSlot);
         _updateContractVersion(2);
         _setConsensusVersion(2);
