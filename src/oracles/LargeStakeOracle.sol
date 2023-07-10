@@ -72,7 +72,7 @@ contract LargeStakeOracle is BaseOracle {
     }
 
     /// Set the number limit for the validator to report
-    function setExitRequestLimit(uint256 _exitLimit) external onlyDao {
+    function setExitLimit(uint256 _exitLimit) external onlyDao {
         if (_exitLimit == 0) revert ExitLimitNotZero();
         emit UpdateExitLimit(exitLimit, _exitLimit);
         exitLimit = _exitLimit;
