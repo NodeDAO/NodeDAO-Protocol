@@ -230,7 +230,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
             address(operatorSlash)
         );
         vm.prank(_dao);
-        vaultManager.setDaoElCommissionRate(300);
+        vaultManager.setVaultManagerSetting(300, 0, address(0), address(0), address(0), address(0));
 
         uint256[] memory _resetVaultOperatorIds = new uint256[] (1);
         _resetVaultOperatorIds[0] = 1;
@@ -268,7 +268,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
 
         vm.prank(_dao);
         largeStaking.setLargeStakingSetting(
-            address(0), address(0), 300, 0, address(0), address(0), address(0), address(0)
+            address(0), address(0), 300, 0, 0, address(0), address(0), address(0), address(0)
         );
         operatorSlash.initializeV2(address(largeStaking));
         vaultManager.initializeV2(address(neth));
@@ -1955,8 +1955,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         _withdrawInfo[0] = WithdrawInfo({operatorId: 1, clReward: 0.1 ether, clCapital: 0 ether});
         ExitValidatorInfo[] memory _exitValidatorInfo = new ExitValidatorInfo[] (2);
         _exitValidatorInfo[0] = ExitValidatorInfo({exitTokenId: 0, exitBlockNumber: 200, slashAmount: 2 ether});
-        _exitValidatorInfo[1] = ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 200, slashAmount: 3 ether});
-        uint256[] memory empty = new uint256[] (0);
+        _exitValidatorInfo[1] = ExitValidatorInfo({exitTokenId: 1, exitBlockNumber: 200, slashAmount: 2 ether});
 
         vm.roll(210);
 
@@ -1978,7 +1977,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         operatorRegistry.deposit{value: 2 ether}(1);
         assertEq(1 ether, operatorSlash.nftHasCompensated(0));
         assertEq(0 ether, operatorSlash.nftWillCompensated(0));
-        assertEq(2 ether, operatorSlash.nftWillCompensated(1));
+        assertEq(1 ether, operatorSlash.nftWillCompensated(1));
         assertEq(1 ether, operatorSlash.nftHasCompensated(1));
         vaultManager.claimRewardsOfUser(tokenIds);
         assertEq(2 ether, address(74).balance);
@@ -1993,15 +1992,15 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(0 ether, operatorSlash.nftHasCompensated(0));
         assertEq(0 ether, operatorSlash.nftWillCompensated(0));
         assertEq(0 ether, operatorSlash.nftWillCompensated(1));
-        assertEq(3 ether, operatorSlash.nftHasCompensated(1));
+        assertEq(2 ether, operatorSlash.nftHasCompensated(1));
         assertEq(2, operatorSlash.operatorCompensatedIndex());
         tokenIds[0] = 1;
         vaultManager.claimRewardsOfUser(tokenIds);
-        assertEq(3 ether, address(24).balance);
+        assertEq(2 ether, address(24).balance);
         assertEq(0, operatorSlash.nftHasCompensated(1));
         assertEq(2, operatorSlash.operatorCompensatedIndex());
         (balance,) = operatorRegistry.getPledgeInfoOfOperator(1);
-        assertEq(1 ether, balance);
+        assertEq(2 ether, balance);
     }
 
     function testValidatorSlash6() public {
@@ -2310,26 +2309,26 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
 
     function testVaultManager2() public {
         vm.prank(_dao);
-        vaultManager.setNodeOperatorRegistryContract(address(1000));
+        vaultManager.setVaultManagerSetting(0, 0, address(0), address(0), address(0), address(1000));
         assertEq(address(vaultManager.nodeOperatorRegistryContract()), address(1000));
 
         vm.prank(_dao);
-        vaultManager.setWithdrawOracleContractAddress(address(1000));
+        vaultManager.setVaultManagerSetting(0, 0, address(0), address(0), address(1000), address(0));
         assertEq(address(vaultManager.withdrawOracleContractAddress()), address(1000));
 
         vm.prank(_dao);
-        vaultManager.setOperatorSlashContract(address(1000));
+        vaultManager.setVaultManagerSetting(0, 0, address(0), address(1000), address(0), address(0));
         assertEq(address(vaultManager.operatorSlashContract()), address(1000));
 
         vaultManager.setDaoAddress(address(1000));
         assertEq(address(vaultManager.dao()), address(1000));
 
         vm.prank(address(1000));
-        vaultManager.setDaoElCommissionRate(1000);
+        vaultManager.setVaultManagerSetting(1000, 0, address(0), address(0), address(0), address(0));
         assertEq(vaultManager.daoElCommissionRate(), 1000);
 
         vm.prank(address(1000));
-        vaultManager.setLiquidStaking(address(1000));
+        vaultManager.setVaultManagerSetting(0, 0, address(1000), address(0), address(0), address(0));
         assertEq(address(vaultManager.liquidStakingContract()), address(1000));
     }
 

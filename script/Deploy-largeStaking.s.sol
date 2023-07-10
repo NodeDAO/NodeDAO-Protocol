@@ -23,8 +23,6 @@ abstract contract GoerliHelperContractV2 {
     address _daoMultisigContract = 0x6aE2F56C057e31a18224DBc6Ae32B0a5FBeDFCB0;
     address _daoVaultContract = 0x4eAd195725669C2213287EC76baab2eBD13ff3b1;
 
-    address _consensusOracleContract = 0x1E726f6111B58e74CCD63d5b659191A49366CaD9;
-
     // goerli: 0xff50ed3d0ec03aC01D4C79aAd74928BFF48a7b2b
     // mainnet: 0x00000000219ab540356cBB839Cbe05303d7705Fa
     address depositContract = 0xff50ed3d0ec03aC01D4C79aAd74928BFF48a7b2b;
@@ -60,11 +58,9 @@ abstract contract GoerliHelperContractV2 {
 
     // ---------------need to modify for deploy------------------
     // need to up
-    address withdrawOracleUpgradeProxy = address(0x1E726f6111B58e74CCD63d5b659191A49366CaD9);
+    address withdrawOracleProxy = address(0x1E726f6111B58e74CCD63d5b659191A49366CaD9);
     // @notice !!! initialEpoch is the beacon network current epoch
     uint256 initialEpoch = 186032;
-    // @notice !!! lastProcessingRefSlot is the last slot that the WithdrawOracle
-    uint256 lastProcessingRefSlot = 5936159;
 }
 
 // Mainnet settings
@@ -81,6 +77,7 @@ abstract contract MainnetHelperContractV2 {
     // mainnet: 0x00000000219ab540356cBB839Cbe05303d7705Fa
     address depositContract = 0x00000000219ab540356cBB839Cbe05303d7705Fa;
 
+    address payable operatorSlashProxy = payable(0x82c87cC83c9fA09DAdBEBFB8f8b9152Ee6104B5d);
     address payable operatorRegistryProxy = payable(0x8742178Ac172eC7235E54808d5F327C30A51c492);
 
     address timelock = 0x16F692525f3b8c8a96F8c945D365Da958Fb5735B;
@@ -95,7 +92,7 @@ abstract contract MainnetHelperContractV2 {
     uint256 public constant SECONDS_PER_FRAME = SECONDS_PER_EPOCH * EPOCHS_PER_FRAME;
     uint256 public constant SLOTS_PER_FRAME = EPOCHS_PER_FRAME * SLOTS_PER_EPOCH;
 
-    uint256 public constant CONSENSUS_VERSION = 3;
+    uint256 public constant CONSENSUS_VERSION = 2;
 
     // goerli: 1616508000
     // mainnet: 1606824023
@@ -108,15 +105,14 @@ abstract contract MainnetHelperContractV2 {
         0xf4A30Ec717b7F3aCC7fAeD373C941086a292BD5E,
         0x22E0cAF2B2dD1E11602D58eEfE9865f80aA949c6
     ];
+    uint256 public constant QUORUM = 2;
 
     // ---------------need to modify for deploy------------------
 
     // need to up
-    address withdrawOracleUpgradeProxy = address(0x2B74f97aDC698b571C2F046673Fd5Cd028673c41);
+    address withdrawOracleProxy = address(0x2B74f97aDC698b571C2F046673Fd5Cd028673c41);
     // @notice initialEpoch is the beacon network current epoch
     uint256 initialEpoch = 186032;
-    // @notice !!! lastProcessingRefSlot is the last slot that the WithdrawOracle
-    uint256 lastProcessingRefSlot = 5936159;
 }
 
 contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
@@ -124,6 +120,7 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
     OperatorSlash operatorSlashContract;
     NodeOperatorRegistry nodeOperatorRegistryContract;
     VaultManager vaultManagerContract;
+    WithdrawOracle withdrawOracleContract;
 
     ELRewardFactory eLRewardFactoryContract;
     address eLRewardFactoryContractProxy;
@@ -148,6 +145,7 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
         nodeOperatorRegistryContract = new NodeOperatorRegistry();
         eLRewardContract = new ELReward();
         vaultManagerContract = new VaultManager();
+        withdrawOracleContract = new WithdrawOracle();
 
         eLRewardFactoryContract = new ELRewardFactory();
         eLRewardFactoryContractProxy = deployer.deploy(address(eLRewardFactoryContract));
@@ -169,7 +167,7 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
             _daoVaultContract,
             operatorRegistryProxy,
             operatorSlashProxy,
-            _consensusOracleContract,
+            largeStakeOracleProxy,
             eLRewardFactoryContractProxy,
             depositContract
         );
@@ -185,12 +183,10 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
             MultiHashConsensus(multiHashConsensusProxy).addMember(memberArray[i], QUORUM);
         }
 
-        MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(withdrawOracleUpgradeProxy, 2);
+        MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(withdrawOracleProxy, 2);
         MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(largeStakeOracleProxy, 2);
 
         MultiHashConsensus(multiHashConsensusProxy).transferOwnership(timelock);
-
-        WithdrawOracle(withdrawOracleUpgradeProxy).initializeV2(multiHashConsensusProxy, lastProcessingRefSlot);
 
         LargeStakeOracle(largeStakeOracleProxy).initialize(
             SECONDS_PER_SLOT,
@@ -204,9 +200,117 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
 
         LargeStakeOracle(largeStakeOracleProxy).transferOwnership(timelock);
 
+        // upgrade contract
         console.log("=========operatorSlashContract===========", address(operatorSlashContract));
         console.log("=========vaultManagerContract===========", address(vaultManagerContract));
         console.log("=========nodeOperatorRegistryContract===========", address(nodeOperatorRegistryContract));
+        console.log("=========withdrawOracleContract=========", address(withdrawOracleContract));
+
+        // new contract
+        console.log("=========eLRewardContract===========", address(eLRewardContract));
+        console.log("=========eLRewardFactoryContract===========", address(eLRewardFactoryContract));
+        console.log("=========eLRewardFactoryContractProxy===========", address(eLRewardFactoryContractProxy));
+        console.log("=========largeStakingContract===========", address(largeStakingContract));
+        console.log("=========largeStakingContractProxy===========", address(largeStakingContractProxy));
+        console.log("========multiHashConsensusProxy===========", multiHashConsensusProxy);
+        console.log("========largeStakeOracleProxy===========", largeStakeOracleProxy);
+
+        vm.stopBroadcast();
+    }
+}
+
+contract MainnetDeployLargeStakingScript is Script, MainnetHelperContractV2 {
+    ELReward eLRewardContract;
+    OperatorSlash operatorSlashContract;
+    NodeOperatorRegistry nodeOperatorRegistryContract;
+    VaultManager vaultManagerContract;
+    WithdrawOracle withdrawOracleContract;
+
+    ELRewardFactory eLRewardFactoryContract;
+    address eLRewardFactoryContractProxy;
+
+    LargeStaking largeStakingContract;
+    address largeStakingContractProxy;
+
+    MultiHashConsensus multiHashConsensus;
+    address multiHashConsensusProxy;
+
+    LargeStakeOracle largeStakeOracle;
+    address largeStakeOracleProxy;
+
+    function setUp() public {}
+
+    function run() public {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        // deploy
+        operatorSlashContract = new OperatorSlash();
+        nodeOperatorRegistryContract = new NodeOperatorRegistry();
+        eLRewardContract = new ELReward();
+        vaultManagerContract = new VaultManager();
+        withdrawOracleContract = new WithdrawOracle();
+
+        eLRewardFactoryContract = new ELRewardFactory();
+        eLRewardFactoryContractProxy = deployer.deploy(address(eLRewardFactoryContract));
+
+        largeStakingContract = new LargeStaking();
+        largeStakingContractProxy = deployer.deploy(address(largeStakingContract));
+
+        multiHashConsensus = new MultiHashConsensus();
+        multiHashConsensusProxy = deployer.deploy(address(multiHashConsensus));
+
+        largeStakeOracle = new LargeStakeOracle();
+        largeStakeOracleProxy = deployer.deploy(address(largeStakeOracle));
+
+        // initialize
+        ELRewardFactory(eLRewardFactoryContractProxy).initialize(address(eLRewardContract), _daoMultisigContract);
+
+        LargeStaking(largeStakingContractProxy).initialize(
+            _daoMultisigContract,
+            _daoVaultContract,
+            operatorRegistryProxy,
+            operatorSlashProxy,
+            largeStakeOracleProxy,
+            eLRewardFactoryContractProxy,
+            depositContract
+        );
+
+        MultiHashConsensus(multiHashConsensusProxy).initialize(
+            SLOTS_PER_EPOCH, SECONDS_PER_SLOT, _genesisTime, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, _daoMultisigContract
+        );
+
+        MultiHashConsensus(multiHashConsensusProxy).updateInitialEpoch(initialEpoch);
+
+        // hashConsensusProxy addOracleMember
+        for (uint256 i = 0; i < memberArray.length; ++i) {
+            MultiHashConsensus(multiHashConsensusProxy).addMember(memberArray[i], QUORUM);
+        }
+
+        MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(withdrawOracleProxy, 2);
+        MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(largeStakeOracleProxy, 2);
+
+        MultiHashConsensus(multiHashConsensusProxy).transferOwnership(timelock);
+
+        LargeStakeOracle(largeStakeOracleProxy).initialize(
+            SECONDS_PER_SLOT,
+            _genesisTime,
+            multiHashConsensusProxy,
+            CONSENSUS_VERSION,
+            0,
+            _daoMultisigContract,
+            largeStakingContractProxy
+        );
+
+        LargeStakeOracle(largeStakeOracleProxy).transferOwnership(timelock);
+
+        // upgrade contract
+        console.log("=========operatorSlashContract===========", address(operatorSlashContract));
+        console.log("=========vaultManagerContract===========", address(vaultManagerContract));
+        console.log("=========nodeOperatorRegistryContract===========", address(nodeOperatorRegistryContract));
+        console.log("=========withdrawOracleContract=========", address(withdrawOracleContract));
+
+        // new contract
         console.log("=========eLRewardContract===========", address(eLRewardContract));
         console.log("=========eLRewardFactoryContract===========", address(eLRewardFactoryContract));
         console.log("=========eLRewardFactoryContractProxy===========", address(eLRewardFactoryContractProxy));

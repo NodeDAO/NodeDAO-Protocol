@@ -176,7 +176,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
 
         vm.prank(_dao);
         largeStaking.setLargeStakingSetting(
-            address(0), address(0), 300, 0, address(0), address(0), address(0), address(0)
+            address(0), address(0), 300, 0, 0, address(0), address(0), address(0), address(0)
         );
         operatorSlash.initializeV2(address(largeStaking));
         vaultManager.initializeV2(address(neth));
@@ -209,7 +209,7 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
 
         largeStakeOracle.setLargeStakeContract(address(largeStaking));
         largeStaking.setLargeStakingSetting(
-            address(0), address(0), 300, 0, address(0), address(largeStakeOracle), address(0), address(0)
+            address(0), address(0), 300, 0, 0, address(0), address(largeStakeOracle), address(0), address(0)
         );
 
         vm.stopPrank();
