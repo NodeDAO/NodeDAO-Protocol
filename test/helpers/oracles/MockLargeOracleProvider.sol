@@ -61,16 +61,30 @@ contract MockLargeOracleProvider is MockMultiOracleProvider {
 
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
+        bytes memory pubkey2 =
+            bytes(hex"987ced126c2a2b49a862c3fed933310531568aeeb41b91d8dd571f363cf89783f1abdf4d41748bca9806807770980a12");
+        bytes memory pubkey3 =
+            bytes(hex"b80c2c5ea557296bfca760969afd2c3a22a8eeb27b651a2e7034a7a37ffdd2dd707275e8cfbeb372778ded3c6764f336");
 
-        CLStakingExitInfo[] memory clStakingExitInfos = new CLStakingExitInfo[](1);
+        CLStakingExitInfo[] memory clStakingExitInfos = new CLStakingExitInfo[](3);
         CLStakingExitInfo memory clStakingExitInfo = CLStakingExitInfo({stakingId: 1, pubkey: pubkey});
+        CLStakingExitInfo memory clStakingExitInfo2 = CLStakingExitInfo({stakingId: 1, pubkey: pubkey2});
+        CLStakingExitInfo memory clStakingExitInfo3 = CLStakingExitInfo({stakingId: 1, pubkey: pubkey3});
         clStakingExitInfos[0] = clStakingExitInfo;
+        clStakingExitInfos[1] = clStakingExitInfo2;
+        clStakingExitInfos[2] = clStakingExitInfo3;
         reportData.clStakingExitInfos = clStakingExitInfos;
 
-        CLStakingSlashInfo[] memory clStakingSlashInfos = new CLStakingSlashInfo[](1);
+        CLStakingSlashInfo[] memory clStakingSlashInfos = new CLStakingSlashInfo[](3);
         CLStakingSlashInfo memory clStakingSlashInfo =
-            CLStakingSlashInfo({stakingId: 1, slashAmount: 32 ether, pubkey: pubkey});
+            CLStakingSlashInfo({stakingId: 1, slashAmount: 1 ether, pubkey: pubkey});
+        CLStakingSlashInfo memory clStakingSlashInfo2 =
+            CLStakingSlashInfo({stakingId: 1, slashAmount: 1 ether, pubkey: pubkey2});
+        CLStakingSlashInfo memory clStakingSlashInfo3 =
+            CLStakingSlashInfo({stakingId: 1, slashAmount: 1 ether, pubkey: pubkey3});
         clStakingSlashInfos[0] = clStakingSlashInfo;
+        clStakingSlashInfos[1] = clStakingSlashInfo2;
+        clStakingSlashInfos[2] = clStakingSlashInfo3;
         reportData.clStakingSlashInfos = clStakingSlashInfos;
     }
 
