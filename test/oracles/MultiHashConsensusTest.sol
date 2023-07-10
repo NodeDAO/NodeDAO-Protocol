@@ -45,6 +45,26 @@ contract MultiHashConsensusTest is Test, MockMultiOracleProvider {
         assertFalse(Array.compareBytes32Arrays(arr1, arr2));
     }
 
+    // forge test -vvvv --match-test testCompareBytes32ArraysByLoop
+    // hash:  0xcf6eec4614da00a66134575e41d09c317fb3a302a95a71f6383900d7dbd8a4ba
+    // ----------------------------------------------------------------
+    // gas
+    // arrCount   keccak256    loop
+    // 10         4777         4986
+    // 100        34619        40438
+    // 1000       360883       401922
+    function testCompareBytes32ArraysByLoop() public {
+        uint256 count = 10;
+
+        bytes32[] memory arr1 = new bytes32[](count);
+        for (uint256 i = 0; i < count; ++i) {
+            arr1[i] = bytes32(0xcf6eec4614da00a66134575e41d09c317fb3a302a95a71f6383900d7dbd8a4ba);
+        }
+
+        assertTrue(Array.compareBytes32Arrays(arr1, arr1));
+        assertTrue(Array.compareBytes32ArraysByLoop(arr1, arr1));
+    }
+
     // forge test -vvvv --match-test testFastLane
     function testFastLane() public {
         vm.startPrank(DAO);

@@ -48,7 +48,7 @@ interface ILargeStaking {
     event DaoVaultAddressChanged(address _oldDaoVaultAddress, address _daoVaultAddress);
     event DaoELCommissionRateChanged(uint256 _oldDaoElCommissionRate, uint256 _daoElCommissionRate);
     event NodeOperatorsRegistryChanged(address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryAddress);
-    event ConsensusOracleChanged(address _oldConsensusOracleContractAddr, address _consensusOracleContractAddr);
+    event ConsensusOracleChanged(address _oldLargeOracleContractAddr, address _largeOracleContractAddr);
     event ELRewardFactoryChanged(address _oldElRewardFactory, address _elRewardFactory);
     event OperatorSlashChanged(address _oldOperatorSlashContract, address _operatorSlashContract);
     event MinStakeAmountChanged(uint256 _oldMinStakeAmount, uint256 _minStakeAmount);
