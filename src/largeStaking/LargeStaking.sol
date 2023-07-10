@@ -864,7 +864,7 @@ contract LargeStaking is
         uint256 _MIN_STAKE_AMOUNT,
         uint256 _MAX_SLASH_AMOUNT,
         address _nodeOperatorRegistryAddress,
-        address _consensusOracleContractAddr,
+        address _largeOracleContractAddr,
         address _elRewardFactory,
         address _operatorSlashContract
     ) public onlyDao {
@@ -898,9 +898,9 @@ contract LargeStaking is
             nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryAddress);
         }
 
-        if (_consensusOracleContractAddr != address(0)) {
-            emit ConsensusOracleChanged(consensusOracleContractAddr, _consensusOracleContractAddr);
-            consensusOracleContractAddr = _consensusOracleContractAddr;
+        if (_largeOracleContractAddr != address(0)) {
+            emit ConsensusOracleChanged(largeOracleContractAddr, _largeOracleContractAddr);
+            largeOracleContractAddr = _largeOracleContractAddr;
         }
 
         if (_elRewardFactory != address(0)) {
