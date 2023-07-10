@@ -653,7 +653,7 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         return hashArr;
     }
 
-    function mockFinalReportData_20Nft_20Operator(uint256 refSlot)
+    function mockFinalReportDataNftOperatorForCount(uint256 refSlot, uint256 operatorCount, uint256 nftCount)
         public
         pure
         returns (WithdrawOracleWithTimer.ReportData memory reportData)
@@ -661,22 +661,22 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
         reportData.clBalance = 100 ether;
-        reportData.clVaultBalance = 20 ether;
-        reportData.clSettleAmount = 20 ether;
-        reportData.reportExitedCount = 20;
+        reportData.clVaultBalance = operatorCount * 1e18;
+        reportData.clSettleAmount = operatorCount * 1e18;
+        reportData.reportExitedCount = nftCount;
 
-        uint256 clReward1 = 20 ether * 1 / 20;
+        uint256 clReward1 = operatorCount * 1e18 * 1 / operatorCount;
 
-        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](20);
-        ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](20);
+        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](operatorCount);
+        ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](nftCount);
 
-        for (uint256 i = 0; i < 20; ++i) {
+        for (uint256 i = 0; i < operatorCount; ++i) {
             WithdrawInfo memory withdrawInfo1 =
                 WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(clReward1), clCapital: 0});
             withdrawInfos[i] = withdrawInfo1;
         }
 
-        for (uint256 i = 0; i < 20; ++i) {
+        for (uint256 i = 0; i < nftCount; ++i) {
             ExitValidatorInfo memory exitValidatorInfo1 =
                 ExitValidatorInfo({exitTokenId: uint64(i), exitBlockNumber: 28100, slashAmount: 0});
             exitValidatorInfos[i] = exitValidatorInfo1;
@@ -686,9 +686,13 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         reportData.exitValidatorInfos = exitValidatorInfos;
     }
 
-    function mockFinalReportData_20Nft_20Operator_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
+    function mockFinalReportDataNftOperatorForCount_hash(uint256 refSlot, uint256 operatorCount, uint256 nftCount)
+        public
+        pure
+        returns (bytes32[] memory)
+    {
         bytes32[] memory hashArr = new bytes32[](2);
-        bytes32 hash = keccak256(abi.encode(mockFinalReportData_20Nft_20Operator(refSlot)));
+        bytes32 hash = keccak256(abi.encode(mockFinalReportDataNftOperatorForCount(refSlot, operatorCount, nftCount)));
         hashArr[0] = hash;
         hashArr[1] = ZERO_HASH;
         return hashArr;

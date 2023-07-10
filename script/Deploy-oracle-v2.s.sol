@@ -93,14 +93,14 @@ contract DeployImplScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        multiHashConsensus = new MultiHashConsensus();
-        console.log("========multiHashConsensus impl: ", address(multiHashConsensus));
+        //        multiHashConsensus = new MultiHashConsensus();
+        //        console.log("========multiHashConsensus impl: ", address(multiHashConsensus));
 
         //        withdrawOracle = new WithdrawOracle();
         //        console.log("========withdrawOracle impl: ", address(withdrawOracle));
         //
-        //        largeStakeOracle = new LargeStakeOracle();
-        //        console.log("========largeStakeOracle impl: ", address(largeStakeOracle));
+        largeStakeOracle = new LargeStakeOracle();
+        console.log("========largeStakeOracle impl: ", address(largeStakeOracle));
 
         vm.stopBroadcast();
     }
