@@ -353,9 +353,9 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         console.log("rewards", rewards);
 
         // registerValidator
-        bytes[] memory pubkeys = new bytes[](1);
-        bytes[] memory signatures = new bytes[](1);
-        bytes32[] memory depositDataRoots = new bytes32[](1);
+        bytes[] memory pubkeys = new bytes[](3);
+        bytes[] memory signatures = new bytes[](3);
+        bytes32[] memory depositDataRoots = new bytes32[](3);
 
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
@@ -366,6 +366,25 @@ contract WithdrawOracleTest is Test, MockLargeOracleProvider {
         pubkeys[0] = pubkey;
         signatures[0] = sign;
         depositDataRoots[0] = root;
+
+        bytes memory pubkey1 =
+            bytes(hex"987ced126c2a2b49a862c3fed933310531568aeeb41b91d8dd571f363cf89783f1abdf4d41748bca9806807770980a12");
+        bytes memory sign1 = bytes(
+            hex"aecb27c5ec6713351317b34b2ba52cb7ccbe981a82c97d0a9db240f22f303c3145effbe191c5cea733b66d43b9238dbc194876edd6b5487285f5fba03f9ac2d60feaf876dec10f3d20948922a091f4a9de4d528466ade48b8d901f94ebfc0a06"
+        );
+        pubkeys[1] = pubkey1;
+        signatures[1] = sign1;
+        depositDataRoots[1] = bytes32(hex"ef0ab5a8340175345d593f6765f5ab3b737232fa453e0a097596ad81f05f0ad0");
+
+        bytes memory pubkey2 =
+            bytes(hex"b80c2c5ea557296bfca760969afd2c3a22a8eeb27b651a2e7034a7a37ffdd2dd707275e8cfbeb372778ded3c6764f336");
+        bytes memory sign2 = bytes(
+            hex"a334d5e3819692ba3a63c66e49d7a187c823449ba195fe2e8a649830707bf998cf2dd563944285d8be601789db2a05f808c8e89a1355ed5fd60f5ee0793397a8d4d367b610433320e63d77a04bbe82bb4cffa7aefc9d73ad68fbb1160c238a6b"
+        );
+
+        pubkeys[2] = pubkey2;
+        signatures[2] = sign2;
+        depositDataRoots[2] = bytes32(hex"c0574294bbcd6bbbd6f927ebddfb4bff37266837dfbc6521c1644926a7126186");
 
         vm.prank(_controllerAddress);
         largeStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);

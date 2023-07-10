@@ -13,8 +13,11 @@ contract LargeStakeOracle is BaseOracle {
         CLStakingExitInfo[] cLStakingExitInfos,
         CLStakingSlashInfo[] cLStakingSlashInfos
     );
+    event UpdateExitLimit(uint256 oldExitLimit, uint256 newExitLimit);
 
     error ReportDataIsEmpty();
+    error ExitLimitNotZero();
+    error OverExitLimit();
 
     struct ProcessingState {
         /// @notice Reference slot for the current reporting frame.
@@ -51,6 +54,9 @@ contract LargeStakeOracle is BaseOracle {
 
     address public largeStakeContract;
 
+    // Specifies the maximum number of validator exits reported each time
+    uint256 public exitLimit;
+
     function initialize(
         uint256 secondsPerSlot,
         uint256 genesisTime,
@@ -62,6 +68,14 @@ contract LargeStakeOracle is BaseOracle {
     ) public initializer {
         __BaseOracle_init(secondsPerSlot, genesisTime, consensusContract, consensusVersion, lastProcessingRefSlot, _dao);
         largeStakeContract = _largeStakeContract;
+        exitLimit = 100;
+    }
+
+    /// Set the number limit for the validator to report
+    function setExitLimit(uint256 _exitLimit) external onlyDao {
+        if (_exitLimit == 0) revert ExitLimitNotZero();
+        emit UpdateExitLimit(exitLimit, _exitLimit);
+        exitLimit = _exitLimit;
     }
 
     /**
@@ -112,6 +126,9 @@ contract LargeStakeOracle is BaseOracle {
     function _handleConsensusReportData(ReportData calldata data) internal {
         if (data.clStakingExitInfos.length == 0 && data.clStakingSlashInfos.length == 0) {
             revert ReportDataIsEmpty();
+        }
+        if (data.clStakingExitInfos.length > exitLimit || data.clStakingSlashInfos.length > exitLimit) {
+            revert OverExitLimit();
         }
         ILargeStaking(largeStakeContract).reportCLStakingData(data.clStakingExitInfos, data.clStakingSlashInfos);
 
