@@ -105,7 +105,7 @@ abstract contract MainnetHelperContractV2 {
         0xf4A30Ec717b7F3aCC7fAeD373C941086a292BD5E,
         0x22E0cAF2B2dD1E11602D58eEfE9865f80aA949c6
     ];
-    uint256 public constant QUORUM = 2;
+    uint256 public constant QUORUM = 3;
 
     // ---------------need to modify for deploy------------------
 
@@ -160,10 +160,10 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
         largeStakeOracleProxy = deployer.deploy(address(largeStakeOracle));
 
         // initialize
-        ELRewardFactory(eLRewardFactoryContractProxy).initialize(address(eLRewardContract), _daoEOA);
+        ELRewardFactory(eLRewardFactoryContractProxy).initialize(address(eLRewardContract), _daoMultisigContract);
 
         LargeStaking(largeStakingContractProxy).initialize(
-            _daoEOA,
+            _daoMultisigContract,
             _daoVaultContract,
             operatorRegistryProxy,
             operatorSlashProxy,
@@ -172,6 +172,7 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
             depositContract
         );
 
+        // _daoEOA
         MultiHashConsensus(multiHashConsensusProxy).initialize(
             SLOTS_PER_EPOCH, SECONDS_PER_SLOT, _genesisTime, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, _daoEOA
         );
@@ -186,6 +187,9 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
         MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(withdrawOracleProxy, 2);
         MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(largeStakeOracleProxy, 2);
 
+        // transfer dao
+        MultiHashConsensus(multiHashConsensusProxy).setDaoAddress(_daoMultisigContract);
+
         MultiHashConsensus(multiHashConsensusProxy).transferOwnership(timelock);
 
         LargeStakeOracle(largeStakeOracleProxy).initialize(
@@ -194,7 +198,7 @@ contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
             multiHashConsensusProxy,
             CONSENSUS_VERSION,
             0,
-            _daoEOA,
+            _daoMultisigContract,
             largeStakingContractProxy
         );
 
@@ -276,13 +280,9 @@ contract MainnetDeployLargeStakingScript is Script, MainnetHelperContractV2 {
             depositContract
         );
 
+        // _daoEOA
         MultiHashConsensus(multiHashConsensusProxy).initialize(
-            SLOTS_PER_EPOCH,
-            SECONDS_PER_SLOT,
-            _genesisTime,
-            EPOCHS_PER_FRAME,
-            INITIAL_FAST_LANE_LENGTH_SLOTS,
-            _daoMultisigContract
+            SLOTS_PER_EPOCH, SECONDS_PER_SLOT, _genesisTime, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, _daoEOA
         );
 
         MultiHashConsensus(multiHashConsensusProxy).updateInitialEpoch(initialEpoch);
@@ -294,6 +294,9 @@ contract MainnetDeployLargeStakingScript is Script, MainnetHelperContractV2 {
 
         MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(withdrawOracleProxy, 2);
         MultiHashConsensus(multiHashConsensusProxy).addReportProcessor(largeStakeOracleProxy, 2);
+
+        // transfer dao
+        MultiHashConsensus(multiHashConsensusProxy).setDaoAddress(_daoMultisigContract);
 
         MultiHashConsensus(multiHashConsensusProxy).transferOwnership(timelock);
 

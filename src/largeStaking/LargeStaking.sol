@@ -27,7 +27,7 @@ contract LargeStaking is
 {
     IOperatorSlash public operatorSlashContract;
     INodeOperatorsRegistry public nodeOperatorRegistryContract;
-    address public consensusOracleContractAddr;
+    address public largeOracleContractAddr;
     IELRewardFactory public elRewardFactory;
     IDepositContract public depositContract;
 
@@ -111,8 +111,8 @@ contract LargeStaking is
         _;
     }
 
-    modifier onlyConsensusOracle() {
-        if (msg.sender != consensusOracleContractAddr) revert PermissionDenied();
+    modifier onlyLargeOracle() {
+        if (msg.sender != largeOracleContractAddr) revert PermissionDenied();
         _;
     }
 
@@ -126,7 +126,7 @@ contract LargeStaking is
         address _daoVaultAddress,
         address _nodeOperatorRegistryAddress,
         address _operatorSlashContract,
-        address _consensusOracleContractAddr,
+        address _largeOracleContractAddr,
         address _elRewardFactory,
         address _depositContract
     ) public initializer {
@@ -135,7 +135,7 @@ contract LargeStaking is
         __ReentrancyGuard_init();
 
         if (
-            _nodeOperatorRegistryAddress == address(0) || _consensusOracleContractAddr == address(0)
+            _nodeOperatorRegistryAddress == address(0) || _largeOracleContractAddr == address(0)
                 || _elRewardFactory == address(0) || _dao == address(0) || _daoVaultAddress == address(0)
                 || _depositContract == address(0) || _operatorSlashContract == address(0)
         ) {
@@ -146,7 +146,7 @@ contract LargeStaking is
         elRewardFactory = IELRewardFactory(_elRewardFactory);
         depositContract = IDepositContract(_depositContract);
         operatorSlashContract = IOperatorSlash(_operatorSlashContract);
-        consensusOracleContractAddr = _consensusOracleContractAddr;
+        largeOracleContractAddr = _largeOracleContractAddr;
         dao = _dao;
         daoVaultAddress = _daoVaultAddress;
         daoElCommissionRate = 1000;
@@ -740,7 +740,7 @@ contract LargeStaking is
     function reportCLStakingData(
         CLStakingExitInfo[] memory _clStakingExitInfo,
         CLStakingSlashInfo[] memory _clStakingSlashInfo
-    ) external onlyConsensusOracle {
+    ) external onlyLargeOracle {
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _clStakingExitInfo.length; ++i) {
             CLStakingExitInfo memory sInfo = _clStakingExitInfo[i];
