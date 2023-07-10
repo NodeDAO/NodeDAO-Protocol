@@ -838,6 +838,23 @@ contract LargeStaking is
     }
 
     /**
+     * @notice set staking el reward
+     */
+    function changeElRewardAddress(uint256 _stakingId, address _elRewardAddr) public {
+        StakingInfo memory stakingInfo = largeStakings[_stakingId];
+        if (stakingInfo.owner != msg.sender) {
+            revert PermissionDenied();
+        }
+
+        if (_elRewardAddr == address(0)) {
+            revert InvalidAddr();
+        }
+
+        emit ElRewardAddressChanged(stakingInfo.elRewardAddr, _elRewardAddr);
+        largeStakings[_stakingId].elRewardAddr = _elRewardAddr;
+    }
+
+    /**
      * @notice set contract setting
      */
     function setLargeStakingSetting(
