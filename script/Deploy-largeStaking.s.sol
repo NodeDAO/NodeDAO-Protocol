@@ -277,7 +277,12 @@ contract MainnetDeployLargeStakingScript is Script, MainnetHelperContractV2 {
         );
 
         MultiHashConsensus(multiHashConsensusProxy).initialize(
-            SLOTS_PER_EPOCH, SECONDS_PER_SLOT, _genesisTime, EPOCHS_PER_FRAME, INITIAL_FAST_LANE_LENGTH_SLOTS, _daoMultisigContract
+            SLOTS_PER_EPOCH,
+            SECONDS_PER_SLOT,
+            _genesisTime,
+            EPOCHS_PER_FRAME,
+            INITIAL_FAST_LANE_LENGTH_SLOTS,
+            _daoMultisigContract
         );
 
         MultiHashConsensus(multiHashConsensusProxy).updateInitialEpoch(initialEpoch);

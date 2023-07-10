@@ -2,7 +2,6 @@
 pragma solidity 0.8.8;
 
 library Array {
-
     // @notice compareBytes32Arrays gas < compareBytes32ArraysByLoop gas
     // ----------------------------------------------------------------
     // gas test
