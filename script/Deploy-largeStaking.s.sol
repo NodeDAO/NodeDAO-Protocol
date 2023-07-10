@@ -112,7 +112,7 @@ abstract contract MainnetHelperContractV2 {
     // need to up
     address withdrawOracleProxy = address(0x2B74f97aDC698b571C2F046673Fd5Cd028673c41);
     // @notice initialEpoch is the beacon network current epoch
-    uint256 initialEpoch = 186032;
+    uint256 initialEpoch = 213970;
 }
 
 contract GoerliDeployLargeStakingScript is Script, GoerliHelperContractV2 {
