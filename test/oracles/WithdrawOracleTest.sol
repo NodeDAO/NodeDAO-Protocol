@@ -447,7 +447,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         // exitCount：10000 opsCount：10000  gas:233711982
         // exitCount：10000 opsCount：0  gas:226016553
         uint256 exitCount = 10000;
-        uint256 opsCount = 1000;
+        uint256 opsCount = 100;
 
         bytes32[] memory hash = mockWithdrawOracleReportDataMock1_countHash(refSlot, exitCount, opsCount);
 
@@ -908,22 +908,23 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         }
     }
 
-    function stake20NftTo20Operator() public {
+    function stakeNftToOperatorForCount(uint256 operatorCount, uint256 nftCount) public {
         // set block number to 10000
         vm.roll(10000);
 
-        // stake for 4 validator
-        vm.deal(USER_1, 20000 ether);
+        vm.deal(USER_1, nftCount * 33 ether);
 
-        for (uint256 i = 2; i < 22; ++i) {
+        for (uint256 i = 2; i < operatorCount + 2; ++i) {
             address controller = address(uint160(i));
 
             operatorRegistry.registerOperator{value: 1.1 ether}(
-                "batch100", controller, address(4), _rewardAddresses, _ratios
+                "batch", controller, address(4), _rewardAddresses, _ratios
             );
             vm.prank(_dao);
             operatorRegistry.setTrustedOperator(i);
+        }
 
+        for (uint256 i = 2; i < nftCount + 2; ++i) {
             bytes[] memory pubkeys = new bytes[](1);
             bytes[] memory signatures = new bytes[](1);
             bytes32[] memory depositDataRoots = new bytes32[](1);
@@ -938,8 +939,10 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
             depositDataRoots[0] = root;
 
             vm.prank(USER_1);
-            liquidStaking.stakeNFT{value: 32 ether}(i, USER_1);
+            liquidStaking.stakeNFT{value: 32 ether}(i % 5 + 2, USER_1);
 
+            uint160 t = uint160(i % 5 + 2);
+            address controller = address(t);
             vm.prank(controller);
             liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
         }
@@ -1038,17 +1041,20 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
     function testReportData_20Nft_20Operator() public {
         (uint256 refSlot,) = consensus.getCurrentFrame();
 
+        uint256 operatorCount = 5;
+        uint256 nftCount = 100;
+
         // set block number to 15000
         vm.roll(15000);
         // set clVault reward
         vm.deal(address(consensusVaultContract), 20 ether);
 
-        stake20NftTo20Operator();
+        stakeNftToOperatorForCount(operatorCount, nftCount);
 
         vm.startPrank(USER_1);
         // VNFT unstake
-        uint256[] memory needUnstakeTokenIds = new uint256[](20);
-        for (uint256 i = 0; i < 20; ++i) {
+        uint256[] memory needUnstakeTokenIds = new uint256[](nftCount);
+        for (uint256 i = 0; i < nftCount; ++i) {
             needUnstakeTokenIds[i] = i;
         }
         withdrawalRequest.unstakeNFT(needUnstakeTokenIds);
@@ -1057,13 +1063,15 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         // set clVault reward
         vm.deal(address(consensusVaultContract), 20 ether);
 
-        bytes32[] memory hash = mockFinalReportData_20Nft_20Operator_hash(refSlot);
+        bytes32[] memory hash = mockFinalReportDataNftOperatorForCount_hash(refSlot, operatorCount, nftCount);
         reportDataConsensusReached(hash);
 
         vm.roll(30000);
 
         vm.prank(MEMBER_1);
-        withdrawOracle.submitReportData(mockFinalReportData_20Nft_20Operator(refSlot), CONSENSUS_VERSION, moduleId);
+        withdrawOracle.submitReportData(
+            mockFinalReportDataNftOperatorForCount(refSlot, operatorCount, nftCount), CONSENSUS_VERSION, moduleId
+        );
     }
 
     ////////////////////////////////////////////////////////////////
