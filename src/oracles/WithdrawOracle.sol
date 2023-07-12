@@ -268,13 +268,13 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         // TotalClBalance check
         _checkTotalClBalance(data.refSlot, data.clBalance, data.clVaultBalance);
 
+        // oracle maintains the necessary data
+        _dealReportOracleData(data.refSlot, data.clBalance, data.clVaultBalance, data.clSettleAmount);
+
         // Invoke vault Manager to process the reported data
         IVaultManager(vaultManager).reportConsensusData(
             data.withdrawInfos, data.exitValidatorInfos, data.clSettleAmount
         );
-
-        // oracle maintains the necessary data
-        _dealReportOracleData(data.refSlot, data.clBalance, data.clVaultBalance, data.clSettleAmount);
 
         dataProcessingState = DataProcessingState({
             refSlot: data.refSlot.toUint64(),
