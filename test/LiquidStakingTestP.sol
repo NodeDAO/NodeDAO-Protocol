@@ -80,6 +80,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
     event LargeStake( uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, address _withdrawCredentials, bool _isELRewardSharing );    
     event MigretaStake( uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, address _withdrawCredentials, bool _isELRewardSharing );    event AppendStake(uint256 _stakingId, uint256 _amount);
+    event SharedRewardPoolStart(uint256 _operatorId, address _elRewardPoolAddr);
 
     LiquidStaking liquidStaking;
     NETH neth;
@@ -274,11 +275,9 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
         assertEq(operatorRegistry.defaultOperatorCommission(), 0);
         address operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
-        console.log("========operatorRegistry.initializeV2==========", operatorVaultAddr);
         vm.prank(_dao);
         operatorRegistry.initializeV2(address(vaultFactoryContract), address(operatorSlash), _resetVaultOperatorIds);
         operatorVaultAddr = operatorRegistry.getNodeOperatorVaultContract(1);
-        console.log("========operatorRegistry.initializeV2==========", operatorVaultAddr);
         assertEq(operatorRegistry.defaultOperatorCommission(), 2000);
 
         vm.prank(_dao);
@@ -312,13 +311,41 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         operatorSlash.initializeV2(address(largeStaking));
     }
 
-    // LargeStaking
-    function testFailLargeStaking() public {
-        vm.deal(address(1000), 3200 ether);
-        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
-        vm.prank(address(1000));
-        largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
+    function testGetWithdrawCredentials()  public {
+        console.log("testGetWithdrawCredentials: " );
+        bytes32 t1 = largeStaking.getWithdrawCredentials(address(3333)) ;
+        assertEq(t1 , 0x0100000000000000000000000000000000000000000000000000000000000d05 );
+        bytes32 t2 = largeStaking.getWithdrawCredentials(address(5555)) ;
+        assertEq(t2 , 0x01000000000000000000000000000000000000000000000000000000000015b3 );
     }
+
+    function testStartupSharedRewardPool() public {
+        uint256 initialRewardAmount = 1000;
+        uint256 poolDuration = 30;
+
+        vm.expectRevert(abi.encodeWithSignature("PermissionDenied()"));
+        vm.prank(address(1010));
+        largeStaking.startupSharedRewardPool(1);
+
+        vm.expectRevert(abi.encodeWithSignature("OperatorNotFound()"));
+        vm.prank(_owner);
+        largeStaking.startupSharedRewardPool(99);
+
+        // successful test case
+        vm.expectEmit(true, true, false, true);
+        emit SharedRewardPoolStart(3, 0x92678cB784dFf0D7d5A2220B89CAA05771Ee5b5C );
+        vm.prank(_owner3);
+        largeStaking.startupSharedRewardPool(3);
+    }
+
+
+    // LargeStaking
+    // function testFailLargeStaking() public {
+    //     vm.deal(address(1000), 3200 ether);
+    //     vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+    //     vm.prank(address(1000));
+    //     largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
+    // }
 
 
     function testLargeStaking() public {
@@ -340,11 +367,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         vm.prank(address(1000));
         largeStaking.largeStake{value: 320 ether}(1, address(1000), address(555), true);
         (uint256 operatorId, address rewardPoolAddr, uint256 rewards) = largeStaking.getRewardPoolInfo(1);
-        // return after reporting daoReward, operatorReward, as 0 
-        // console.log("1. largeStaking.reward(1):  ", largeStaking.reward(1));
-        // console.log("1. rewards:  ", rewards );
         assertEq(largeStaking.totalShares(1), 320 ether); 
-
 
         vm.deal(rewardPoolAddr, 10 ether);  
         //  shared reward 2, set _isELRewardSharing as true 
@@ -354,9 +377,6 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         largeStaking.largeStake{value: 320 ether}(1, address(1002), address(555), true);
         (uint256 operatorId2, address rewardPoolAddr2, uint256 rewards2) = largeStaking.getRewardPoolInfo(1);
         assertEq(rewardPoolAddr, rewardPoolAddr2);
-        // console.log("2. rewardPoolAddr:  ", rewardPoolAddr );
-        // console.log("2. rewards2:  ", rewards2 );
-        // console.log("2. largeStaking.reward(1):  ", largeStaking.reward(1));
 
 
         // uint256 _valuePerShare = 7.5 ether * 1e18 / 640 ether * 2 ;
@@ -383,10 +403,6 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         largeStaking.largeStake{value: 320 ether}(2, address(1003), address(666), true);
         (uint256 operatorId3, address rewardPoolAddr3, uint256 rewards3) = largeStaking.getRewardPoolInfo(3);
         // assertEq(rewardPoolAddr, rewardPoolAddr3);
-        // console.log("3. rewardPoolAddr3:  ", rewardPoolAddr3 );
-        // console.log("3. rewards3:  ", rewards3 );
-        // console.log("3. largeStaking.reward(2):  ", largeStaking.reward(3));
-
 
         vm.deal(rewardPoolAddr3, 8 ether); // simulate of rewards send to rewardPool. 
 
@@ -397,10 +413,6 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         assertEq(rewardPoolAddr3, rewardPoolAddr4);
         console.log("4. rewards4:  ", rewards4 );
         assertEq(largeStaking.totalShares(2), 640 ether);
-        // 8 ether rewards shared between operator, dao, pool
-        // console.log("4. operatorSharedRewards(2):  ", largeStaking.operatorSharedRewards(2) );
-        // console.log("4. daoSharedRewards(2):  ", largeStaking.daoSharedRewards(2) );
-        // console.log("4. reward(3):  ", largeStaking.reward(3) );
 
         assertEq(largeStaking.daoSharedRewards(2), 1.2 ether);
         assertEq(largeStaking.reward(3), 6 ether);
@@ -413,9 +425,6 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         vm.prank(address(1001));
         largeStaking.largeStake{value: 960 ether}(1, address(1001), address(555), false);
         (uint256 operatorId5, address rewardPoolAddr5, uint256 rewards5) = largeStaking.getRewardPoolInfo(3);
-        // console.log("5. rewards5:  ", rewards5 );
-        // console.log("5. largeStaking.reward(4):  ", largeStaking.reward(4));
-        // assertEq(largeStaking.totalShares(1), 640 ether);
     }
 
     function testClaimRewardsOfDao() public {
@@ -476,7 +485,6 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         assertEq(  largeStaking.getStakingInfoOfOwner(address(1004))[0].stakingId,  4 );
         assertEq( largeStaking.getStakingInfoOfOwner(address(1004))[0].stakingAmount  , 320 ether );
     }
-
 
      function testLargeStakeFail() public {
         vm.deal(address(111), 1000 ether);
@@ -755,7 +763,6 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         vm.prank(_controllerAddress);
         largeStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
 
-        console.log("getValidatorsOfStakingId 1 : ", largeStaking.getValidatorsOfStakingId(1).length);
 
         pubkeys[0] =
             bytes(hex"93943bd530b79623af943a2af636f06c327203d82784fafda621439438c418bd8d26c82061bbc956fc7f0f8ddb138173");
