@@ -319,10 +319,20 @@ contract VNFT is
      */
     function validatorsOfOperator(uint256 _operatorId) external view returns (bytes[] memory) {
         uint256 total = _nextTokenId();
-        uint256 tokenIdsIdx;
-        bytes[] memory _validators = new bytes[](total);
         TokenOwnership memory ownership;
+        uint256 totalActiveNftNumber = 0;
+        for (uint256 i = _startTokenId(); i < total; ++i) {
+            ownership = _ownershipAt(i);
+            if (ownership.burned) {
+                continue;
+            }
+            if (validatorRecords[validators[i].pubkey] == _operatorId) {
+                totalActiveNftNumber++;
+            }
+        }
 
+        bytes[] memory _validators = new bytes[](totalActiveNftNumber);
+        uint256 tokenIdsIdx = 0;
         for (uint256 i = _startTokenId(); i < total; ++i) {
             ownership = _ownershipAt(i);
             if (ownership.burned) {

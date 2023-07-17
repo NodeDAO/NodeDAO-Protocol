@@ -2497,6 +2497,10 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         console.logBytes(vnft.validatorOf(1));
         assertEq(1, vnft.operatorOf(1));
 
+        vm.prank(address(liquidStaking));
+        vnft.whiteListBurn(3);
+        assertEq(vnft.validatorsOfOperator(1).length, 3);
+
         vnft.setLiquidStaking(address(1000));
         assertEq(address(vnft.liquidStakingContractAddress()), address(1000));
     }
