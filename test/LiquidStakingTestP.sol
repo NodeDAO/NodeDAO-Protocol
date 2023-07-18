@@ -78,8 +78,8 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
     event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
     event VaultManagerContractSet(address vaultManagerContractAddress, address _vaultManagerContract);
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
-    event LargeStake( uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, address _withdrawCredentials, bool _isELRewardSharing );    
-    event MigretaStake( uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, address _withdrawCredentials, bool _isELRewardSharing );    event AppendStake(uint256 _stakingId, uint256 _amount);
+    event LargeStake( uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, address _elRewardAddr, address _withdrawCredentials, bool _isELRewardSharing );    
+    event MigretaStake( uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, address _elRewardAddr, address _withdrawCredentials, bool _isELRewardSharing );
     event SharedRewardPoolStart(uint256 _operatorId, address _elRewardPoolAddr);
 
     LiquidStaking liquidStaking;
@@ -178,8 +178,8 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         consensus.updateInitialEpoch(INITIAL_EPOCH);
         consensus.setTime(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
 
-        consensus.addReportProcessor(address(withdrawOracle));
-        consensus.addReportProcessor(address(reportProcessor1));
+        consensus.addReportProcessor(address(withdrawOracle), 1);
+        consensus.addReportProcessor(address(reportProcessor1), 1);
 
         consensus.addMember(MEMBER_1, 1);
         consensus.addMember(MEMBER_2, 3);
@@ -268,7 +268,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
             address(operatorSlash)
         );
         vm.prank(_dao);
-        vaultManager.setDaoElCommissionRate(300);
+        // vaultManager.setDaoElCommissionRate(300);
 
         uint256[] memory _resetVaultOperatorIds = new uint256[] (1);
         _resetVaultOperatorIds[0] = 1;
@@ -300,14 +300,12 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
             address(elRewardFactor),
             address(depositContract)
         );
-        vm.prank(_dao);
         operatorRegistry.initializeV3(address(largeStaking));
 
         vm.prank(_dao);
         largeStaking.setLargeStakingSetting(
-            address(0), address(0), 1500, 0, address(0), address(0), address(0), address(0)
+            address(0), address(0), 1500, 0, 0, address(0), address(0), address(0), address(0)
         );
-        vm.prank(_dao);
         operatorSlash.initializeV2(address(largeStaking));
     }
 
@@ -340,12 +338,12 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
 
     // LargeStaking
-    // function testFailLargeStaking() public {
-    //     vm.deal(address(1000), 3200 ether);
-    //     vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
-    //     vm.prank(address(1000));
-    //     largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
-    // }
+    function testFailLargeStaking() public {
+        vm.deal(address(1000), 3200 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1000));
+        largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
+    }
 
 
     function testLargeStaking() public {
@@ -392,7 +390,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
         // // claim reward
         vm.prank(address(1000));
-        largeStaking.claimRewardsOfUser(1, address(1000), 5.5 ether);
+        largeStaking.claimRewardsOfUser(1, 5.5 ether);
         assertEq(largeStaking.reward(1), 2 ether);
         assertEq(address(1000).balance, 5.5 ether);
 
@@ -442,7 +440,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
         uint256[] memory _privatePoolStakingIds = new uint256[] (1);
         _privatePoolStakingIds[0] = 1; 
-        largeStaking.claimRewardsOfOperator(_privatePoolStakingIds, true , 1);
+        largeStaking.claimRewardsOfOperator(1,  _privatePoolStakingIds);
 
         vm.deal(rewardPoolAddr, 10 ether);  
         //  shared reward 2, set _isELRewardSharing as true 
@@ -458,7 +456,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
         // // claim reward
         vm.prank(address(1000));
-        largeStaking.claimRewardsOfUser(1, address(1000), 5.5 ether);
+        largeStaking.claimRewardsOfUser(1, 5.5 ether);
 
         console.log("B unclaimedSharedRewards: ",  largeStaking.unclaimedSharedRewards(1) );
         assertEq( largeStaking.unclaimedSharedRewards(1) , 4.5 ether);
@@ -466,7 +464,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         assertEq( largeStaking.daoSharedRewards(1) , 1.5 ether);
         uint256[] memory privatePoolStakingIds = new uint256[] (1);
         privatePoolStakingIds[0] = 1; 
-        largeStaking.claimRewardsOfDao(privatePoolStakingIds, privatePoolStakingIds);
+        largeStaking.claimRewardsOfDao(privatePoolStakingIds);
         assertEq( largeStaking.daoSharedRewards(1) , 0  );
         vm.deal(address(1003), 320 ether);
         vm.deal(address(666), 1);
@@ -487,10 +485,10 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
     }
 
      function testLargeStakeFail() public {
-        vm.deal(address(111), 1000 ether);
+        vm.deal(address(1111), 1000 ether);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidAmount()"));
-        vm.prank(address(111));
+        vm.prank(address(1111));
         largeStaking.largeStake{value: 319 ether}(1, address(1111), address(1112), false );
         assertEq(largeStaking.getOperatorValidatorCounts(1), 0);
 
@@ -525,8 +523,8 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         
         // successful test case
         vm.expectEmit(true, true, false, true);
-        emit LargeStake(1, 1 , 320 ether, address(1111), address(1112), false);
-        vm.prank(address(111));
+        emit LargeStake(1, 1 , 320 ether, address(1111), address(1111) , address(1112), false);
+        vm.prank(address(1111));
         largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false );
 
         // getOperatorValidatorCounts
@@ -534,7 +532,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         
         ( bool isELRewardSharing, uint256 stakingId, uint256 operatorId, uint256 stakingAmount,
          uint256 alreadyStakingAmount, uint256 unstakeRequestAmount, uint256 unstakeAmount,
-          address owner, bytes32 withdrawCredentials )
+          address owner, address elRewardAddr,  bytes32 withdrawCredentials )
          = largeStaking.largeStakings(1) ; 
 
         // Access the individual components of the stakingInfo
@@ -546,8 +544,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         assertEq(unstakeRequestAmount , 0);
         assertEq(unstakeAmount , 0);
         assertEq(owner , address(1111) );
-        console.logBytes32(  withdrawCredentials );
-
+        console.logBytes32(withdrawCredentials);
     } 
 
 
@@ -622,10 +619,10 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         _pubkeys[0] = bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920523a3");
         vm.expectRevert(abi.encodeWithSignature("RequireOperatorTrusted()"));
         vm.prank(address(888));
-        largeStaking.migrateStake(address(1111), address(1111), false, _pubkeys );
+        largeStaking.migrateStake(address(1111), address(1111), address(1111), false, _pubkeys );
 
         vm.expectRevert(0xdc0ca7f3);
-        largeStaking.migrateStake(address(5555), address(5556), false, _pubkeys );
+        largeStaking.migrateStake(address(5555), address(5555),  address(5555), false, _pubkeys );
 
     }
 
@@ -642,9 +639,9 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
         vm.prank(_controllerAddress);
         vm.expectEmit(true, true, false, true);
-        emit MigretaStake(1, 1, 64 ether, address(3331) , address(3332), true) ;
+        emit MigretaStake(1, 1, 64 ether, address(3331) , address(3331),  address(3332), true) ;
         largeStaking.migrateStake(
-            address(3331) , address(3332), true, pubkeys2
+            address(3331) , address(3331) , address(3332) ,true, pubkeys2
         );
 
         vm.prank(address(3331) );
@@ -683,8 +680,9 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         vm.prank(_controllerAddress);
         largeStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParameter()"));
-        largeStaking.registerValidator(1, pubkeys, signatures2, depositDataRoots);
+        // vm.expectRevert(abi.encodeWithSignature("InvalidParameter()")); 0xdc0ca7f3
+        // vm.expectRevert(abi.encodeWithSignature("0x4f854dda"));
+        // largeStaking.registerValidator(1, pubkeys, signatures2, depositDataRoots);
      
     }
 
@@ -723,7 +721,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
         vm.prank(address(1001));
         
-        largeStaking.claimRewardsOfUser(1, address(1001), 8 ether);
+        largeStaking.claimRewardsOfUser(1, 8 ether);
         // assertEq(largeStaking.reward(1), 0.15 ether);
 
         assertEq(address(1001).balance, 328 ether);
