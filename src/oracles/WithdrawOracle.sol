@@ -14,7 +14,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     event UpdateTotalBalanceTolerate(uint256 old, uint256 totalBalanceTolerate);
     event UpdateClVaultMinSettleLimit(uint256 clVaultMinSettleLimit);
     event PendingBalancesAdd(uint256 _addBalance, uint256 _totalBalance);
-    event PendingBalancesReset(uint256 totalBalance);
+    event PendingBalancesReported(uint256 totalBalance);
     event LiquidStakingChanged(address oldLiq, address newLiq);
     event VaultManagerChanged(address oldVaultManager, address newVaultManager);
     event ReportDataSuccess(
@@ -77,6 +77,8 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         WithdrawInfo[] withdrawInfos;
         // To exit the validator's info
         ExitValidatorInfo[] exitValidatorInfos;
+        // The total pledged amount of validators in the pending state in this report
+        uint256 reportPendingBalances;
     }
 
     DataProcessingState internal dataProcessingState;
@@ -269,7 +271,9 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         _checkTotalClBalance(data.refSlot, data.clBalance, data.clVaultBalance);
 
         // oracle maintains the necessary data
-        _dealReportOracleData(data.refSlot, data.clBalance, data.clVaultBalance, data.clSettleAmount);
+        _dealReportOracleData(
+            data.refSlot, data.clBalance, data.clVaultBalance, data.clSettleAmount, data.reportPendingBalances
+        );
 
         // Invoke vault Manager to process the reported data
         IVaultManager(vaultManager).reportConsensusData(
@@ -307,10 +311,11 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 _refSlot,
         uint256 _clBalances,
         uint256 _clVaultBalance,
-        uint256 _clSettleAmount
+        uint256 _clSettleAmount,
+        uint256 _reportPendingBalances
     ) internal {
-        pendingBalances = 0;
-        emit PendingBalancesReset(0);
+        pendingBalances -= _reportPendingBalances;
+        emit PendingBalancesReported(_reportPendingBalances);
 
         lastRefSlot = _refSlot;
         clBalances = _clBalances;
