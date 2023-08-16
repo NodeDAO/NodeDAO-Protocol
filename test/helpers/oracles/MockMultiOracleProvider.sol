@@ -697,4 +697,32 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         hashArr[1] = ZERO_HASH;
         return hashArr;
     }
+
+    function mockReportDataPendingBalance(uint256 refSlot)
+        public
+        pure
+        returns (WithdrawOracleWithTimer.ReportData memory reportData)
+    {
+        reportData.consensusVersion = CONSENSUS_VERSION;
+        reportData.refSlot = refSlot;
+        reportData.clBalance = 32 ether;
+        reportData.clVaultBalance = 0;
+        reportData.clSettleAmount = 0;
+        reportData.reportExitedCount = 0;
+
+        WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](0);
+        ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](0);
+
+        reportData.withdrawInfos = withdrawInfos;
+        reportData.exitValidatorInfos = exitValidatorInfos;
+        reportData.reportPendingBalances = 32 ether;
+    }
+
+    function mockReportDataPendingBalance_hash(uint256 refSlot) public pure returns (bytes32[] memory) {
+        bytes32[] memory hashArr = new bytes32[](2);
+        bytes32 hash = keccak256(abi.encode(mockReportDataPendingBalance(refSlot)));
+        hashArr[0] = hash;
+        hashArr[1] = ZERO_HASH;
+        return hashArr;
+    }
 }
