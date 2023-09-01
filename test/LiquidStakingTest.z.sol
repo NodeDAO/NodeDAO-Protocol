@@ -3135,10 +3135,12 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         largeStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
         checkStakingInfo(1, false, 1, 960 ether, 160 ether, 0, 0);
 
-        CLStakingExitInfo[] memory _clStakingExitInfo = new CLStakingExitInfo[] (2);
+        CLStakingExitInfo[] memory _clStakingExitInfo = new CLStakingExitInfo[] (1);
         CLStakingSlashInfo[] memory _clStakingSlashInfo = new CLStakingSlashInfo[] (1);
-        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 1, pubkey: pubkeys[0]});
-        _clStakingExitInfo[1] = CLStakingExitInfo({stakingId: 1, pubkey: pubkeys[1]});
+        bytes[] memory ps = new bytes[](2);
+        ps[0] = pubkeys[0];
+        ps[1] = pubkeys[1];
+        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 1, pubkeys: ps});
         _clStakingSlashInfo[0] = CLStakingSlashInfo({stakingId: 1, slashAmount: 1 ether, pubkey: pubkeys[0]});
 
         vm.prank(address(withdrawOracle));
@@ -3159,9 +3161,9 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         largeStaking.registerValidator(2, pubkeys, signatures, depositDataRoots);
 
         checkStakingInfo(2, true, 1, 320 ether, 160 ether, 0, 0);
-
-        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 1, pubkey: pubkeys[0]});
-        _clStakingExitInfo[1] = CLStakingExitInfo({stakingId: 1, pubkey: pubkeys[1]});
+        ps[0] = pubkeys[0];
+        ps[1] = pubkeys[1];
+        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 1, pubkeys: ps});
         _clStakingSlashInfo[0] = CLStakingSlashInfo({stakingId: 1, slashAmount: 1 ether, pubkey: pubkeys[0]});
 
         // InvalidReport(); -> validatorOfStaking[sInfo.pubkey] != sInfo.stakingId
@@ -3222,11 +3224,12 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         uint256 requirBalance = 0;
         (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
         assertEq(1 ether, pledgeBalance);
-
-        CLStakingExitInfo[] memory _clStakingExitInfo = new CLStakingExitInfo[] (2);
+        bytes[] memory ps = new bytes[](2);
+        ps[0] = pubkeys[0];
+        ps[1] = pubkeys[1];
+        CLStakingExitInfo[] memory _clStakingExitInfo = new CLStakingExitInfo[] (1);
         CLStakingSlashInfo[] memory _clStakingSlashInfo = new CLStakingSlashInfo[] (1);
-        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 1, pubkey: pubkeys[0]});
-        _clStakingExitInfo[1] = CLStakingExitInfo({stakingId: 1, pubkey: pubkeys[1]});
+        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 1, pubkeys: ps});
         _clStakingSlashInfo[0] = CLStakingSlashInfo({stakingId: 1, slashAmount: 1 ether, pubkey: pubkeys[0]});
 
         vm.prank(address(withdrawOracle));
@@ -3250,9 +3253,9 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         largeStaking.registerValidator(2, pubkeys, signatures, depositDataRoots);
 
         checkStakingInfo(2, true, 1, 320 ether, 160 ether, 0, 0);
-
-        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 2, pubkey: pubkeys[0]});
-        _clStakingExitInfo[1] = CLStakingExitInfo({stakingId: 2, pubkey: pubkeys[1]});
+        ps[0] = pubkeys[0];
+        ps[1] = pubkeys[1];
+        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 2, pubkeys: ps});
         _clStakingSlashInfo[0] = CLStakingSlashInfo({stakingId: 2, slashAmount: 1 ether, pubkey: pubkeys[0]});
 
         vm.prank(address(withdrawOracle));
