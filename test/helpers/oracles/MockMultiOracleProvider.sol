@@ -385,8 +385,8 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         reportData.consensusVersion = CONSENSUS_VERSION;
         //        reportData.refSlot = 5414431;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 607910611984000000000;
-        reportData.clVaultBalance = 1453040740000000000;
+        reportData.clBalance = 0;
+        reportData.clVaultBalance = 0;
         reportData.clSettleAmount = 0;
         reportData.reportExitedCount = 0;
 
@@ -413,10 +413,11 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 0;
-        reportData.clVaultBalance = 3 * 32 ether;
+        reportData.clBalance = 32 ether;
+        reportData.clVaultBalance = 0;
         reportData.clSettleAmount = 0;
         reportData.reportExitedCount = 3;
+        reportData.reportPendingBalances = 32 ether;
 
         WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](1);
         WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: 0, clCapital: 0});
@@ -452,10 +453,11 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 0;
-        reportData.clVaultBalance = 3 * 32 ether;
+        reportData.clBalance = 32 ether;
+        reportData.clVaultBalance = 0;
         reportData.clSettleAmount = 0;
         reportData.reportExitedCount = 3;
+        reportData.reportPendingBalances = 32 ether;
 
         WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](1);
         WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: 0, clCapital: 0});
@@ -492,9 +494,10 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
         reportData.clBalance = 0;
-        reportData.clVaultBalance = 3 * 32 ether;
+        reportData.clVaultBalance = 32 ether;
         reportData.clSettleAmount = 32 ether;
         reportData.reportExitedCount = 4;
+        reportData.reportPendingBalances = 32 ether;
 
         WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](1);
         WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: 0, clCapital: 32 ether});
@@ -539,17 +542,14 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 35 ether;
-        reportData.clVaultBalance = 11 ether;
-        reportData.clSettleAmount = 11 ether;
+        reportData.clBalance = 0 ether; 
+        reportData.clVaultBalance = 0 ether;
+        reportData.clSettleAmount = 0 ether;
         reportData.reportExitedCount = 0;
 
-        uint256 clReward1 = 11 ether * 3 / 4;
-        uint256 clReward2 = 11 ether * 1 / 4;
-
         WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](2);
-        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: uint96(clReward1), clCapital: 0});
-        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 1, clReward: uint96(clReward2), clCapital: 0});
+        WithdrawInfo memory withdrawInfo1 = WithdrawInfo({operatorId: 1, clReward: uint96(0), clCapital: 0});
+        WithdrawInfo memory withdrawInfo2 = WithdrawInfo({operatorId: 1, clReward: uint96(0), clCapital: 0});
         withdrawInfos[0] = withdrawInfo1;
         withdrawInfos[1] = withdrawInfo2;
         reportData.withdrawInfos = withdrawInfos;
@@ -577,12 +577,10 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 100 ether;
-        reportData.clVaultBalance = 20 ether;
-        reportData.clSettleAmount = 20 ether;
+        reportData.clBalance = 0 ether;
+        reportData.clVaultBalance = 0 ether;
+        reportData.clSettleAmount = 0 ether;
         reportData.reportExitedCount = 100;
-
-        uint256 clReward1 = 20 ether * 1 / 100;
 
         WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](100);
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](100);
@@ -590,7 +588,7 @@ contract MockMultiOracleProvider is CommonConstantProvider {
 
         for (uint256 i = 0; i < 100; ++i) {
             WithdrawInfo memory withdrawInfo1 =
-                WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(clReward1), clCapital: 0});
+                WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(0), clCapital: 0});
             withdrawInfos[i] = withdrawInfo1;
 
             ExitValidatorInfo memory exitValidatorInfo1 =
@@ -619,19 +617,18 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 100 ether;
-        reportData.clVaultBalance = 20 ether;
-        reportData.clSettleAmount = 20 ether;
+        reportData.clBalance = 0 ether;
+        reportData.clVaultBalance = 0 ether;
+        reportData.clSettleAmount = 0 ether;
         reportData.reportExitedCount = 100;
 
-        uint256 clReward1 = 20 ether * 1 / 50;
 
         WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](50);
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](100);
 
         for (uint256 i = 0; i < 50; ++i) {
             WithdrawInfo memory withdrawInfo1 =
-                WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(clReward1), clCapital: 0});
+                WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(0), clCapital: 0});
             withdrawInfos[i] = withdrawInfo1;
         }
 
@@ -660,19 +657,17 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 100 ether;
-        reportData.clVaultBalance = operatorCount * 1e18;
-        reportData.clSettleAmount = operatorCount * 1e18;
+        reportData.clBalance = 0;
+        reportData.clVaultBalance = 0;
+        reportData.clSettleAmount = 0;
         reportData.reportExitedCount = nftCount;
-
-        uint256 clReward1 = operatorCount * 1e18 * 1 / operatorCount;
 
         WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](operatorCount);
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](nftCount);
 
         for (uint256 i = 0; i < operatorCount; ++i) {
             WithdrawInfo memory withdrawInfo1 =
-                WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(clReward1), clCapital: 0});
+                WithdrawInfo({operatorId: uint64(i + 2), clReward: uint96(0), clCapital: 0});
             withdrawInfos[i] = withdrawInfo1;
         }
 

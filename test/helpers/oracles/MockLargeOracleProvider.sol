@@ -15,8 +15,8 @@ contract MockLargeOracleProvider is MockMultiOracleProvider {
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 607910611984000000000;
-        reportData.clVaultBalance = 1453040740000000000;
+        reportData.clBalance = 0;
+        reportData.clVaultBalance = 0;
         reportData.clSettleAmount = 0;
         reportData.reportExitedCount = 0;
 

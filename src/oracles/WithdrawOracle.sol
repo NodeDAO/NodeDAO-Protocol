@@ -31,6 +31,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     error ValidatorReportedExited(uint256 tokenId);
     error ClVaultBalanceNotMinSettleLimit();
     error InvalidTotalBalance(uint256 curTotal, uint256 minTotal, uint256 maxTotal);
+    error CheckTotalBalanceFailed(uint256 preTotal, uint256 curTotal, uint256 _clSettleAmount, uint256 _pendingBalances);
 
     struct DataProcessingState {
         uint64 refSlot;
@@ -268,7 +269,7 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         if (data.reportExitedCount > exitRequestLimit) revert UnexpectedRequestsDataLength();
 
         // TotalClBalance check
-        _checkTotalClBalance(data.refSlot, data.clBalance, data.clVaultBalance);
+        _checkTotalClBalance(data.refSlot, data.clBalance, data.clVaultBalance, data.reportPendingBalances);
 
         // oracle maintains the necessary data
         _dealReportOracleData(
@@ -292,17 +293,21 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
     /// curTotal = _curClVaultBalance + _curClBalances
     /// culTotal < preTotal - totalBalanceTolerate
     /// culTotal > preTotal + pendingBalances + preTotal * (curRefSlot - preRefSlot) * 10 / 100 / 365 / 7200 + totalBalanceTolerate
-    function _checkTotalClBalance(uint256 _curRefSlot, uint256 _curClBalances, uint256 _curClVaultBalance)
-        internal
-        view
-    {
+    function _checkTotalClBalance(
+        uint256 _curRefSlot,
+        uint256 _curClBalances,
+        uint256 _curClVaultBalance,
+        uint256 _reportPendingBalances
+    ) internal view {
         uint256 preTotal = clVaultBalance + clBalances - lastClSettleAmount;
         uint256 curTotal = _curClVaultBalance + _curClBalances;
-        uint256 minTotal = preTotal - totalBalanceTolerate;
-        uint256 maxTotal = preTotal + pendingBalances + preTotal * (_curRefSlot - lastRefSlot) * 10 / 100 / 365 / 7200
+
+        uint256 minTotal = _reportPendingBalances + (preTotal > totalBalanceTolerate ? preTotal - totalBalanceTolerate : preTotal);
+        // 26280000 = 100 * 365 * 7200 / 10 
+        uint256 maxTotal = preTotal + _reportPendingBalances + preTotal * (_curRefSlot - lastRefSlot) / 26280000 
             + totalBalanceTolerate;
 
-        if (curTotal < minTotal || (maxTotal != 0 && maxTotal != pendingBalances && curTotal > maxTotal)) {
+        if (curTotal < minTotal || curTotal > maxTotal) {
             revert InvalidTotalBalance(curTotal, minTotal, maxTotal);
         }
     }
