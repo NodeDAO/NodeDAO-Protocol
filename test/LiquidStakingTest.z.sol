@@ -3172,6 +3172,25 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
     }
 
     function testReportCLStakingData() public {
+        address[] memory _rewardAddresses3 = new address[] (3);
+        uint256[] memory _ratios3 = new uint256[] (3);
+        _rewardAddresses3[0] = address(70);
+        _rewardAddresses3[1] = address(71);
+        _rewardAddresses3[2] = address(72);
+        _ratios3[0] = 70;
+        _ratios3[1] = 20;
+        _ratios3[2] = 10;
+
+        address _controllerAddress3 = address(80);
+        address _owner3 = address(81);
+
+        uint256 operatorId = operatorRegistry.registerOperator{value: 1.1 ether}(
+            "testELVault", _controllerAddress3, _owner3, _rewardAddresses3, _ratios3
+        );
+
+        vm.prank(_dao);
+        operatorRegistry.setTrustedOperator(operatorId);
+
         vm.deal(address(1001), 960 ether);
         vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
         vm.prank(address(1001));
@@ -3182,11 +3201,16 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.prank(_owner);
         largeStaking.startupSharedRewardPool(1);
 
+        vm.prank(_owner3);
+        largeStaking.startupSharedRewardPool(2);
+
         vm.deal(address(1000), 320 ether);
         vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
         vm.prank(address(1000));
-        largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
-        checkStakingInfo(2, true, 1, 320 ether, 0, 0, 0);
+        largeStaking.largeStake{value: 320 ether}(
+            operatorId, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true
+        );
+        checkStakingInfo(2, true, operatorId, 320 ether, 0, 0, 0);
 
         bytes[] memory pubkeys = new bytes[](5);
         bytes[] memory signatures = new bytes[](5);
@@ -3224,20 +3248,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         uint256 requirBalance = 0;
         (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
         assertEq(1 ether, pledgeBalance);
-        bytes[] memory ps = new bytes[](2);
-        ps[0] = pubkeys[0];
-        ps[1] = pubkeys[1];
-        CLStakingExitInfo[] memory _clStakingExitInfo = new CLStakingExitInfo[] (1);
-        CLStakingSlashInfo[] memory _clStakingSlashInfo = new CLStakingSlashInfo[] (1);
-        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 1, pubkeys: ps});
-        _clStakingSlashInfo[0] = CLStakingSlashInfo({stakingId: 1, slashAmount: 1 ether, pubkey: pubkeys[0]});
-
-        vm.prank(address(withdrawOracle));
-        largeStaking.reportCLStakingData(_clStakingExitInfo, _clStakingSlashInfo);
-        checkStakingInfo(1, false, 1, 960 ether, 160 ether, 64 ether, 64 ether);
-
-        (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
-        assertEq(0 ether, pledgeBalance);
 
         pubkeys[0] =
             bytes(hex"a51358e07d52a08bc4fdc6b0e17e5a5d543955cddbf5ad1c371006a706d83db86ba9c1f4f37d07c2455ed8ec1956cd07");
@@ -3249,34 +3259,55 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
             bytes(hex"b727b205d752f10cfbc515ac68646ed27b984bc70f278e46054a750f597b9d6d93c51987bac8cf0c9c11decb3be652a0");
         pubkeys[4] =
             bytes(hex"8def5a22758d73598ae964fa71be5fb6c4cc2e1f098e10cb2f0fef2d498a8acfd9554c9b6f9b20d2a2fe613ccea94656");
-        vm.prank(_controllerAddress);
+        vm.prank(_controllerAddress3);
         largeStaking.registerValidator(2, pubkeys, signatures, depositDataRoots);
 
-        checkStakingInfo(2, true, 1, 320 ether, 160 ether, 0, 0);
-        ps[0] = pubkeys[0];
-        ps[1] = pubkeys[1];
-        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 2, pubkeys: ps});
-        _clStakingSlashInfo[0] = CLStakingSlashInfo({stakingId: 2, slashAmount: 1 ether, pubkey: pubkeys[0]});
+        checkStakingInfo(2, true, operatorId, 320 ether, 160 ether, 0, 0);
+
+        CLStakingExitInfo[] memory _clStakingExitInfo = new CLStakingExitInfo[] (2);
+        CLStakingSlashInfo[] memory _clStakingSlashInfo = new CLStakingSlashInfo[] (2);
+        bytes[] memory ps = new bytes[] (2);
+        ps[0] =
+            bytes(hex"9200d672c314c389a88c1d7695d790ec73181cc60978c548c80c3c4787ee8da817e38904e3d0b6105679ba7f2e4f3d7a");
+        ps[1] =
+            bytes(hex"9832164ad7eaeb6e649600d1ff7f25faf1ad7a829b6dc6133011bc38a5920761182a5b861345fb315d16dd0841eebc1a");
+        _clStakingExitInfo[0] = CLStakingExitInfo({stakingId: 1, pubkeys: ps});
+        _clStakingSlashInfo[0] = CLStakingSlashInfo({
+            stakingId: 1,
+            slashAmount: 1 ether,
+            pubkey: bytes(
+                hex"9200d672c314c389a88c1d7695d790ec73181cc60978c548c80c3c4787ee8da817e38904e3d0b6105679ba7f2e4f3d7a"
+                )
+        });
+        bytes[] memory ps2 = new bytes[] (2);
+        ps2[0] = pubkeys[0];
+        ps2[1] = pubkeys[1];
+        _clStakingExitInfo[1] = CLStakingExitInfo({stakingId: 2, pubkeys: ps2});
+        _clStakingSlashInfo[1] = CLStakingSlashInfo({stakingId: 2, slashAmount: 1 ether, pubkey: pubkeys[0]});
 
         vm.prank(address(withdrawOracle));
         largeStaking.reportCLStakingData(_clStakingExitInfo, _clStakingSlashInfo);
 
-        checkStakingInfo(2, true, 1, 320 ether, 160 ether, 64 ether, 64 ether);
+        checkStakingInfo(1, false, 1, 960 ether, 160 ether, 64 ether, 64 ether);
+        checkStakingInfo(2, true, operatorId, 320 ether, 160 ether, 64 ether, 64 ether);
+
+        (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
+        assertEq(0 ether, pledgeBalance);
 
         assertEq(operatorSlash.stakingWillCompensated(1), 0 ether);
         assertEq(operatorSlash.stakingHasCompensated(1), 1 ether);
-        assertEq(operatorSlash.stakingWillCompensated(2), 1 ether);
-        assertEq(operatorSlash.stakingHasCompensated(2), 0 ether);
+        assertEq(operatorSlash.stakingWillCompensated(2), 0 ether);
+        assertEq(operatorSlash.stakingHasCompensated(2), 1 ether);
         assertEq(0, operatorSlash.operatorCompensatedIndex());
         assertEq(0, operatorSlash.stakingCompensatedIndex());
         operatorRegistry.deposit{value: 5 ether}(1);
         (pledgeBalance, requirBalance) = operatorRegistry.getPledgeInfoOfOperator(1);
-        assertEq(4 ether, pledgeBalance);
+        assertEq(5 ether, pledgeBalance);
 
         assertEq(operatorSlash.stakingWillCompensated(2), 0 ether);
         assertEq(operatorSlash.stakingHasCompensated(2), 1 ether);
         assertEq(0, operatorSlash.operatorCompensatedIndex());
-        assertEq(1, operatorSlash.stakingCompensatedIndex());
+        assertEq(0, operatorSlash.stakingCompensatedIndex());
 
         assertEq(0 ether, address(1001).balance);
         assertEq(0 ether, address(1000).balance);
@@ -3284,6 +3315,9 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         largeStaking.claimRewardsOfUser(2, 0 ether);
         assertEq(1 ether, address(1001).balance);
         assertEq(1 ether, address(1000).balance);
+
+        assertEq(largeStaking.getOperatorValidatorCounts(1), 30 - 2);
+        assertEq(largeStaking.getOperatorValidatorCounts(2), 10 - 2);
     }
 
     function registerOperator() public returns (uint256) {
