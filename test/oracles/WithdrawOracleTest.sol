@@ -708,9 +708,6 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         bytes32[] memory hash = mockFinalReportData_3validatorExit_hash(refSlot);
         reportDataConsensusReached(hash);
 
-        // transfer to clVault
-        vm.deal(address(consensusVaultContract), 98 ether);
-
         vm.roll(20200);
 
         vm.prank(MEMBER_1);
@@ -764,8 +761,6 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         // unstake
         // set block number to 20000
         vm.roll(20000);
-        // set clVault reward
-        vm.deal(address(consensusVaultContract), 2 ether);
 
         vm.startPrank(USER_1);
         // VNFT unstake
@@ -782,7 +777,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         vm.stopPrank();
 
         // set consensusVault exit's amount
-        vm.deal(address(consensusVaultContract), 500 ether);
+        vm.deal(address(consensusVaultContract), 32 ether);
 
         bytes32[] memory hash = mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed_hash(refSlot);
         reportDataConsensusReached(hash);
