@@ -66,13 +66,13 @@ contract MockLargeOracleProvider is MockMultiOracleProvider {
         bytes memory pubkey3 =
             bytes(hex"b80c2c5ea557296bfca760969afd2c3a22a8eeb27b651a2e7034a7a37ffdd2dd707275e8cfbeb372778ded3c6764f336");
 
-        CLStakingExitInfo[] memory clStakingExitInfos = new CLStakingExitInfo[](3);
-        CLStakingExitInfo memory clStakingExitInfo = CLStakingExitInfo({stakingId: 1, pubkey: pubkey});
-        CLStakingExitInfo memory clStakingExitInfo2 = CLStakingExitInfo({stakingId: 1, pubkey: pubkey2});
-        CLStakingExitInfo memory clStakingExitInfo3 = CLStakingExitInfo({stakingId: 1, pubkey: pubkey3});
+        CLStakingExitInfo[] memory clStakingExitInfos = new CLStakingExitInfo[](1);
+        bytes[] memory ps = new bytes[](3);
+        ps[0] = pubkey;
+        ps[1] = pubkey2;
+        ps[2] = pubkey3;
+        CLStakingExitInfo memory clStakingExitInfo = CLStakingExitInfo({stakingId: 1, pubkeys: ps});
         clStakingExitInfos[0] = clStakingExitInfo;
-        clStakingExitInfos[1] = clStakingExitInfo2;
-        clStakingExitInfos[2] = clStakingExitInfo3;
         reportData.clStakingExitInfos = clStakingExitInfos;
 
         CLStakingSlashInfo[] memory clStakingSlashInfos = new CLStakingSlashInfo[](3);

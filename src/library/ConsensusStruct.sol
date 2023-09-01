@@ -24,7 +24,7 @@ struct ExitValidatorInfo {
 // Validator quits reporting information
 struct CLStakingExitInfo {
     uint128 stakingId;
-    bytes pubkey;
+    bytes[] pubkeys;
 }
 
 // Verifier penalty reporting information
