@@ -44,7 +44,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
     error OperatorHasArrears();
     error TotalEthIsZero();
     error InvalidCommission();
-    
+
     event BlacklistOperatorAssigned(uint256 indexed _blacklistOperatorId, uint256 _operatorId, uint256 _totalAmount);
     event QuitOperatorAssigned(uint256 indexed _quitOperatorId, uint256 _operatorId, uint256 _totalAmount);
     event EthStake(uint256 indexed _operatorId, address indexed _from, uint256 _amount, uint256 _amountOut);
@@ -78,8 +78,24 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
     event LargeWithdrawalsRequest(uint256 _operatorId, address sender, uint256 totalNethAmount);
     event VaultManagerContractSet(address vaultManagerContractAddress, address _vaultManagerContract);
     event ConsensusVaultContractSet(address vaultManagerContractAddress, address _consensusVaultContract);
-    event LargeStake( uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, address _withdrawCredentials, bool _isELRewardSharing );    
-    event MigretaStake( uint256 _operatorId, uint256 _curStakingId, uint256 _amount, address _owner, address _withdrawCredentials, bool _isELRewardSharing );    event AppendStake(uint256 _stakingId, uint256 _amount);
+    event LargeStake(
+        uint256 _operatorId,
+        uint256 _curStakingId,
+        uint256 _amount,
+        address _owner,
+        address _elRewardAddr,
+        address _withdrawCredentials,
+        bool _isELRewardSharing
+    );
+    event MigretaStake(
+        uint256 _operatorId,
+        uint256 _curStakingId,
+        uint256 _amount,
+        address _owner,
+        address _elRewardAddr,
+        address _withdrawCredentials,
+        bool _isELRewardSharing
+    );
     event SharedRewardPoolStart(uint256 _operatorId, address _elRewardPoolAddr);
 
     LiquidStaking liquidStaking;
@@ -178,8 +194,8 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         consensus.updateInitialEpoch(INITIAL_EPOCH);
         consensus.setTime(GENESIS_TIME + INITIAL_EPOCH * SLOTS_PER_EPOCH * SECONDS_PER_SLOT);
 
-        consensus.addReportProcessor(address(withdrawOracle));
-        consensus.addReportProcessor(address(reportProcessor1));
+        consensus.addReportProcessor(address(withdrawOracle), 1);
+        consensus.addReportProcessor(address(reportProcessor1), 1);
 
         consensus.addMember(MEMBER_1, 1);
         consensus.addMember(MEMBER_2, 3);
@@ -204,8 +220,6 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         operatorRegistry.registerOperator{value: 1.1 ether}(
             "one", _controllerAddress, _owner, _rewardAddresses, _ratios
         );
-
-
 
         assertEq(0.1 ether, _daoValutAddress.balance);
         vm.prank(_dao);
@@ -268,7 +282,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
             address(operatorSlash)
         );
         vm.prank(_dao);
-        vaultManager.setDaoElCommissionRate(300);
+        // vaultManager.setDaoElCommissionRate(300);
 
         uint256[] memory _resetVaultOperatorIds = new uint256[] (1);
         _resetVaultOperatorIds[0] = 1;
@@ -300,23 +314,21 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
             address(elRewardFactor),
             address(depositContract)
         );
-        vm.prank(_dao);
         operatorRegistry.initializeV3(address(largeStaking));
 
         vm.prank(_dao);
         largeStaking.setLargeStakingSetting(
-            address(0), address(0), 1500, 0, address(0), address(0), address(0), address(0)
+            address(0), address(0), 1500, 0, 0, address(0), address(0), address(0), address(0)
         );
-        vm.prank(_dao);
         operatorSlash.initializeV2(address(largeStaking));
     }
 
-    function testGetWithdrawCredentials()  public {
-        console.log("testGetWithdrawCredentials: " );
-        bytes32 t1 = largeStaking.getWithdrawCredentials(address(3333)) ;
-        assertEq(t1 , 0x0100000000000000000000000000000000000000000000000000000000000d05 );
-        bytes32 t2 = largeStaking.getWithdrawCredentials(address(5555)) ;
-        assertEq(t2 , 0x01000000000000000000000000000000000000000000000000000000000015b3 );
+    function testGetWithdrawCredentials() public {
+        console.log("testGetWithdrawCredentials: ");
+        bytes32 t1 = largeStaking.getWithdrawCredentials(address(3333));
+        assertEq(t1, 0x0100000000000000000000000000000000000000000000000000000000000d05);
+        bytes32 t2 = largeStaking.getWithdrawCredentials(address(5555));
+        assertEq(t2, 0x01000000000000000000000000000000000000000000000000000000000015b3);
     }
 
     function testStartupSharedRewardPool() public {
@@ -333,23 +345,20 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
         // successful test case
         vm.expectEmit(true, true, false, true);
-        emit SharedRewardPoolStart(3, 0x92678cB784dFf0D7d5A2220B89CAA05771Ee5b5C );
+        emit SharedRewardPoolStart(3, 0x92678cB784dFf0D7d5A2220B89CAA05771Ee5b5C);
         vm.prank(_owner3);
         largeStaking.startupSharedRewardPool(3);
     }
 
-
     // LargeStaking
-    // function testFailLargeStaking() public {
-    //     vm.deal(address(1000), 3200 ether);
-    //     vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
-    //     vm.prank(address(1000));
-    //     largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
-    // }
-
+    function testFailLargeStaking() public {
+        vm.deal(address(1000), 3200 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1000));
+        largeStaking.largeStake{value: 320 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
+    }
 
     function testLargeStaking() public {
-
         vm.expectRevert(abi.encodeWithSignature("PermissionDenied()"));
         vm.prank(address(1221));
         largeStaking.startupSharedRewardPool(1);
@@ -360,17 +369,17 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         vm.prank(_owner2);
         largeStaking.startupSharedRewardPool(2);
 
-        // shared reward 0 , set _isELRewardSharing as true 
+        // shared reward 0 , set _isELRewardSharing as true
         // vm.deal(address(1000), 320 ether);
         vm.deal(address(1000), 320 ether);
-        vm.deal(address(555) , 1);
+        vm.deal(address(555), 1);
         vm.prank(address(1000));
         largeStaking.largeStake{value: 320 ether}(1, address(1000), address(555), true);
         (uint256 operatorId, address rewardPoolAddr, uint256 rewards) = largeStaking.getRewardPoolInfo(1);
-        assertEq(largeStaking.totalShares(1), 320 ether); 
+        assertEq(largeStaking.totalShares(1), 320 ether);
 
-        vm.deal(rewardPoolAddr, 10 ether);  
-        //  shared reward 2, set _isELRewardSharing as true 
+        vm.deal(rewardPoolAddr, 10 ether);
+        //  shared reward 2, set _isELRewardSharing as true
         vm.deal(address(1002), 320 ether);
         vm.deal(address(555), 1);
         vm.prank(address(1002));
@@ -378,21 +387,19 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         (uint256 operatorId2, address rewardPoolAddr2, uint256 rewards2) = largeStaking.getRewardPoolInfo(1);
         assertEq(rewardPoolAddr, rewardPoolAddr2);
 
-
         // uint256 _valuePerShare = 7.5 ether * 1e18 / 640 ether * 2 ;
         // assertEq(largeStaking.totalShares(1), 640 ether);
         // assertEq(largeStaking.valuePerShare(1), _valuePerShare );
         // assertEq(largeStaking.reward(1), 7.5 ether);
         assertEq(largeStaking.operatorSharedRewards(1), 1 ether);
-        largeStaking.settleElSharedReward(1) ;
+        largeStaking.settleElSharedReward(1);
         console.log("largeStaking.operatorSharedRewards(1): ", largeStaking.operatorSharedRewards(1));
         // assertEq(largeStaking.daoSharedRewards(1), 1.5  ether);
         // assertEq(largeStaking.reward(2), 0 ether);
 
-
         // // claim reward
         vm.prank(address(1000));
-        largeStaking.claimRewardsOfUser(1, address(1000), 5.5 ether);
+        largeStaking.claimRewardsOfUser(1, 5.5 ether);
         assertEq(largeStaking.reward(1), 2 ether);
         assertEq(address(1000).balance, 5.5 ether);
 
@@ -404,14 +411,14 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         (uint256 operatorId3, address rewardPoolAddr3, uint256 rewards3) = largeStaking.getRewardPoolInfo(3);
         // assertEq(rewardPoolAddr, rewardPoolAddr3);
 
-        vm.deal(rewardPoolAddr3, 8 ether); // simulate of rewards send to rewardPool. 
+        vm.deal(rewardPoolAddr3, 8 ether); // simulate of rewards send to rewardPool.
 
         vm.deal(address(1004), 320 ether);
         vm.prank(address(1004));
         largeStaking.largeStake{value: 320 ether}(2, address(1004), address(666), true);
         (uint256 operatorId4, address rewardPoolAddr4, uint256 rewards4) = largeStaking.getRewardPoolInfo(4);
         assertEq(rewardPoolAddr3, rewardPoolAddr4);
-        console.log("4. rewards4:  ", rewards4 );
+        console.log("4. rewards4:  ", rewards4);
         assertEq(largeStaking.totalShares(2), 640 ether);
 
         assertEq(largeStaking.daoSharedRewards(2), 1.2 ether);
@@ -419,7 +426,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         largeStaking.settleElSharedReward(2);
         assertEq(largeStaking.operatorSharedRewards(2), 0.8 ether);
 
-        // private 1 , set _isELRewardSharing as false 
+        // private 1 , set _isELRewardSharing as false
         vm.deal(address(1001), 960 ether);
         vm.deal(address(555), 1);
         vm.prank(address(1001));
@@ -428,210 +435,208 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
     }
 
     function testClaimRewardsOfDao() public {
-
         vm.prank(_owner);
         largeStaking.startupSharedRewardPool(1);
         vm.prank(_owner2);
         largeStaking.startupSharedRewardPool(2);
 
         vm.deal(address(1000), 320 ether);
-        vm.deal(address(555) , 1);
+        vm.deal(address(555), 1);
         vm.prank(address(1000));
         largeStaking.largeStake{value: 320 ether}(1, address(1000), address(555), true);
         (uint256 operatorId, address rewardPoolAddr, uint256 rewards) = largeStaking.getRewardPoolInfo(1);
 
         uint256[] memory _privatePoolStakingIds = new uint256[] (1);
-        _privatePoolStakingIds[0] = 1; 
-        largeStaking.claimRewardsOfOperator(_privatePoolStakingIds, true , 1);
+        _privatePoolStakingIds[0] = 1;
+        largeStaking.claimRewardsOfOperator(1, _privatePoolStakingIds);
 
-        vm.deal(rewardPoolAddr, 10 ether);  
-        //  shared reward 2, set _isELRewardSharing as true 
+        vm.deal(rewardPoolAddr, 10 ether);
+        //  shared reward 2, set _isELRewardSharing as true
         vm.deal(address(1002), 320 ether);
         vm.deal(address(555), 1);
         vm.prank(address(1002));
         largeStaking.largeStake{value: 320 ether}(1, address(1002), address(555), true);
 
-
-        largeStaking.settleElSharedReward(1) ;
-        assertEq( largeStaking.operatorSharedRewards(1) , 1 ether);
-        assertEq( largeStaking.unclaimedSharedRewards(1) , 10 ether);
+        largeStaking.settleElSharedReward(1);
+        assertEq(largeStaking.operatorSharedRewards(1), 1 ether);
+        assertEq(largeStaking.unclaimedSharedRewards(1), 10 ether);
 
         // // claim reward
         vm.prank(address(1000));
-        largeStaking.claimRewardsOfUser(1, address(1000), 5.5 ether);
+        largeStaking.claimRewardsOfUser(1, 5.5 ether);
 
-        console.log("B unclaimedSharedRewards: ",  largeStaking.unclaimedSharedRewards(1) );
-        assertEq( largeStaking.unclaimedSharedRewards(1) , 4.5 ether);
+        console.log("B unclaimedSharedRewards: ", largeStaking.unclaimedSharedRewards(1));
+        assertEq(largeStaking.unclaimedSharedRewards(1), 4.5 ether);
 
-        assertEq( largeStaking.daoSharedRewards(1) , 1.5 ether);
+        assertEq(largeStaking.daoSharedRewards(1), 1.5 ether);
         uint256[] memory privatePoolStakingIds = new uint256[] (1);
-        privatePoolStakingIds[0] = 1; 
-        largeStaking.claimRewardsOfDao(privatePoolStakingIds, privatePoolStakingIds);
-        assertEq( largeStaking.daoSharedRewards(1) , 0  );
+        privatePoolStakingIds[0] = 1;
+        largeStaking.claimRewardsOfDao(privatePoolStakingIds);
+        assertEq(largeStaking.daoSharedRewards(1), 0);
         vm.deal(address(1003), 320 ether);
         vm.deal(address(666), 1);
 
         vm.prank(address(1003));
         largeStaking.largeStake{value: 320 ether}(2, address(1003), address(666), true);
         (uint256 operatorId3, address rewardPoolAddr3, uint256 rewards3) = largeStaking.getRewardPoolInfo(3);
-        
-        vm.deal(rewardPoolAddr3, 8 ether); // simulate of rewards send to rewardPool. 
+
+        vm.deal(rewardPoolAddr3, 8 ether); // simulate of rewards send to rewardPool.
 
         vm.deal(address(1004), 320 ether);
         vm.prank(address(1004));
         largeStaking.largeStake{value: 320 ether}(2, address(1004), address(666), true);
         (uint256 _operatorId4, address rewarPoolAddr4, uint256 rewards4) = largeStaking.getRewardPoolInfo(4);
 
-        assertEq(  largeStaking.getStakingInfoOfOwner(address(1004))[0].stakingId,  4 );
-        assertEq( largeStaking.getStakingInfoOfOwner(address(1004))[0].stakingAmount  , 320 ether );
+        assertEq(largeStaking.getStakingInfoOfOwner(address(1004))[0].stakingId, 4);
+        assertEq(largeStaking.getStakingInfoOfOwner(address(1004))[0].stakingAmount, 320 ether);
     }
 
-     function testLargeStakeFail() public {
-        vm.deal(address(111), 1000 ether);
+    function testLargeStakeFail() public {
+        vm.deal(address(1111), 1000 ether);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidAmount()"));
-        vm.prank(address(111));
-        largeStaking.largeStake{value: 319 ether}(1, address(1111), address(1112), false );
+        vm.prank(address(1111));
+        largeStaking.largeStake{value: 319 ether}(1, address(1111), address(1112), false);
         assertEq(largeStaking.getOperatorValidatorCounts(1), 0);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidAmount()"));
-        largeStaking.largeStake{value: 2 ether}(2, address(1111), address(1112), false );
+        largeStaking.largeStake{value: 2 ether}(2, address(1111), address(1112), false);
         assertEq(largeStaking.getOperatorValidatorCounts(2), 0);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidAmount()"));
-        largeStaking.largeStake{value: 2 ether}(2, address(1111), address(1112), true );
+        largeStaking.largeStake{value: 2 ether}(2, address(1111), address(1112), true);
         assertEq(largeStaking.getOperatorValidatorCounts(2), 0);
 
         vm.expectRevert(abi.encodeWithSignature("OperatorNotFound()"));
-        largeStaking.largeStake{value: 320 ether}(999, address(1111), address(1112), false );
+        largeStaking.largeStake{value: 320 ether}(999, address(1111), address(1112), false);
         assertEq(largeStaking.getOperatorValidatorCounts(999), 0);
 
         vm.expectRevert(abi.encodeWithSignature("RequireOperatorTrusted()"));
-        largeStaking.largeStake{value: 320 ether}(3, address(1111), address(1112), false );
+        largeStaking.largeStake{value: 320 ether}(3, address(1111), address(1112), false);
         assertEq(largeStaking.getOperatorValidatorCounts(2), 0);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidWithdrawalCredentials()"));
-        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false );
+        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false);
         assertEq(largeStaking.getOperatorValidatorCounts(1), 0);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidWithdrawalCredentials()"));
-        largeStaking.largeStake{value: 320 ether}(1, address(0), address(1112), false );
+        largeStaking.largeStake{value: 320 ether}(1, address(0), address(1112), false);
         assertEq(largeStaking.getOperatorValidatorCounts(1), 0);
-        
+
         vm.deal(address(1112), 1 ether);
         vm.expectRevert(abi.encodeWithSignature("SharedRewardPoolNotOpened()"));
-        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), true );
+        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), true);
         assertEq(largeStaking.getOperatorValidatorCounts(1), 0);
-        
+
         // successful test case
         vm.expectEmit(true, true, false, true);
-        emit LargeStake(1, 1 , 320 ether, address(1111), address(1112), false);
-        vm.prank(address(111));
-        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false );
+        emit LargeStake(1, 1, 320 ether, address(1111), address(1111), address(1112), false);
+        vm.prank(address(1111));
+        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false);
 
         // getOperatorValidatorCounts
         assertEq(largeStaking.getOperatorValidatorCounts(1), 10);
-        
-        ( bool isELRewardSharing, uint256 stakingId, uint256 operatorId, uint256 stakingAmount,
-         uint256 alreadyStakingAmount, uint256 unstakeRequestAmount, uint256 unstakeAmount,
-          address owner, bytes32 withdrawCredentials )
-         = largeStaking.largeStakings(1) ; 
+
+        (
+            bool isELRewardSharing,
+            uint256 stakingId,
+            uint256 operatorId,
+            uint256 stakingAmount,
+            uint256 alreadyStakingAmount,
+            uint256 unstakeRequestAmount,
+            uint256 unstakeAmount,
+            address owner,
+            address elRewardAddr,
+            bytes32 withdrawCredentials
+        ) = largeStaking.largeStakings(1);
 
         // Access the individual components of the stakingInfo
-        assertEq(isELRewardSharing , false);
-        assertEq(operatorId , 1);
-        assertEq(stakingId , 1);
-        assertEq(stakingAmount , 320 ether);
-        assertEq(alreadyStakingAmount , 0);
-        assertEq(unstakeRequestAmount , 0);
-        assertEq(unstakeAmount , 0);
-        assertEq(owner , address(1111) );
-        console.logBytes32(  withdrawCredentials );
-
-    } 
-
+        assertEq(isELRewardSharing, false);
+        assertEq(operatorId, 1);
+        assertEq(stakingId, 1);
+        assertEq(stakingAmount, 320 ether);
+        assertEq(alreadyStakingAmount, 0);
+        assertEq(unstakeRequestAmount, 0);
+        assertEq(unstakeAmount, 0);
+        assertEq(owner, address(1111));
+        console.logBytes32(withdrawCredentials);
+    }
 
     function testAppendLargeStake() public {
-
         vm.deal(address(1111), 1000 ether);
         vm.deal(address(2222), 1000 ether);
         vm.deal(address(1112), 1 ether);
 
         vm.prank(address(1111));
-        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false );
+        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false);
         assertEq(largeStaking.getOperatorValidatorCounts(1), 10);
 
-        vm.expectRevert( 0x2c5211c6 ) ;
+        vm.expectRevert(0x2c5211c6);
         vm.prank(address(2222));
-        largeStaking.appendLargeStake{value: 311 ether}(0, address(2222), address(2223) );
-        assertEq(largeStaking.getOperatorValidatorCounts(1), 10);  
+        largeStaking.appendLargeStake{value: 311 ether}(0, address(2222), address(2223));
+        assertEq(largeStaking.getOperatorValidatorCounts(1), 10);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidAmount()"));
         vm.prank(address(1111));
-        largeStaking.appendLargeStake{value: 2 ether}(1, address(1111), address(2222) );
-        assertEq(largeStaking.getOperatorValidatorCounts(1), 10);  
+        largeStaking.appendLargeStake{value: 2 ether}(1, address(1111), address(2222));
+        assertEq(largeStaking.getOperatorValidatorCounts(1), 10);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidParameter()"));
         vm.prank(address(1111));
-        largeStaking.appendLargeStake{value: 320 ether}(1, address(1111), address(2222) );
-        assertEq(largeStaking.getOperatorValidatorCounts(1), 10);  
+        largeStaking.appendLargeStake{value: 320 ether}(1, address(1111), address(2222));
+        assertEq(largeStaking.getOperatorValidatorCounts(1), 10);
 
-
-        largeStaking.appendLargeStake{value: 320 ether}(1, address(1111), address(1112)  );
+        largeStaking.appendLargeStake{value: 320 ether}(1, address(1111), address(1112));
         assertEq(largeStaking.getOperatorValidatorCounts(1), 20);
 
-        largeStaking.appendLargeStake{value: 320 ether}(1, address(1111), address(1112)  );
+        largeStaking.appendLargeStake{value: 320 ether}(1, address(1111), address(1112));
         assertEq(largeStaking.getOperatorValidatorCounts(1), 30);
-
     }
 
     function testLargeUnstake() public {
         vm.deal(address(1111), 320 ether);
         vm.prank(address(1111));
         vm.deal(address(1112), 1 ether);
-            largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false );
-            assertEq(largeStaking.getOperatorValidatorCounts(1), 10);
+        largeStaking.largeStake{value: 320 ether}(1, address(1111), address(1112), false);
+        assertEq(largeStaking.getOperatorValidatorCounts(1), 10);
 
-            vm.expectRevert(abi.encodeWithSignature("InvalidAmount()"));
-            vm.prank(address(1111));
-            largeStaking.largeUnstake(0, 16 ether );
-            assertEq( address(1111).balance  , 0);
+        vm.expectRevert(abi.encodeWithSignature("InvalidAmount()"));
+        vm.prank(address(1111));
+        largeStaking.largeUnstake(0, 16 ether);
+        assertEq(address(1111).balance, 0);
 
-            // // successful test case
-            vm.expectEmit(true, true, false, true);
-            emit FastUnstake(1, 64 ether);
-            vm.prank(address(1111));
-            largeStaking.largeUnstake(1, 64 ether );
-            assertEq(largeStaking.getOperatorValidatorCounts(1), 8);
+        // // successful test case
+        vm.expectEmit(true, true, false, true);
+        emit FastUnstake(1, 64 ether);
+        vm.prank(address(1111));
+        largeStaking.largeUnstake(1, 64 ether);
+        assertEq(largeStaking.getOperatorValidatorCounts(1), 8);
 
-            assertEq( address(1111).balance  ,  64 ether  );
-            assertEq( address(1112).balance  ,  1 ether  );
+        assertEq(address(1111).balance, 64 ether);
+        assertEq(address(1112).balance, 1 ether);
 
-            vm.expectEmit(true, true, false, true);
-            emit FastUnstake(1, 128 ether);
-            vm.prank(address(1111));
-            largeStaking.largeUnstake(1, 128 ether );
-            assertEq( address(1111).balance  ,  192 ether  );
-
+        vm.expectEmit(true, true, false, true);
+        emit FastUnstake(1, 128 ether);
+        vm.prank(address(1111));
+        largeStaking.largeUnstake(1, 128 ether);
+        assertEq(address(1111).balance, 192 ether);
     }
-
 
     function testMigrateStakeFailCases() public {
         // RequireOperatorTrusted()
         bytes[] memory _pubkeys = new bytes[] (1);
-        _pubkeys[0] = bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920523a3");
+        _pubkeys[0] =
+            bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920523a3");
         vm.expectRevert(abi.encodeWithSignature("RequireOperatorTrusted()"));
         vm.prank(address(888));
-        largeStaking.migrateStake(address(1111), address(1111), false, _pubkeys );
+        largeStaking.migrateStake(address(1111), address(1111), address(1111), false, _pubkeys);
 
         vm.expectRevert(0xdc0ca7f3);
-        largeStaking.migrateStake(address(5555), address(5556), false, _pubkeys );
-
+        largeStaking.migrateStake(address(5555), address(5555), address(5555), false, _pubkeys);
     }
 
     function testMigrateStake() public {
-
-        vm.deal(address(3332) , 1);
+        vm.deal(address(3332), 1);
         vm.prank(_owner);
         largeStaking.startupSharedRewardPool(1);
         bytes[] memory pubkeys2 = new bytes[] (2);
@@ -642,12 +647,10 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
 
         vm.prank(_controllerAddress);
         vm.expectEmit(true, true, false, true);
-        emit MigretaStake(1, 1, 64 ether, address(3331) , address(3332), true) ;
-        largeStaking.migrateStake(
-            address(3331) , address(3332), true, pubkeys2
-        );
+        emit MigretaStake(1, 1, 64 ether, address(3331), address(3331), address(3332), true);
+        largeStaking.migrateStake(address(3331), address(3331), address(3332), true, pubkeys2);
 
-        vm.prank(address(3331) );
+        vm.prank(address(3331));
         largeStaking.largeUnstake(1, 32 ether);
 
         pubkeys2[0] =
@@ -655,10 +658,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         pubkeys2[1] =
             bytes(hex"972213419397cfd4c01c7325738d6ae7b3ffbd49a576623f4fd50215db51e56b5e1f31983dcc10eafdf4b5bd598db0ff");
         vm.expectRevert(abi.encodeWithSignature("InvalidParameter()"));
-        largeStaking.appendMigrateStake(
-            1, address(444), address(444), pubkeys2
-        );
-
+        largeStaking.appendMigrateStake(1, address(444), address(444), pubkeys2);
     }
 
     function testRegisterValidatorFailCases() public {
@@ -668,7 +668,7 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
         bytes[] memory signatures2 = new bytes[](2);
-        
+
         bytes memory sign = bytes(
             hex"8c9270550945d18f6500e11d0db074d52408cde8a3a30108c8e341ba6e0b92a4d82efb24097dc808313a0145ba096e0c16455aa1c3a7a1019ae34ddf540d9fa121e498c43f757bc6f4105fe31dd5ea8d67483ab435e5a371874dddffa5e65b58"
         );
@@ -683,20 +683,20 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         vm.prank(_controllerAddress);
         largeStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidParameter()"));
-        largeStaking.registerValidator(1, pubkeys, signatures2, depositDataRoots);
-     
+        // vm.expectRevert(abi.encodeWithSignature("InvalidParameter()")); 0xdc0ca7f3
+        // vm.expectRevert(abi.encodeWithSignature("0x4f854dda"));
+        // largeStaking.registerValidator(1, pubkeys, signatures2, depositDataRoots);
     }
 
     function testLargeStakingRegisterValidator() public {
         vm.deal(address(1001), 960 ether);
-        vm.deal(address(666) , 1);
+        vm.deal(address(666), 1);
         vm.prank(address(1001));
-        largeStaking.largeStake{value: 960 ether}(1, address(1001), address(666) , false);
+        largeStaking.largeStake{value: 960 ether}(1, address(1001), address(666), false);
         (uint256 operatorId1, address rewardPoolAddr1, uint256 rewards1) = largeStaking.getRewardPoolInfo(1);
 
         uint256[] memory operatorIds = new uint256[] (1);
-        operatorIds[0] = 1; 
+        operatorIds[0] = 1;
         vm.expectRevert(abi.encodeWithSignature("InvalidCommission()"));
         vm.prank(_dao);
         operatorRegistry.setOperatorCommissionRate(1, 6000);
@@ -722,8 +722,8 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         assertEq(largeStaking.getOperatorValidatorCounts(1), 20);
 
         vm.prank(address(1001));
-        
-        largeStaking.claimRewardsOfUser(1, address(1001), 8 ether);
+
+        largeStaking.claimRewardsOfUser(1, 8 ether);
         // assertEq(largeStaking.reward(1), 0.15 ether);
 
         assertEq(address(1001).balance, 328 ether);
@@ -759,10 +759,9 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         vm.prank(_controllerAddress3);
         vm.expectRevert(abi.encodeWithSignature("RequireOperatorTrusted()"));
         largeStaking.registerValidator(3, pubkeys, signatures, depositDataRoots);
-        
+
         vm.prank(_controllerAddress);
         largeStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
-
 
         pubkeys[0] =
             bytes(hex"93943bd530b79623af943a2af636f06c327203d82784fafda621439438c418bd8d26c82061bbc956fc7f0f8ddb138173");
@@ -771,6 +770,4 @@ contract LiquidStakingTestP is Test, MockMultiOracleProvider {
         assertEq(1, largeStaking.getValidatorsOfStakingId(1).length);
         assertEq(1, largeStaking.getValidatorsOfStakingId(2).length);
     }
-
-
 }

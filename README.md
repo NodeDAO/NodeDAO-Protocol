@@ -2,7 +2,7 @@
 
 Made by:
 
-![kinghash](./docs/images/kingHashLogo.PNG)
+[![HashKing](./docs/images/HashKingLogo.svg)](https://www.hashking.fi)
 
 ![node](https://img.shields.io/badge/node-v10.15.3-green)
 ![npm](https://img.shields.io/badge/npm-v6.9.0-green)
@@ -102,29 +102,39 @@ You can see further instructons for Surya [here](https://github.com/ConsenSys/su
 
 TimelockController: 0x558dfCfE91E2fF9BA83DA6190f7cCC8bc66c2cCb
 
-LiquidStaking Proxy: 0xa8256fd3a31648d49d0f3551e6e45db6f5f91d53
+LiquidStaking Proxy: 0x949AC43bb71F8710B0F1193880b338f0323DeB1a
 
-BeaconOracle Proxy: 0x13766719dacc651065D5FF2a94831B46f84481b7
+NodeOperatorRegistry Proxy: 0x20C43025E44984375c4dC882bFF2016C6E601f0A
 
-NodeOperatorRegistry Proxy: 0xd9d87abad8651e1e69799416aec54fccdd1daace
+ELVaultFactory Proxy: 0x56dF1C19d0993Ac4B372c66E4d0512de875792B1
 
-ELVaultFactory Proxy: 0x8b310378011a97f05abb8a7854d2ec4bbd0e3b41
+VNFT Proxy: 0x3CB42bb75Cf1BcC077010ac1E3d3Be22D13326FA
 
-VNFT Proxy: 0xe3ce494d51cb9806187b5deca1b4b06c97e52efc
+NETH: 0x408F53a38db844B167B66f001fDc49613E25eC78
 
-NETH: 0x78ef0463ae6bbf05969ef38b4cf90ca03537a86e
+ConsensusVault Proxy: 0x138d5D3C2d7d68bFC653726c8a5E8bA301452202
 
-ConsensusVault Proxy: 0x22e172cb3b7a333d73f321462EEBcadd3f0775a6
+LargeStakingProxy:   0x8C73a9F648c5A596bE37DC7A821FeFb3D67f57d3  
 
-KingHash ElVault: 0x6Cd568aA7f3fC4e80f0D9Ea767274B25F1E35306
+LargeStakingELRewardFactory Proxy： 0x7f92E2d2F808D77CCaf6D03FE90F36eB6b211A01
+
+OperatorSlash Proxy:  0x69b11EF441EEb3A7cb2A3d82bC31F90596A7C48d
+
+WithdrawalRequest Proxy:  0x006e69F509E31c91263C03a744B47c3b03eAC391
+
+VaultManager Proxy:  0xb5bE48AE75b1085CBA8d4c16157050d4C9a80Aa0
+
+WithdrawOracle Proxy: 0x1E726f6111B58e74CCD63d5b659191A49366CaD9
+
+MultiHashConsensus Proxy: 0xBF7b3b741052D33ca0f522A0D70589e350d38bb7
+
+LargeStakeOracle Proxy: 0xB8E0EE431d78273d7BAefEB0Fb64897626b0B8FA
 
 ## Ethereum
 
 TimelockController: 0x16F692525f3b8c8a96F8c945D365Da958Fb5735B
 
 LiquidStaking Proxy: 0x8103151E2377e78C04a3d2564e20542680ed3096
-
-BeaconOracle Proxy: 0x503525159C0174C7758fe3D6C8eeCC595768a7A1
 
 NodeOperatorRegistry Proxy: 0x8742178Ac172eC7235E54808d5F327C30A51c492
 
@@ -136,7 +146,23 @@ NETH: 0xC6572019548dfeBA782bA5a2093C836626C7789A
 
 ConsensusVault Proxy: 0x4b8Dc35b44296D8D6DCc7aFEBBbe283c997E80Ae
 
-KingHash ElVault:
+LargeStaking Proxy：0xBBd19e8F766Dcc94D50e47502b79C81cdaD484B8
+
+LargeStakingELRewardFactory Proxy：0xA0b4f1a17786C80B8CfF0378a7f58De0D61b2eE3
+
+NodeDaoTreasury: 0x79285fd2224cBC0b25065C49537b72c1a4567AFC
+
+OperatorSlash Proxy: 0x82c87cC83c9fA09DAdBEBFB8f8b9152Ee6104B5d
+
+WithdrawalRequest Proxy: 0xE81fC969D14Cad8537ebAFa2a1c478F29d7840FC
+
+VaultManager Proxy: 0x878bd0593Dfc1Ff302e3a20E98fC4F97CF516C15
+
+WithdrawOracle Proxy: 0x2B74f97aDC698b571C2F046673Fd5Cd028673c41
+
+MultiHashConsensus Proxy： 0xe837C18e2f9863dA77fE575B67A0f406AD2CCac3
+
+LargeStakeOracle Proxy：0xCc68D60fa4Ba7Def20E1Cba33D26C89847825A87
 
 # Audits
 

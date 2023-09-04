@@ -744,15 +744,21 @@ contract LargeStaking is
         StakingInfo memory stakingInfo;
         for (uint256 i = 0; i < _clStakingExitInfo.length; ++i) {
             CLStakingExitInfo memory sInfo = _clStakingExitInfo[i];
-            ValidatorInfo memory vInfo = validatorInfo[sInfo.pubkey];
+            for (uint256 j = 0; j < sInfo.pubkeys.length; ++j) {
+                ValidatorInfo memory vInfo = validatorInfo[sInfo.pubkeys[j]];
+                if (vInfo.stakingId != sInfo.stakingId || vInfo.exitBlock != 0) {
+                    revert InvalidReport();
+                }
 
-            if (vInfo.stakingId != sInfo.stakingId || vInfo.exitBlock != 0) {
-                revert InvalidReport();
+                if (vInfo.stakingId != sInfo.stakingId || vInfo.exitBlock != 0) {
+                    revert InvalidReport();
+                }
+                validatorInfo[sInfo.pubkeys[j]].exitBlock = block.number;
             }
-            validatorInfo[sInfo.pubkey].exitBlock = block.number;
 
             stakingInfo = largeStakings[sInfo.stakingId];
-            uint256 newUnstakeAmount = stakingInfo.unstakeAmount + 32 ether;
+            uint256 thisUnstakeAmount = 32 ether * sInfo.pubkeys.length;
+            uint256 newUnstakeAmount = stakingInfo.unstakeAmount + thisUnstakeAmount;
             if (newUnstakeAmount > stakingInfo.stakingAmount) revert InvalidReport();
 
             if (stakingInfo.isELRewardSharing) {
@@ -761,7 +767,7 @@ contract LargeStaking is
                     sInfo.stakingId,
                     stakingInfo.operatorId,
                     stakingInfo.stakingAmount - stakingInfo.unstakeAmount,
-                    32 ether,
+                    thisUnstakeAmount,
                     false
                 );
             }
@@ -773,10 +779,9 @@ contract LargeStaking is
                 largeStakings[sInfo.stakingId].unstakeRequestAmount = newUnstakeAmount;
             }
 
-            emit ValidatorExitReport(stakingInfo.operatorId, sInfo.pubkey);
+            totalLargeStakeAmounts[stakingInfo.operatorId] -= thisUnstakeAmount;
+            emit ValidatorExitReport(stakingInfo.operatorId, sInfo.pubkeys);
         }
-
-        totalLargeStakeAmounts[stakingInfo.operatorId] -= 32 ether * _clStakingExitInfo.length;
 
         uint256[] memory _stakingIds = new uint256[] (_clStakingSlashInfo.length);
         uint256[] memory _operatorIds = new uint256[] (_clStakingSlashInfo.length);

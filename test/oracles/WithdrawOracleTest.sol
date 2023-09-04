@@ -708,9 +708,6 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         bytes32[] memory hash = mockFinalReportData_3validatorExit_hash(refSlot);
         reportDataConsensusReached(hash);
 
-        // transfer to clVault
-        vm.deal(address(consensusVaultContract), 98 ether);
-
         vm.roll(20200);
 
         vm.prank(MEMBER_1);
@@ -764,8 +761,6 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         // unstake
         // set block number to 20000
         vm.roll(20000);
-        // set clVault reward
-        vm.deal(address(consensusVaultContract), 2 ether);
 
         vm.startPrank(USER_1);
         // VNFT unstake
@@ -782,7 +777,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         vm.stopPrank();
 
         // set consensusVault exit's amount
-        vm.deal(address(consensusVaultContract), 500 ether);
+        vm.deal(address(consensusVaultContract), 32 ether);
 
         bytes32[] memory hash = mockFinalReportData_3validatorExit_1delayed_1largeExitRequest_1delayed_hash(refSlot);
         reportDataConsensusReached(hash);
@@ -1097,5 +1092,64 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
 
         // test settle data
         (uint256 pledgeBalanceReport,) = operatorRegistry.getPledgeInfoOfOperator(1);
+    }
+
+    function testWithdrawOraclePendingBalance() public {
+        // test stakeETH
+        vm.deal(address(20), 33 ether);
+        vm.prank(address(20));
+        liquidStaking.stakeETH{value: 32 ether}(1);
+        assertEq(0, vnft.balanceOf(address(20)));
+        assertEq(32 ether, neth.balanceOf(address(20)));
+        assertEq(0, vnft.balanceOf(address(liquidStaking)));
+        assertEq(0 ether, neth.balanceOf(address(liquidStaking)));
+
+        assertEq(32 ether, liquidStaking.operatorPoolBalances(1));
+
+        // registerValidator
+        bytes[] memory pubkeys = new bytes[](1);
+        bytes[] memory signatures = new bytes[](1);
+        bytes32[] memory depositDataRoots = new bytes32[](1);
+
+        liquidStaking.setLiquidStakingWithdrawalCredentials(
+            bytes(hex"0100000000000000000000006ae2f56c057e31a18224dbc6ae32b0a5fbedfcb0")
+        );
+        bytes memory pubkey =
+            bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
+        bytes memory sign = bytes(
+            hex"8c9270550945d18f6500e11d0db074d52408cde8a3a30108c8e341ba6e0b92a4d82efb24097dc808313a0145ba096e0c16455aa1c3a7a1019ae34ddf540d9fa121e498c43f757bc6f4105fe31dd5ea8d67483ab435e5a371874dddffa5e65b58"
+        );
+        bytes32 root = bytes32(hex"2c6181bcae0df24f047332b10657ee75faa7c42657b6577d7efac6672376bc33");
+        pubkeys[0] = pubkey;
+        signatures[0] = sign;
+        depositDataRoots[0] = root;
+
+        assertEq(0 ether, withdrawOracle.getPendingBalances());
+
+        assertEq(vnft.validatorExists(pubkey), false);
+        vm.prank(address(_controllerAddress));
+        liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+
+        assertEq(0 ether, liquidStaking.operatorPoolBalances(1));
+        assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
+
+        assertEq(32 ether, withdrawOracle.getPendingBalances());
+
+        // report
+        (uint256 refSlot,) = consensus.getCurrentFrame();
+
+        // set block number to 15000
+        vm.roll(15000);
+
+        bytes32[] memory hash = mockReportDataPendingBalance_hash(refSlot);
+        reportDataConsensusReached(hash);
+
+        vm.roll(30000);
+
+        vm.prank(MEMBER_1);
+        withdrawOracle.submitReportData(mockReportDataPendingBalance(refSlot), CONSENSUS_VERSION, moduleId);
+
+        assertEq(0 ether, withdrawOracle.getPendingBalances());
+        assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
     }
 }
