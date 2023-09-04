@@ -276,9 +276,11 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
             data.refSlot, data.clBalance, data.clVaultBalance, data.clSettleAmount, data.reportPendingBalances
         );
 
+        uint256 slotsElapsed = data.refSlot - lastRefSlot;
+
         // Invoke vault Manager to process the reported data
         IVaultManager(vaultManager).reportConsensusData(
-            data.withdrawInfos, data.exitValidatorInfos, data.clSettleAmount
+            data.withdrawInfos, data.exitValidatorInfos, data.clSettleAmount, slotsElapsed * SECONDS_PER_SLOT
         );
 
         dataProcessingState = DataProcessingState({
@@ -302,10 +304,11 @@ contract WithdrawOracle is IWithdrawOracle, BaseOracle {
         uint256 preTotal = clVaultBalance + clBalances - lastClSettleAmount;
         uint256 curTotal = _curClVaultBalance + _curClBalances;
 
-        uint256 minTotal = _reportPendingBalances + (preTotal > totalBalanceTolerate ? preTotal - totalBalanceTolerate : preTotal);
-        // 26280000 = 100 * 365 * 7200 / 10 
-        uint256 maxTotal = preTotal + _reportPendingBalances + preTotal * (_curRefSlot - lastRefSlot) / 26280000 
-            + totalBalanceTolerate;
+        uint256 minTotal =
+            _reportPendingBalances + (preTotal > totalBalanceTolerate ? preTotal - totalBalanceTolerate : preTotal);
+        // 26280000 = 100 * 365 * 7200 / 10
+        uint256 maxTotal =
+            preTotal + _reportPendingBalances + preTotal * (_curRefSlot - lastRefSlot) / 26280000 + totalBalanceTolerate;
 
         if (curTotal < minTotal || curTotal > maxTotal) {
             revert InvalidTotalBalance(curTotal, minTotal, maxTotal);

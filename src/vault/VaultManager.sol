@@ -49,7 +49,9 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
     event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
     event DaoElCommissionRateSet(uint256 oldDaoElCommissionRate, uint256 _daoElCommissionRate);
     event LiquidStakingChanged(address _oldLiquidStakingContract, address _liquidStakingContractAddress);
-    event Neth2ETHExchangeRateChanged(uint256 _exchangeRate, uint256 _totalEth, uint256 nethSupply);
+    event Neth2ETHExchangeRateChanged(
+        uint256 _exchangeRate, uint256 _totalEth, uint256 nethSupply, uint256 _timeElapsedSeconds
+    );
     event NethChanged(address _oldNethContract, address _NethAddress);
     event MaxSlashAmountChanged(uint256 _oldMaxSlashAmount, uint256 _maxSlashAmount);
 
@@ -109,6 +111,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      * @param _withdrawInfo withdraw info
      * @param _exitValidatorInfo exit validator info
      * @param _thisTotalWithdrawAmount The total settlement amount reported this time
+     * @param _timeElapsedSeconds The time difference between the two oracle reports (time:second)
      */
     function reportConsensusData(
         // _withdrawInfo is the meta-information for each oracle settlement,
@@ -120,7 +123,8 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
         // It contains the protocol and all nft held by the user
         ExitValidatorInfo[] memory _exitValidatorInfo,
         // The amount of this settlement is the sum of the cumulative funds of clReward and clCapital in _withdrawInfo
-        uint256 _thisTotalWithdrawAmount
+        uint256 _thisTotalWithdrawAmount,
+        uint256 _timeElapsedSeconds
     ) external onlyWithdrawOracle {
         uint256[] memory operatorIds = new uint256[](_withdrawInfo.length);
         uint256[] memory amounts = new uint256[](_withdrawInfo.length);
@@ -180,14 +184,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
 
         _settleAndReinvestElReward(operatorIds);
 
-        // exchangeRate = 1 ether * (totalEth) / (nethSupply);
-        // totalEth = exchangeRate * nethSupply / 1 ether;
-        uint256 exchangeRate = liquidStakingContract.getExchangeRate();
-
-        uint256 nethSupply = nETHContract.totalSupply();
-        uint256 totalEth = exchangeRate * nethSupply / 1 ether;
-
-        emit Neth2ETHExchangeRateChanged(exchangeRate, totalEth, nethSupply);
+        _EmitExchangeRateChanged(_timeElapsedSeconds);
     }
 
     /**
@@ -196,6 +193,17 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      */
     function settleAndReinvestElReward(uint256[] memory _operatorIds) external {
         _settleAndReinvestElReward(_operatorIds);
+    }
+
+    function _EmitExchangeRateChanged(uint256 _timeElapsedSeconds) internal {
+        // exchangeRate = 1 ether * (totalEth) / (nethSupply);
+        // totalEth = exchangeRate * nethSupply / 1 ether;
+        uint256 exchangeRate = liquidStakingContract.getExchangeRate();
+
+        uint256 nethSupply = nETHContract.totalSupply();
+        uint256 totalEth = exchangeRate * nethSupply / 1 ether;
+
+        emit Neth2ETHExchangeRateChanged(exchangeRate, totalEth, nethSupply, _timeElapsedSeconds);
     }
 
     function _settleAndReinvestElReward(uint256[] memory _operatorIds) internal {

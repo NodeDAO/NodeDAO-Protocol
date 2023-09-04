@@ -819,7 +819,7 @@ contract LiquidStaking is
     {
         emit LiquidStakingWithdrawalCredentialsSet(
             liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
-            );
+        );
         liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
     }
 
