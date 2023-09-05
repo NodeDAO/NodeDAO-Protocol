@@ -542,7 +542,7 @@ contract MockMultiOracleProvider is CommonConstantProvider {
     {
         reportData.consensusVersion = CONSENSUS_VERSION;
         reportData.refSlot = refSlot;
-        reportData.clBalance = 0 ether; 
+        reportData.clBalance = 0 ether;
         reportData.clVaultBalance = 0 ether;
         reportData.clSettleAmount = 0 ether;
         reportData.reportExitedCount = 0;
@@ -621,7 +621,6 @@ contract MockMultiOracleProvider is CommonConstantProvider {
         reportData.clVaultBalance = 0 ether;
         reportData.clSettleAmount = 0 ether;
         reportData.reportExitedCount = 100;
-
 
         WithdrawInfo[] memory withdrawInfos = new WithdrawInfo[](50);
         ExitValidatorInfo[] memory exitValidatorInfos = new ExitValidatorInfo[](100);

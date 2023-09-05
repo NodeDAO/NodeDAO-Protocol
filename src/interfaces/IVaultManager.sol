@@ -24,6 +24,7 @@ interface IVaultManager {
     function reportConsensusData(
         WithdrawInfo[] memory _withdrawInfo,
         ExitValidatorInfo[] memory _exitValidatorInfo,
-        uint256 _thisTotalWithdrawAmount
+        uint256 _thisTotalWithdrawAmount,
+        uint256 _timeElapsedSeconds
     ) external;
 }
