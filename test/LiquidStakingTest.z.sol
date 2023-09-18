@@ -3605,4 +3605,119 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         );
         assertEq(largeStaking.unclaimedSharedRewards(operatorId), 0 ether);
     }
+
+    function testLargeStakingAll2() public {
+        // operator 2
+
+        uint256 operatorId = registerOperator();
+
+        vm.deal(address(1000), 960 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1000));
+        largeStaking.largeStake{value: 960 ether}(
+            operatorId, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, false
+        );
+        checkStakingInfo(1, false, operatorId, 960 ether, 0, 0, 0);
+
+        // shared reward
+        vm.prank(address(81));
+        largeStaking.startupSharedRewardPool(operatorId);
+
+        vm.deal(address(1001), 640 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1001));
+        largeStaking.largeStake{value: 640 ether}(
+            operatorId, address(1001), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true
+        );
+        checkStakingInfo(2, true, operatorId, 640 ether, 0, 0, 0);
+
+        uint256 userReward = largeStaking.reward(2);
+        assertEq(0 ether, userReward);
+
+        // reward
+        (uint256 operatorId2, address rewardPoolAddr, uint256 rewards) = largeStaking.getRewardPoolInfo(2);
+        console.log("operatorId2", operatorId2);
+        console.log("rewardPoolAddr2", rewardPoolAddr);
+        console.log("rewards2", rewards);
+        vm.deal(address(rewardPoolAddr), 10 ether);
+
+        userReward = largeStaking.reward(2);
+        assertEq(9 ether, userReward);
+
+        // operator 1
+
+        vm.deal(address(1000), 960 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1000));
+        largeStaking.largeStake{value: 960 ether}(1, address(1000), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, false);
+        checkStakingInfo(3, false, 1, 960 ether, 0, 0, 0);
+
+        // shared reward
+        vm.prank(address(_owner));
+        largeStaking.startupSharedRewardPool(1);
+
+        vm.deal(address(1001), 640 ether);
+        vm.deal(0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, 1);
+        vm.prank(address(1001));
+        largeStaking.largeStake{value: 640 ether}(1, address(1001), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
+        checkStakingInfo(4, true, 1, 640 ether, 0, 0, 0);
+
+        uint256 userReward3 = largeStaking.reward(3);
+        assertEq(0 ether, userReward3);
+
+        // reward
+        (uint256 operatorId3, address rewardPoolAddr3, uint256 rewards3) = largeStaking.getRewardPoolInfo(3);
+        console.log("operatorId3", operatorId3);
+        console.log("rewardPoolAddr3", rewardPoolAddr3);
+        console.log("rewards3", rewards3);
+        vm.deal(address(rewardPoolAddr3), 10 ether);
+
+        userReward3 = largeStaking.reward(3);
+        assertEq(9 ether, userReward3);
+
+        uint256 userReward4 = largeStaking.reward(4);
+        assertEq(0 ether, userReward4);
+
+        // reward
+        (uint256 operatorId4, address rewardPoolAddr4, uint256 rewards4) = largeStaking.getRewardPoolInfo(4);
+        console.log("operatorId4", operatorId4);
+        console.log("rewardPoolAddr4", rewardPoolAddr4);
+        console.log("rewards4", rewards4);
+        vm.deal(address(rewardPoolAddr4), 10 ether);
+
+        userReward4 = largeStaking.reward(4);
+        assertEq(9 ether, userReward4);
+
+        vm.deal(address(1002), 960 ether);
+        vm.prank(address(1002));
+        largeStaking.largeStake{value: 640 ether}(1, address(1002), 0xF5ade6B61BA60B8B82566Af0dfca982169a470Dc, true);
+        checkStakingInfo(5, true, 1, 640 ether, 0, 0, 0);
+
+        uint256 userReward5 = largeStaking.reward(5);
+        assertEq(0 ether, userReward5);
+
+        vm.deal(address(rewardPoolAddr4), 20 ether); // 10 + 10 ether
+
+        userReward5 = largeStaking.reward(5);
+        assertEq(4.5 ether, userReward5);
+        userReward4 = largeStaking.reward(4);
+        assertEq(13.5 ether, userReward4);
+
+        // will settle
+        vm.prank(address(1002));
+        largeStaking.largeUnstake(5, 320 ether);
+        checkStakingInfo(5, true, 1, 640 ether, 320 ether, 320 ether, 320 ether);
+
+        userReward5 = largeStaking.reward(5);
+        assertEq(4.5 ether, userReward5);
+        userReward4 = largeStaking.reward(4);
+        assertEq(13.5 ether, userReward4);
+
+        vm.deal(address(rewardPoolAddr4), 30 ether); // 10 + 10 + 10 ether
+
+        userReward5 = largeStaking.reward(5);
+        assertEq(7.5 ether, userReward5);
+        userReward4 = largeStaking.reward(4);
+        assertEq(19.5 ether, userReward4);
+    }
 }
