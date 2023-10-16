@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0
+
 pragma solidity 0.8.8;
 
-interface ISSVNetworkCore {
+interface ISSV {
     /**
      *
      */
@@ -58,42 +59,33 @@ interface ISSVNetworkCore {
         uint256 balance;
     }
 
-    /**
-     *
-     */
-    /* Errors */
-    /**
-     *
-     */
+    /// @notice Registers a new validator on the SSV Network
+    function registerValidator(
+        bytes calldata publicKey,
+        uint64[] memory operatorIds,
+        bytes calldata sharesData,
+        uint256 amount,
+        Cluster memory cluster
+    ) external;
 
-    error CallerNotOwner(); // 0x5cd83192
-    error CallerNotWhitelisted(); // 0x8c6e5d71
-    error FeeTooLow(); // 0x732f9413
-    error FeeExceedsIncreaseLimit(); // 0x958065d9
-    error NoFeeDeclared(); // 0x1d226c30
-    error ApprovalNotWithinTimeframe(); // 0x97e4b518
-    error OperatorDoesNotExist(); // 0x961e3e8c
-    error InsufficientBalance(); // 0xf4d678b8
-    error ValidatorAlreadyExists(); // 0x8d09a73e
-    error ValidatorDoesNotExist(); // 0xe51315d2
-    error IncorrectValidatorState(); // 0x2feda3c1
-    error ClusterNotLiquidatable(); // 0x60300a8d
-    error InvalidPublicKeyLength(); // 0x637297a4
-    error InvalidOperatorIdsLength(); // 0x38186224
-    error ClusterAlreadyEnabled(); // 0x3babafd2
-    error ClusterIsLiquidated(); // 0x95a0cf33
-    error ClusterDoesNotExists(); // 0x185e2b16
-    error IncorrectClusterState(); // 0x12e04c87
-    error UnsortedOperatorsList(); // 0xdd020e25
-    error NewBlockPeriodIsBelowMinimum(); // 0x6e6c9cac
-    error ExceedValidatorLimit(); // 0x6df5ab76
-    error TokenTransferFailed(); // 0x045c4b02
-    error SameFeeChangeNotAllowed(); // 0xc81272f8
-    error FeeIncreaseNotAllowed(); // 0x410a2b6c
-    error NotAuthorized(); // 0xea8e4eb5
-    error OperatorsListNotUnique(); // 0xa5a1ff5d
-    error OperatorAlreadyExists(); // 0x289c9494
-    error TargetModuleDoesNotExist(); // 0x8f9195fb
-    error MaxValueExceeded(); // 0x91aa3017
-    error FeeTooHigh(); // 0xcd4e6167
+    /// @notice Removes an existing validator from the SSV Network
+    function removeValidator(bytes calldata publicKey, uint64[] memory operatorIds, Cluster memory cluster) external;
+
+    /// @notice Reactivates a cluster
+    function reactivate(uint64[] memory operatorIds, uint256 amount, Cluster memory cluster) external;
+
+    /// @notice Deposits tokens into a cluster
+    function deposit(address owner, uint64[] memory operatorIds, uint256 amount, Cluster memory cluster) external;
+
+    /// @notice Withdraws tokens from a cluster
+    function withdraw(uint64[] memory operatorIds, uint256 tokenAmount, Cluster memory cluster) external;
+
+    /// @notice set ssv validator fee recipient address
+    function setFeeRecipientAddress(address recipientAddress) external;
+
+    /// @notice transfer ssv token
+    function transfer(address to, uint256 amount) external returns (bool);
+
+    /// @notice approve ssv token
+    function approve(address spender, uint256 amount) external returns (bool);
 }
