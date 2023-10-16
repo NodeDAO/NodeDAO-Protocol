@@ -97,8 +97,12 @@ contract LiquidStaking is
 
     // key is operatorId, value is loan amounts
     mapping(uint256 => uint256) public operatorLoanRecords;
-    // key is operatorId, value is loan blockNumber
-    mapping(uint256 => uint256) public operatorLoadBlockNumbers;
+
+    // Deprecated: key is operatorId, value is loan blockNumber
+    mapping(uint256 => uint256) internal operatorLoadBlockNumbers;
+
+    // v3 storage
+    address public stakingManager;
 
     error PermissionDenied();
     error RequireBlacklistOperator();
@@ -227,6 +231,11 @@ contract LiquidStaking is
         withdrawOracleContract = IWithdrawOracle(_withdrawOracleContractAddress);
     }
 
+    function initializeV3(address _stakingManagerContractAddress) public onlyOwner {
+        emit StakingManagerContractSet(stakingManager, _stakingManagerContractAddress);
+        stakingManager = _stakingManagerContractAddress;
+    }
+
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /**
@@ -323,7 +332,6 @@ contract LiquidStaking is
                 _amount = 0;
             } else {
                 operatorLoanRecords[_operatorId] = 0;
-                operatorLoadBlockNumbers[_operatorId] = 0;
                 _amount = _amount - loanAmounts;
             }
         }
@@ -402,9 +410,6 @@ contract LiquidStaking is
             if ((operatorCanLoanAmounts < operatorLoanAmounts + newLoanAmounts)) revert OperatorLoanFailed();
             operatorPoolBalances[targetOperatorId] = 0;
             operatorLoanRecords[targetOperatorId] += newLoanAmounts;
-            if (operatorLoadBlockNumbers[targetOperatorId] != 0) {
-                operatorLoadBlockNumbers[targetOperatorId] = block.number;
-            }
         }
 
         operatorPoolBalancesSum -= _ethOutAmount;
@@ -433,7 +438,7 @@ contract LiquidStaking is
         if (!nodeOperatorRegistryContract.isConformBasicPledge(_operatorId)) revert InsufficientMargin();
 
         bytes memory userWithdrawalCredentials =
-            bytes.concat(hex"010000000000000000000000", abi.encodePacked(withdrawalCredentialsAddress));
+            abi.encodePacked(hex"010000000000000000000000", withdrawalCredentialsAddress);
 
         uint256 mintNftsCount = msg.value / DEPOSIT_SIZE;
         for (uint256 i = 0; i < mintNftsCount; ++i) {
@@ -452,34 +457,31 @@ contract LiquidStaking is
      * @param _depositDataRoots validator depositDataRoots
      */
     function registerValidator(
+        uint256 _operatorId,
         bytes[] calldata _pubkeys,
         bytes[] calldata _signatures,
         bytes32[] calldata _depositDataRoots
     ) external nonReentrant whenNotPaused {
-        if (_pubkeys.length != _signatures.length || _pubkeys.length != _depositDataRoots.length) {
-            revert InvalidParameter();
-        }
-        // must be a trusted operator
-        uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
-        if (operatorId == 0) revert RequireOperatorTrusted();
+        if (msg.sender != stakingManager) revert PermissionDenied();
 
-        if ((operatorPoolBalances[operatorId] + operatorNftPoolBalances[operatorId]) / DEPOSIT_SIZE < _pubkeys.length) {
+        if ((operatorPoolBalances[_operatorId] + operatorNftPoolBalances[_operatorId]) / DEPOSIT_SIZE < _pubkeys.length)
+        {
             revert InsufficientFunds();
         }
 
         uint256 userValidatorNumber = 0;
         for (uint256 i = 0; i < _pubkeys.length; ++i) {
-            uint256 count = _stakeAndMint(operatorId, _pubkeys[i], _signatures[i], _depositDataRoots[i]);
+            uint256 count = _stakeAndMint(_operatorId, _pubkeys[i], _signatures[i], _depositDataRoots[i]);
             userValidatorNumber += count;
         }
 
         uint256 stakeAmount = DEPOSIT_SIZE * _pubkeys.length;
         uint256 userStakeAmount = DEPOSIT_SIZE * userValidatorNumber;
         uint256 poolStakeAmount = stakeAmount - userStakeAmount;
-        operatorPoolBalances[operatorId] -= poolStakeAmount;
+        operatorPoolBalances[_operatorId] -= poolStakeAmount;
         operatorPoolBalancesSum -= poolStakeAmount;
         if (userStakeAmount != 0) {
-            operatorNftPoolBalances[operatorId] -= userStakeAmount;
+            operatorNftPoolBalances[_operatorId] -= userStakeAmount;
         }
 
         withdrawOracleContract.addPendingBalances(poolStakeAmount);
@@ -810,20 +812,6 @@ contract LiquidStaking is
     }
 
     /**
-     * @notice Set LiquidStaking contract withdrawalCredentials
-     * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
-     */
-    function setLiquidStakingWithdrawalCredentials(bytes calldata _liquidStakingWithdrawalCredentials)
-        external
-        onlyOwner
-    {
-        emit LiquidStakingWithdrawalCredentialsSet(
-            liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
-        );
-        liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
-    }
-
-    /**
      * @notice set dao address
      * @param _dao new dao address
      */
@@ -848,7 +836,8 @@ contract LiquidStaking is
         address _withdrawOracleContractAddress,
         address _operatorSlashContract,
         address _withdrawalRequestContractAddress,
-        address _vaultManagerContract
+        address _vaultManagerContract,
+        address _stakingManagerContractAddress
     ) external onlyDao {
         if (_daoVaultAddress != address(0)) {
             emit DaoVaultAddressChanged(daoVaultAddress, _daoVaultAddress);
@@ -873,6 +862,11 @@ contract LiquidStaking is
         if (_vaultManagerContract != address(0)) {
             emit VaultManagerContractSet(vaultManagerContractAddress, _vaultManagerContract);
             vaultManagerContractAddress = _vaultManagerContract;
+        }
+
+        if (_stakingManagerContractAddress != address(0)) {
+            emit StakingManagerContractSet(stakingManager, _stakingManagerContractAddress);
+            stakingManager = _stakingManagerContractAddress;
         }
     }
 

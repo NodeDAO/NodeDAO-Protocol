@@ -123,6 +123,17 @@ interface ILiquidStaking {
      */
     function getExchangeRate() external view returns (uint256);
 
+    function registerValidator(
+        uint256 _operatorId,
+        bytes[] calldata _pubkeys,
+        bytes[] calldata _signatures,
+        bytes32[] calldata _depositDataRoots
+    ) external;
+
+    function operatorNftPoolBalances(uint256) external view returns (uint256);
+
+    function operatorPoolBalances(uint256) external view returns (uint256);
+
     event OperatorAssigned(uint256 indexed _blacklistOperatorId, uint256 _operatorId, uint256 _totalAmount);
     event EthStake(uint256 indexed _operatorId, address indexed _from, uint256 _amount, uint256 _amountOut);
     event EthUnstake(
@@ -153,4 +164,5 @@ interface ILiquidStaking {
     event OperatorCanLoanAmountsSet(uint256 operatorCanLoanAmounts, uint256 _newCanloadAmounts);
     event WithdrawalRequestContractSet(address _withdrawalRequestContract, address _withdrawalRequestContractAddress);
     event OperatorSlashContractSet(address oldOperatorSlashContract, address _operatorSlashContract);
+    event StakingManagerContractSet(address oldStakingManagerContract, address _stakingManagerContract);
 }
