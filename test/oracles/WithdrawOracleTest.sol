@@ -21,6 +21,7 @@ import "src/largeStaking/LargeStaking.sol";
 import "src/largeStaking/ELReward.sol";
 import "src/largeStaking/ELRewardFactory.sol";
 import "src/utils/Array.sol";
+import "src/StakingManager.sol";
 
 // forge test --match-path  test/oracles/WithdrawOracleTest.sol
 contract WithdrawOracleTest is Test, MockMultiOracleProvider {
@@ -51,6 +52,8 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
     LargeStaking largeStaking;
     ELReward elReward;
     ELRewardFactory elRewardFactor;
+
+    StakingManager stakingManager;
 
     address _dao = DAO;
     address _daoValutAddress = address(2);
@@ -149,6 +152,11 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
             address(operatorSlash),
             address(withdrawOracle)
         );
+
+        stakingManager = new StakingManager();
+        stakingManager.initialize(_dao, address(operatorRegistry), address(liquidStaking), address(0));
+
+        liquidStaking.initializeV3(address(stakingManager));
 
         vaultManager.initialize(
             _dao,
@@ -554,10 +562,6 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         // set block number to 10000
         vm.roll(10000);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"0100000000000000000000003357c09eCf74C281B6f9CCfAf4D894979349AC4B")
-        );
-
         // stake for 4 validator
         vm.deal(USER_1, 200 ether);
         vm.startPrank(USER_1);
@@ -568,8 +572,8 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         (bytes[] memory pubkeys, bytes[] memory signatures, bytes32[] memory depositDataRoots) =
             mockRegisterValidator_3NFT_1NETH();
 
-        vm.prank(address(_controllerAddress));
-        liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+        vm.prank(address(stakingManager));
+        liquidStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
 
         // set block number to 15000
         vm.roll(15000);
@@ -642,10 +646,8 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
 
         vm.stopPrank();
 
-        vm.prank(address(_controllerAddress));
-        liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
-        vm.prank(address(_controllerAddress2));
-        liquidStaking.registerValidator(pubkeys2, signatures2, depositDataRoots2);
+        vm.prank(address(stakingManager));
+        liquidStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
 
         vm.startPrank(USER_1);
         uint256[] memory tokenIds = vnft.activeNftsOfUser();
@@ -833,7 +835,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         for (uint256 i = 2; i < 102; ++i) {
             address controller = address(uint160(i));
 
-            operatorRegistry.registerOperator{value: 1.1 ether}(
+            uint256 opId = operatorRegistry.registerOperator{value: 1.1 ether}(
                 "batch100", controller, address(4), _rewardAddresses, _ratios
             );
             vm.prank(_dao);
@@ -855,8 +857,8 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
             vm.prank(USER_1);
             liquidStaking.stakeNFT{value: 32 ether}(i, USER_1);
 
-            vm.prank(controller);
-            liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+            vm.prank(address(stakingManager));
+            liquidStaking.registerValidator(opId, pubkeys, signatures, depositDataRoots);
         }
     }
 
@@ -871,7 +873,7 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         for (uint256 i = 2; i < 52; ++i) {
             address controller = address(uint160(i));
 
-            operatorRegistry.registerOperator{value: 1.1 ether}(
+            uint256 opId = operatorRegistry.registerOperator{value: 1.1 ether}(
                 "batch50", controller, address(4), _rewardAddresses, _ratios
             );
             vm.prank(_dao);
@@ -898,8 +900,8 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
             vm.prank(USER_1);
             liquidStaking.stakeNFT{value: 64 ether}(i, USER_1);
 
-            vm.prank(controller);
-            liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+            vm.prank(address(stakingManager));
+            liquidStaking.registerValidator(opId, pubkeys, signatures, depositDataRoots);
         }
     }
 
@@ -938,8 +940,8 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
 
             uint160 t = uint160(i % 5 + 2);
             address controller = address(t);
-            vm.prank(controller);
-            liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+            vm.prank(address(stakingManager));
+            liquidStaking.registerValidator(i % 5 + 2, pubkeys, signatures, depositDataRoots);
         }
     }
 
@@ -1111,9 +1113,6 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"0100000000000000000000006ae2f56c057e31a18224dbc6ae32b0a5fbedfcb0")
-        );
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
         bytes memory sign = bytes(
@@ -1127,8 +1126,8 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         assertEq(0 ether, withdrawOracle.getPendingBalances());
 
         assertEq(vnft.validatorExists(pubkey), false);
-        vm.prank(address(_controllerAddress));
-        liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
+        vm.prank(address(stakingManager));
+        liquidStaking.registerValidator(1, pubkeys, signatures, depositDataRoots);
 
         assertEq(0 ether, liquidStaking.operatorPoolBalances(1));
         assertEq(liquidStaking.getEthOut(1 ether), 1 ether);
