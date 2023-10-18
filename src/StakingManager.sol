@@ -33,6 +33,7 @@ contract StakingManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, R
     event SSVStakingQuotaSet(uint256 _oldQuota, uint256 _newQuota);
     event ValidatorRegistered(uint256 operatorId, bytes[] _pubkeys);
     event SSVValidatorRegistered(uint256 operatorId, bytes _pubkey);
+    event DaoAddressChanged(address _oldDao, address _dao);
 
     modifier onlyDao() {
         if (msg.sender != dao) revert PermissionDenied();
@@ -117,5 +118,12 @@ contract StakingManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, R
         ssvStakingQuota[operatorId] -= DEPOSIT_SIZE;
 
         emit SSVValidatorRegistered(operatorId, _pubkeys[0]);
+    }
+
+    /// @notice set dao address
+    function setDaoAddress(address _dao) external onlyOwner {
+        if (_dao == address(0)) revert InvalidParameter();
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
     }
 }

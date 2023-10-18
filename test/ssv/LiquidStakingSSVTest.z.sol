@@ -3893,7 +3893,7 @@ contract LiquidStakingSSVTest is Test, MockMultiOracleProvider {
         ssvToken.transfer(ssvCluster, 100000000000000000000);
 
         vm.prank(address(_controllerAddress));
-        ssvManager.approve(address(ssvNetwork), 9000000000000000000);
+        ssvManager.approve(1, 9000000000000000000);
 
         vm.deal(address(21), 32 ether);
         vm.prank(address(21));
@@ -3998,7 +3998,7 @@ contract LiquidStakingSSVTest is Test, MockMultiOracleProvider {
         ssvToken.transfer(ssvCluster, 100000000000000000000);
 
         vm.prank(address(_controllerAddress));
-        ssvManager.approve(address(ssvNetwork), 9000000000000000000);
+        ssvManager.approve(1, 9000000000000000000);
 
         vm.deal(address(21), 64 ether);
         vm.prank(address(21));

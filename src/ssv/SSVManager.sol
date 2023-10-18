@@ -23,15 +23,29 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     mapping(uint64 => bool) public ssvOperatorWhitelist;
 
     address public stakingManager;
+    bool public permissionless;
 
-    event SSVClusterProxyDeployed(address _proxyAddress);
+    event SSVClusterProxyDeployed(uint256 _nodeDaoOperatorId, address _ssvClusterProxyAddress);
     event SSVOperatorSet(uint64[] _operatorIds, bool _status);
+    event DaoAddressChanged(address _oldDao, address _dao);
+    event SSVValidatorRegistered(
+        uint256 _nodeDaoOperatorId, bytes _publicKey, uint64[] _ssvOperatorIds, uint256 _amount
+    );
+    event SSVValidatorRemoved(uint256 _nodeDaoOperatorId, bytes _publicKey, uint64[] _ssvOperatorIds);
+    event ClusterReactivated(uint256 _nodeDaoOperatorId, uint64[] _ssvOperatorIds, uint256 amount);
+    event ClusterDeposited(uint256 _nodeDaoOperatorId, address _ssvCluster, uint64[] _ssvOperatorIds, uint256 _amount);
+    event ClusterWithdrawn(uint256 _nodeDaoOperatorId, uint64[] _ssvOperatorIds, uint256 _tokenAmount);
+    event FeeRecipientAddressUpdated(uint256 _nodeDaoOperatorId, address _vaultContractAddress);
+    event TransferSSV(uint256 _nodeDaoOperatorId, address _to, uint256 _amount);
+    event ApproveSSV(uint256 _nodeDaoOperatorId, address _ssvNetwork, uint256 _amount);
+    event SSVOperatorPermissionless(uint256 _blockNumber, bool _permissionless, bool _status);
 
     error InvalidAddr();
     error PermissionDenied();
     error RequireOperatorTrusted();
     error RequireSSVOperatorTrusted();
     error SSVClusterNotDeployed();
+    error InvalidParameter();
 
     modifier onlyDao() {
         if (msg.sender != dao) revert PermissionDenied();
@@ -83,81 +97,108 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     /// @notice Registers a new validator on the SSV Network
     function registerValidator(
-        uint256 _operatorId,
-        bytes calldata publicKey,
-        uint64[] memory operatorIds,
-        bytes calldata sharesData,
-        uint256 amount,
-        ISSV.Cluster memory cluster
+        uint256 _nodeDaoOperatorId,
+        bytes calldata _publicKey,
+        uint64[] memory _ssvOperatorIds,
+        bytes calldata _sharesData,
+        uint256 _amount,
+        ISSV.Cluster memory _cluster
     ) external {
         if (msg.sender != stakingManager) revert PermissionDenied();
 
-        // check ssv operators
-        for (uint256 i = 0; i < operatorIds.length;) {
-            if (!ssvOperatorWhitelist[operatorIds[i]]) {
-                revert RequireSSVOperatorTrusted();
-            }
-            unchecked {
-                ++i;
+        if (!permissionless) {
+            // check ssv operators
+            for (uint256 i = 0; i < _ssvOperatorIds.length;) {
+                if (!ssvOperatorWhitelist[_ssvOperatorIds[i]]) {
+                    revert RequireSSVOperatorTrusted();
+                }
+                unchecked {
+                    ++i;
+                }
             }
         }
 
-        address ssvCluster = getSSVCluster(_operatorId);
-        ISSV(ssvCluster).registerValidator(publicKey, operatorIds, sharesData, amount, cluster);
+        address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
+        ISSV(ssvCluster).registerValidator(_publicKey, _ssvOperatorIds, _sharesData, _amount, _cluster);
+        emit SSVValidatorRegistered(_nodeDaoOperatorId, _publicKey, _ssvOperatorIds, _amount);
     }
 
     /// @notice Removes an existing validator from the SSV Network
-    function removeValidator(bytes calldata publicKey, uint64[] memory operatorIds, ISSV.Cluster memory cluster)
-        external
-    {
-        uint256 _operatorId = getOperatorId();
-        address ssvCluster = getSSVCluster(_operatorId);
-        ISSV(ssvCluster).removeValidator(publicKey, operatorIds, cluster);
+    function removeValidator(
+        uint256 _nodeDaoOperatorId,
+        bytes calldata _publicKey,
+        uint64[] memory _ssvOperatorIds,
+        ISSV.Cluster memory _cluster
+    ) external {
+        _checkOperatorPermissions(_nodeDaoOperatorId, false);
+        address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
+        ISSV(ssvCluster).removeValidator(_publicKey, _ssvOperatorIds, _cluster);
+        emit SSVValidatorRemoved(_nodeDaoOperatorId, _publicKey, _ssvOperatorIds);
     }
 
     /// @notice Reactivates a cluster
-    function reactivate(uint64[] memory operatorIds, uint256 amount, ISSV.Cluster memory cluster) external {
-        uint256 _operatorId = getOperatorId();
-        address ssvCluster = getSSVCluster(_operatorId);
-        ISSV(ssvCluster).reactivate(operatorIds, amount, cluster);
+    function reactivate(
+        uint256 _nodeDaoOperatorId,
+        uint64[] memory _ssvOperatorIds,
+        uint256 _amount,
+        ISSV.Cluster memory _cluster
+    ) external {
+        _checkOperatorPermissions(_nodeDaoOperatorId, false);
+        address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
+        ISSV(ssvCluster).reactivate(_ssvOperatorIds, _amount, _cluster);
+        emit ClusterReactivated(_nodeDaoOperatorId, _ssvOperatorIds, _amount);
     }
 
     /// @notice Deposits tokens into a cluster
-    function deposit(address owner, uint64[] memory operatorIds, uint256 amount, ISSV.Cluster memory cluster)
-        external
-    {
-        uint256 _operatorId = getOperatorId();
-        address ssvCluster = getSSVCluster(_operatorId);
-        ISSV(ssvCluster).deposit(owner, operatorIds, amount, cluster);
+    function deposit(
+        uint256 _nodeDaoOperatorId,
+        uint64[] memory _ssvOperatorIds,
+        uint256 _amount,
+        ISSV.Cluster memory _cluster
+    ) external {
+        _checkOperatorPermissions(_nodeDaoOperatorId, false);
+        address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
+        ISSV(ssvCluster).deposit(ssvCluster, _ssvOperatorIds, _amount, _cluster);
+        emit ClusterDeposited(_nodeDaoOperatorId, ssvCluster, _ssvOperatorIds, _amount);
     }
 
     /// @notice Withdraws tokens from a cluster
-    function withdraw(uint64[] memory operatorIds, uint256 tokenAmount, ISSV.Cluster memory cluster) external {
-        uint256 _operatorId = getOperatorId();
-        address ssvCluster = getSSVCluster(_operatorId);
-        ISSV(ssvCluster).withdraw(operatorIds, tokenAmount, cluster);
+    function withdraw(
+        uint256 _nodeDaoOperatorId,
+        uint64[] memory _ssvOperatorIds,
+        uint256 _tokenAmount,
+        ISSV.Cluster memory _cluster
+    ) external {
+        _checkOperatorPermissions(_nodeDaoOperatorId, false);
+        address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
+        ISSV(ssvCluster).withdraw(_ssvOperatorIds, _tokenAmount, _cluster);
+        emit ClusterWithdrawn(_nodeDaoOperatorId, _ssvOperatorIds, _tokenAmount);
     }
 
     /// @notice set ssv validator fee recipient address
-    function setFeeRecipientAddress() external {
-        uint256 _operatorId = getOperatorId();
-        address ssvCluster = getSSVCluster(_operatorId);
-        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
+    function setFeeRecipientAddress(uint256 _nodeDaoOperatorId) external {
+        _checkOperatorPermissions(_nodeDaoOperatorId, false);
+        address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
+        address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_nodeDaoOperatorId);
         ISSV(ssvCluster).setFeeRecipientAddress(vaultContractAddress);
+        emit FeeRecipientAddressUpdated(_nodeDaoOperatorId, vaultContractAddress);
     }
 
     /// @notice transfer ssv token
-    function transfer(address to, uint256 amount) external returns (bool) {
-        uint256 _operatorId = getOperatorId();
-        address ssvCluster = getSSVCluster(_operatorId);
-        return ISSV(ssvCluster).transfer(to, amount);
+    function transfer(uint256 _nodeDaoOperatorId, address _to, uint256 _amount) external returns (bool) {
+        _checkOperatorPermissions(_nodeDaoOperatorId, true);
+        address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
+        emit TransferSSV(_nodeDaoOperatorId, _to, _amount);
+        return ISSV(ssvCluster).transfer(_to, _amount);
     }
 
     /// @notice approve ssv token
-    function approve(address spender, uint256 amount) external returns (bool) {
-        uint256 _operatorId = getOperatorId();
-        address ssvCluster = getSSVCluster(_operatorId);
-        return ISSV(ssvCluster).approve(spender, amount);
+    function approve(uint256 _nodeDaoOperatorId, uint256 _amount) external returns (bool) {
+        _checkOperatorPermissions(_nodeDaoOperatorId, false);
+        address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
+        address _ssvNetwork = ssvNetwork;
+        emit ApproveSSV(_nodeDaoOperatorId, _ssvNetwork, _amount);
+        return ISSV(ssvCluster).approve(_ssvNetwork, _amount);
     }
 
     function getSSVCluster(uint256 _operatorId) public view returns (address) {
@@ -178,7 +219,7 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
                 new BeaconProxy(beacon, abi.encodeWithSelector(SSVCluster.initialize.selector, address(this), ssvNetwork, ssvToken))
             );
 
-            emit SSVClusterProxyDeployed(ssvClusterProxy);
+            emit SSVClusterProxyDeployed(_operatorId, ssvClusterProxy);
             ssvClusters[_operatorId] = ssvClusterProxy;
 
             address vaultContractAddress = nodeOperatorRegistryContract.getNodeOperatorVaultContract(_operatorId);
@@ -186,9 +227,26 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
-    function getOperatorId() internal view returns (uint256) {
-        uint256 operatorId = nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender);
-        if (operatorId == 0) revert RequireOperatorTrusted();
-        return operatorId;
+    function _checkOperatorPermissions(uint256 _operatorId, bool _mustOperatorOwner) internal view {
+        (,, address owner, address controllerAddress,) =
+            nodeOperatorRegistryContract.getNodeOperator(_operatorId, false);
+        if (_mustOperatorOwner && owner != msg.sender) {
+            revert PermissionDenied();
+        }
+
+        if (msg.sender != owner && msg.sender != controllerAddress) {
+            revert PermissionDenied();
+        }
+    }
+
+    function setDaoAddress(address _dao) external onlyOwner {
+        if (_dao == address(0)) revert InvalidParameter();
+        emit DaoAddressChanged(dao, _dao);
+        dao = _dao;
+    }
+
+    function setSSVOperatorPermissionless(bool _status) external onlyDao {
+        emit SSVOperatorPermissionless(block.number, permissionless, _status);
+        permissionless = _status;
     }
 }
