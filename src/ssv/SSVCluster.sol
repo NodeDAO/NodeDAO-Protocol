@@ -8,24 +8,24 @@ import "src/interfaces/ISSV.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 contract SSVCluster is ReentrancyGuard, Initializable {
-    address public ssvRouter;
+    address public ssvManager;
     ISSV public ssvNetwork;
     IERC20 public ssvToken;
 
     error PermissionDenied();
 
     modifier onlySSVManager() {
-        if (msg.sender != ssvRouter) revert PermissionDenied();
+        if (msg.sender != ssvManager) revert PermissionDenied();
         _;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {}
 
-    function initialize(address _ssvRouter, address _ssvNetwork, address _ssvToken) public initializer {
+    function initialize(address _ssvManager, address _ssvNetwork, address _ssvToken) public initializer {
         ssvNetwork = ISSV(_ssvNetwork);
         ssvToken = IERC20(_ssvToken);
-        ssvRouter = _ssvRouter;
+        ssvManager = _ssvManager;
     }
 
     /// @notice Registers a new validator on the SSV Network
