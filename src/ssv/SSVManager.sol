@@ -212,6 +212,7 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     }
 
     function startupSSV(uint256 _operatorId) public {
+        _checkOperatorPermissions(_operatorId, true);
         address ssvClusterProxy;
         ssvClusterProxy = ssvClusters[_operatorId];
         if (ssvClusterProxy == address(0)) {
