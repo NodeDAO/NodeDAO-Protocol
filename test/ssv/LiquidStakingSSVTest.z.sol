@@ -3993,6 +3993,7 @@ contract LiquidStakingSSVTest is Test, MockMultiOracleProvider {
 
         assertEq(vnft.validatorsOfOperator(1).length, 1);
 
+        vm.prank(address(_owner));
         ssvManager.startupSSV(1);
         address ssvCluster = ssvManager.getSSVCluster(1);
         ssvToken.transfer(ssvCluster, 100000000000000000000);
@@ -4035,5 +4036,73 @@ contract LiquidStakingSSVTest is Test, MockMultiOracleProvider {
         assertEq(vnft.validatorExists(pubkey), false);
         vm.prank(address(_controllerAddress));
         stakingManager.registerValidator(pubkeys, signatures, depositDataRoots);
+    }
+
+    function testFailTransfer() public {
+        vm.prank(address(_owner));
+        ssvManager.startupSSV(1);
+        address ssvCluster = ssvManager.getSSVCluster(1);
+        ssvToken.transfer(ssvCluster, 100000000000000000000);
+
+        vm.prank(address(_controllerAddress));
+        ssvManager.approve(1, 9000000000000000000);
+
+        vm.prank(address(_controllerAddress));
+        ssvManager.transfer(1, address(1), 10000000000000000000);
+    }
+
+    function testTransfer() public {
+        vm.prank(address(_owner));
+        ssvManager.startupSSV(1);
+        address ssvCluster = ssvManager.getSSVCluster(1);
+        ssvToken.transfer(ssvCluster, 100000000000000000000);
+
+        vm.prank(address(_controllerAddress));
+        ssvManager.approve(1, 9000000000000000000);
+
+        vm.prank(address(_owner));
+        ssvManager.transfer(1, address(1), 10000000000000000000);
+    }
+
+    function testSetSSVOperator() public {
+        uint64[] memory _ssvOps = new uint64[] (6);
+        _ssvOps[0] = 1;
+        _ssvOps[1] = 2;
+        _ssvOps[2] = 3;
+        _ssvOps[3] = 4;
+        _ssvOps[4] = 5;
+        _ssvOps[5] = 6;
+        vm.prank(address(_dao));
+        ssvManager.setSSVOperator(_ssvOps, true);
+        assertEq(ssvManager.ssvOperatorWhitelist(1), true);
+        assertEq(ssvManager.ssvOperatorWhitelist(2), true);
+        assertEq(ssvManager.ssvOperatorWhitelist(3), true);
+        assertEq(ssvManager.ssvOperatorWhitelist(4), true);
+        assertEq(ssvManager.ssvOperatorWhitelist(5), true);
+        assertEq(ssvManager.ssvOperatorWhitelist(6), true);
+
+        vm.prank(address(_dao));
+        ssvManager.setSSVOperator(_ssvOps, false);
+        assertEq(ssvManager.ssvOperatorWhitelist(1), false);
+        assertEq(ssvManager.ssvOperatorWhitelist(2), false);
+        assertEq(ssvManager.ssvOperatorWhitelist(3), false);
+        assertEq(ssvManager.ssvOperatorWhitelist(4), false);
+        assertEq(ssvManager.ssvOperatorWhitelist(5), false);
+        assertEq(ssvManager.ssvOperatorWhitelist(6), false);
+    }
+
+    function testSetDaoAddress() public {
+        ssvManager.setDaoAddress(address(1));
+        assertEq(ssvManager.dao(), address(1));
+    }
+
+    function testSetSSVOperatorPermissionless() public {
+        vm.prank(address(_dao));
+        ssvManager.setSSVOperatorPermissionless(true);
+        assertEq(ssvManager.permissionless(), true);
+
+        vm.prank(address(_dao));
+        ssvManager.setSSVOperatorPermissionless(false);
+        assertEq(ssvManager.permissionless(), false);
     }
 }
