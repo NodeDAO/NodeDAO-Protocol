@@ -330,7 +330,8 @@ contract LiquidStakingSSVTest is Test, MockMultiOracleProvider {
             address(ssvNetwork),
             address(ssvToken),
             address(operatorRegistry),
-            address(stakingManager)
+            address(stakingManager),
+            address(vnft)
         );
 
         liquidStaking.initializeV3(address(stakingManager));

@@ -123,6 +123,8 @@ interface IVNFT is IERC721AUpgradeable {
      */
     function getNftExitBlockNumbers(uint256[] memory _tokenIds) external view returns (uint256[] memory);
 
+    function isExitedLiquidStakingValidator(bytes calldata _pubkey, uint256 _tokenId) external view returns (bool);
+
     /**
      * @notice set nft gas height
      * @param _tokenId - tokenId

@@ -297,12 +297,16 @@ contract VNFT is
         }
     }
 
+    function isExitedLiquidStakingValidator(bytes calldata _pubkey, uint256 _tokenId) external view returns (bool) {
+        if (keccak256(validators[_tokenId].pubkey) != keccak256(_pubkey)) revert InvalidPubkey();
+        return userNftExitBlockNumbers[_tokenId] != 0;
+    }
+
     /**
      * @notice Finds the tokenId of a validator
      * @dev Returns MAX_SUPPLY if not found
      * @param _pubkey - A 48 bytes representing the validator's public key
      */
-
     function tokenOfValidator(bytes calldata _pubkey) external view returns (uint256) {
         if (_pubkey.length == 0) revert InvalidPubkey();
         for (uint256 i = 0; i < validators.length; ++i) {

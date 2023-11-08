@@ -10,6 +10,7 @@ import "openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
 import "src/ssv/SSVCluster.sol";
 import "src/interfaces/ISSV.sol";
 import "src/interfaces/INodeOperatorsRegistry.sol";
+import "src/interfaces/IVNFT.sol";
 
 contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address public dao;
@@ -24,6 +25,8 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
 
     address public stakingManager;
     bool public permissionless;
+
+    IVNFT public vNFTContract;
 
     event SSVClusterProxyDeployed(uint256 _nodeDaoOperatorId, address _ssvClusterProxyAddress);
     event SSVOperatorSet(uint64[] _operatorIds, bool _status);
@@ -46,6 +49,7 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     error RequireSSVOperatorTrusted();
     error SSVClusterNotDeployed();
     error InvalidParameter();
+    error ValidatorMustExited();
 
     modifier onlyDao() {
         if (msg.sender != dao) revert PermissionDenied();
@@ -58,14 +62,15 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         address _ssvNetwork,
         address _ssvToken,
         address _nodeOperatorRegistryContract,
-        address _stakingManager
+        address _stakingManager,
+        address _vnftContract
     ) public initializer {
         __Ownable_init();
         __UUPSUpgradeable_init();
 
         if (
             _ssvClusterImplementationAddress == address(0) || _dao == address(0) || _ssvNetwork == address(0)
-                || _ssvToken == address(0) || _nodeOperatorRegistryContract == address(0)
+                || _ssvToken == address(0) || _nodeOperatorRegistryContract == address(0) || _vnftContract == address(0)
         ) {
             revert InvalidAddr();
         }
@@ -81,6 +86,7 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
         ssvToken = _ssvToken;
         nodeOperatorRegistryContract = INodeOperatorsRegistry(_nodeOperatorRegistryContract);
         stakingManager = _stakingManager;
+        vNFTContract = IVNFT(_vnftContract);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -126,10 +132,12 @@ contract SSVManager is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     /// @notice Removes an existing validator from the SSV Network
     function removeValidator(
         uint256 _nodeDaoOperatorId,
+        uint256 _tokenId,
         bytes calldata _publicKey,
         uint64[] memory _ssvOperatorIds,
         ISSV.Cluster memory _cluster
     ) external {
+        if (!vNFTContract.isExitedLiquidStakingValidator(_publicKey, _tokenId)) revert ValidatorMustExited();
         _checkOperatorPermissions(_nodeDaoOperatorId, false);
         address ssvCluster = getSSVCluster(_nodeDaoOperatorId);
         ISSV(ssvCluster).removeValidator(_publicKey, _ssvOperatorIds, _cluster);
