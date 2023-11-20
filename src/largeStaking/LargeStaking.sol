@@ -198,7 +198,7 @@ contract LargeStaking is
         totalLargeStakeAmounts[_operatorId] += msg.value;
         emit LargeStake(
             _operatorId, curStakingId, msg.value, msg.sender, _elRewardAddr, _withdrawCredentials, _isELRewardSharing
-        );
+            );
     }
 
     /**
@@ -311,7 +311,7 @@ contract LargeStaking is
 
         emit MigretaStake(
             operatorId, curStakingId, stakeAmounts, _owner, _elRewardAddr, _withdrawCredentials, _isELRewardSharing
-        );
+            );
     }
 
     /**

@@ -14,6 +14,19 @@ pragma solidity 0.8.8;
  */
 interface ILiquidStaking {
     /**
+     * @notice stake eth to designated operator, stake ETH to get nETH
+     * @param _operatorId operator id
+     */
+    function stakeETH(uint256 _operatorId) external payable returns (uint256);
+
+    /**
+     * @notice unstake neth to designated operator
+     * @param _operatorId operator id
+     * @param _amounts untake neth amount
+     */
+    function unstakeETH(uint256 _operatorId, uint256 _amounts) external returns (uint256);
+
+    /**
      * @notice Receive Rewards
      * @param _rewards rewards amount
      */

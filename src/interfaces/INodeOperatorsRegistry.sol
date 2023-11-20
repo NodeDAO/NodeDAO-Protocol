@@ -98,17 +98,10 @@ interface INodeOperatorsRegistry {
 
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
-     * @param _slashType slashType
-     * @param _slashIds tokenId or stakingId
      * @param _operatorIds operator id
      * @param _amounts slash amount
      */
-    function slash(
-        uint256 _slashType,
-        uint256[] memory _slashIds,
-        uint256[] memory _operatorIds,
-        uint256[] memory _amounts
-    ) external;
+    function slash(uint256[] memory _operatorIds, uint256[] memory _amounts) external;
 
     /**
      * @notice deposit pledge fund for operator
@@ -173,4 +166,7 @@ interface INodeOperatorsRegistry {
         uint256 _oldDefaultOperatorCommission, uint256 _defaultOperatorCommission
     );
     event LargeStakingChanged(address _oldLargeStakingContractAddress, address _largeStakingContractAddress);
+    event OperatorPledgeStaked(uint256 _operatorId, uint256 _amount, uint256 _nethAmount);
+    event OperatorPledgeUnstaked(uint256 _operatorId, uint256 _nethAmount, uint256 _ethAmount);
+    event OperatorTriggerSlash(uint256 _operatorId, uint256 _amount);
 }

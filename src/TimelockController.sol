@@ -133,7 +133,7 @@ contract TimelockController is AccessControl, IERC721Receiver, IERC1155Receiver 
         public
         view
         virtual
-        override(IERC165, AccessControl)
+        override (IERC165, AccessControl)
         returns (bool)
     {
         return interfaceId == type(IERC1155Receiver).interfaceId || super.supportsInterface(interfaceId);

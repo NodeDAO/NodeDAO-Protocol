@@ -95,6 +95,9 @@ contract NodeOperatorRegistry is
     // v3 storage
     ILargeStaking public largeStakingContract;
 
+    // v4 storage
+    mapping(uint256 => uint256) public operatorNethBlances;
+
     error PermissionDenied();
     error InvalidAddr();
     error InvalidParameter();
@@ -522,62 +525,17 @@ contract NodeOperatorRegistry is
     function deposit(uint256 _operatorId) external payable nonReentrant {
         if (operators[_operatorId].isQuit) revert OperatorHasExited();
 
-        uint256 amountOwed = operatorSlashAmountOwed[_operatorId];
-        if (amountOwed > 0) {
-            if (amountOwed > msg.value) {
-                operatorSlashContract.slashArrearsReceive{value: msg.value}(_operatorId, msg.value);
-                operatorSlashAmountOwed[_operatorId] -= msg.value;
-                emit OperatorArrearsReduce(_operatorId, msg.value);
-            } else {
-                operatorSlashContract.slashArrearsReceive{value: amountOwed}(_operatorId, amountOwed);
-                operatorSlashAmountOwed[_operatorId] = 0;
-                operatorPledgeVaultBalances[_operatorId] += msg.value - amountOwed;
-                emit OperatorArrearsReduce(_operatorId, amountOwed);
-            }
-        } else {
-            operatorPledgeVaultBalances[_operatorId] += msg.value;
-        }
+        operatorPledgeVaultBalances[_operatorId] += msg.value;
 
         emit PledgeDeposited(msg.value, _operatorId);
     }
 
-    function _slash(uint256 _operatorId, uint256 _amount) internal operatorExists(_operatorId) returns (uint256) {
-        uint256 pledgeAmounts = operatorPledgeVaultBalances[_operatorId];
-        if (pledgeAmounts == 0) {
-            emit OperatorArrearsIncrease(_operatorId, _amount);
-            operatorSlashAmountOwed[_operatorId] += _amount;
-            return 0;
-        }
-
-        if (pledgeAmounts >= _amount) {
-            operatorPledgeVaultBalances[_operatorId] -= _amount;
-            emit Slashed(_operatorId, _amount);
-            return _amount;
-        } else {
-            uint256 slashAmountAdded = _amount - pledgeAmounts;
-            operatorSlashAmountOwed[_operatorId] += slashAmountAdded;
-            emit OperatorArrearsIncrease(_operatorId, slashAmountAdded);
-            operatorPledgeVaultBalances[_operatorId] = 0;
-            emit Slashed(_operatorId, pledgeAmounts);
-            return pledgeAmounts;
-        }
-    }
-
     /**
      * @notice When a validator run by an operator goes seriously offline, it will be slashed
-     * @param _slashType slashType
-     * @param _slashIds tokenId or stakingId
      * @param _operatorIds operator id
      * @param _amounts slash amount
      */
-    function slash(
-        uint256 _slashType,
-        uint256[] memory _slashIds,
-        uint256[] memory _operatorIds,
-        uint256[] memory _amounts
-    ) external nonReentrant onlyOperatorSlash {
-        uint256 totalSlashAmounts = 0;
-        uint256[] memory slashAmounts = new uint256[] (_operatorIds.length);
+    function slash(uint256[] memory _operatorIds, uint256[] memory _amounts) external nonReentrant onlyOperatorSlash {
         for (uint256 i = 0; i < _operatorIds.length; ++i) {
             uint256 amount = _amounts[i];
             if (amount == 0) {
@@ -585,14 +543,47 @@ contract NodeOperatorRegistry is
             }
 
             uint256 operatorId = _operatorIds[i];
-            uint256 slashAmount = _slash(operatorId, amount);
-            slashAmounts[i] = slashAmount;
-            totalSlashAmounts += slashAmount;
+            emit OperatorArrearsIncrease(operatorId, amount);
+            operatorSlashAmountOwed[operatorId] += amount;
         }
+    }
 
-        operatorSlashContract.slashReceive{value: totalSlashAmounts}(
-            _slashType, _slashIds, _operatorIds, slashAmounts, _amounts
-        );
+    function stakePledge(uint256 _operatorId, uint256 _amount) public operatorExists(_operatorId) {
+        NodeOperator memory operator = operators[_operatorId];
+        if (operator.owner != msg.sender) revert PermissionDenied();
+        if (operatorPledgeVaultBalances[_operatorId] < _amount) revert InsufficientAmount();
+
+        uint256 nethAmount = liquidStakingContract.stakeETH{value: _amount}(_operatorId);
+
+        operatorPledgeVaultBalances[_operatorId] -= _amount;
+        operatorNethBlances[_operatorId] += nethAmount;
+
+        emit OperatorPledgeStaked(_operatorId, _amount, nethAmount);
+    }
+
+    function unstakePledge(uint256 _operatorId, uint256 _nethAmount) public operatorExists(_operatorId) {
+        NodeOperator memory operator = operators[_operatorId];
+        if (operator.owner != msg.sender && msg.sender != dao) revert PermissionDenied();
+        if (operatorNethBlances[_operatorId] < _nethAmount) revert InsufficientAmount();
+
+        uint256 ethAmount = liquidStakingContract.unstakeETH(_operatorId, _nethAmount);
+
+        operatorNethBlances[_operatorId] -= _nethAmount;
+        operatorPledgeVaultBalances[_operatorId] += ethAmount;
+
+        emit OperatorPledgeUnstaked(_operatorId, _nethAmount, ethAmount);
+    }
+
+    function triggerSlash(uint256 _operatorId, uint256 _amount) public operatorExists(_operatorId) {
+        NodeOperator memory operator = operators[_operatorId];
+        if (operator.owner != msg.sender && msg.sender != dao) revert PermissionDenied();
+        if (operatorPledgeVaultBalances[_operatorId] < _amount) revert InsufficientAmount();
+
+        operatorSlashContract.slashReceive{value: _amount}(_operatorId, _amount);
+        operatorPledgeVaultBalances[_operatorId] -= _amount;
+        operatorSlashAmountOwed[_operatorId] -= _amount;
+
+        emit OperatorTriggerSlash(_operatorId, _amount);
     }
 
     /**

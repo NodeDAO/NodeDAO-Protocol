@@ -554,10 +554,6 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         // set block number to 10000
         vm.roll(10000);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"0100000000000000000000003357c09eCf74C281B6f9CCfAf4D894979349AC4B")
-        );
-
         // stake for 4 validator
         vm.deal(USER_1, 200 ether);
         vm.startPrank(USER_1);
@@ -1111,9 +1107,6 @@ contract WithdrawOracleTest is Test, MockMultiOracleProvider {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"0100000000000000000000006ae2f56c057e31a18224dbc6ae32b0a5fbedfcb0")
-        );
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
         bytes memory sign = bytes(

@@ -285,7 +285,7 @@ contract VaultManager is Initializable, OwnableUpgradeable, UUPSUpgradeable, Ree
      */
     function claimRewardsOfUser(uint256[] memory _tokenIds) external {
         address owner = vNFTContract.ownerOf(_tokenIds[0]);
-        operatorSlashContract.claimCompensated(_tokenIds, owner);
+        operatorSlashContract.claimCompensated(_tokenIds, owner); // todo remove
 
         uint256 operatorId = vNFTContract.operatorOf(_tokenIds[0]);
         uint256[] memory gasHeights = vNFTContract.getUserNftGasHeight(_tokenIds);

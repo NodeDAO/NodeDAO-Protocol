@@ -8,20 +8,11 @@ pragma solidity 0.8.8;
  */
 interface IOperatorSlash {
     /**
-     * @notice Receive slash fund, Because the operator may have insufficient margin, _slashAmounts may be less than or equal to _requireAmounts
-     * @param _slashType slashType
-     * @param _slashIds exit tokenIds
-     * @param _operatorIds operator
-     * @param _slashAmounts slash amount
-     * @param _requireAmounts require slas amount
+     * @notice The receiving function of the penalty, used for the automatic transfer after the operator recharges the margin
+     * @param _operatorId operator Id
+     * @param _amount slash amount
      */
-    function slashReceive(
-        uint256 _slashType,
-        uint256[] memory _slashIds,
-        uint256[] memory _operatorIds,
-        uint256[] memory _slashAmounts,
-        uint256[] memory _requireAmounts
-    ) external payable;
+    function slashReceive(uint256 _operatorId, uint256 _amount) external payable;
 
     function claimCompensated(uint256[] memory _tokenIds, address _owner) external returns (uint256);
 
@@ -37,13 +28,6 @@ interface IOperatorSlash {
         uint256[] memory _operatorIds,
         uint256[] memory _amounts
     ) external;
-
-    /**
-     * @notice The receiving function of the penalty, used for the automatic transfer after the operator recharges the margin
-     * @param _operatorId operator Id
-     * @param _amount slash amount
-     */
-    function slashArrearsReceive(uint256 _operatorId, uint256 _amount) external payable;
 
     event SlashArrearsReceive(uint256 _operatorId, uint256 _amount);
     event SlashArrearsReceiveOfNft(uint256 _operatorId, uint256 _tokenId, uint256 _amount);
@@ -67,5 +51,6 @@ interface IOperatorSlash {
     event LargeStakingChanged(address _oldLargeStakingContractAddress, address _largeStakingContractAddress);
     event DaoAddressChanged(address oldDao, address _dao);
     event CompensatedClaimedOfNft(address _owner, uint256 _tokenId, uint256 _compensated);
+    event CompensatedClaimedOfStakingPool(uint256 _operatorId, uint256 _compensated);
     event CompensatedClaimedOfLargeStaking(address _owner, uint256 _stakingId, uint256 _compensated);
 }

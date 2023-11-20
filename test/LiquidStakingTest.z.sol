@@ -60,9 +60,7 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
     event RewardsReceive(uint256 _rewards);
     event ArrearsReceiveOfSlash(uint256 _operatorId, uint256 _amount);
     event SlashReceive(uint256 _operatorId, uint256 tokenId, uint256 _slashAmount, uint256 _requirAmounts);
-    event LiquidStakingWithdrawalCredentialsSet(
-        bytes _oldLiquidStakingWithdrawalCredentials, bytes _liquidStakingWithdrawalCredentials
-    );
+
     event BeaconOracleContractSet(address _oldBeaconOracleContract, address _beaconOracleContractAddress);
     event NodeOperatorRegistryContractSet(
         address _oldNodeOperatorRegistryContract, address _nodeOperatorRegistryContract
@@ -543,9 +541,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"0100000000000000000000006ae2f56c057e31a18224dbc6ae32b0a5fbedfcb0")
-        );
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
         bytes memory sign = bytes(
@@ -569,9 +564,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(vnft.validatorExists(pubkey), true);
         assertEq(vnft.tokenOfValidator(pubkey), 2); // already 0, 1
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"010000000000000000000000d9e2dc13b0d2f6f73cd21c32fbf7de143c558e29")
-        );
         pubkey =
             bytes(hex"83d3693fb9da8aed60a5c94c51927158d6e3a4d36fa6982ba2c87f83260329baf08f93d000f9261911420a9c0f0eb022");
         sign = bytes(
@@ -613,9 +605,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
-        );
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
         bytes memory sign = bytes(
@@ -911,9 +900,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
-        );
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
         bytes memory sign = bytes(
@@ -939,9 +925,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.roll(200);
 
         // registerValidator 2
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"010000000000000000000000d9e2dc13b0d2f6f73cd21c32fbf7de143c558e29")
-        );
         pubkey =
             bytes(hex"83d3693fb9da8aed60a5c94c51927158d6e3a4d36fa6982ba2c87f83260329baf08f93d000f9261911420a9c0f0eb022");
         sign = bytes(
@@ -1208,9 +1191,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"0100000000000000000000006ae2f56c057e31a18224dbc6ae32b0a5fbedfcb0")
-        );
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
         bytes memory sign = bytes(
@@ -1330,9 +1310,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
-        );
         bytes memory pubkey =
             bytes(hex"92a14b12a4231e94507f969e367f6ee0eaf93a9ba3b82e8ab2598c8e36f3cd932d5a446a528bf3df636ed8bb3d1cfde9");
         bytes memory sign = bytes(
@@ -1407,9 +1384,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.prank(_dao);
         liquidStaking.setOperatorCanLoanAmounts(32 ether);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"010000000000000000000000d9e2dc13b0d2f6f73cd21c32fbf7de143c558e29")
-        );
         pubkey =
             bytes(hex"83d3693fb9da8aed60a5c94c51927158d6e3a4d36fa6982ba2c87f83260329baf08f93d000f9261911420a9c0f0eb022");
         sign = bytes(
@@ -1653,9 +1627,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"01000000000000000000000000dfaae92ed72a05bc61262aa164f38b5626e106")
-        );
         bytes memory pubkey =
             bytes(hex"a369806d61ade95f1f0395473e5c5bd633bde38d6abba3a9b1c2fe2049a27a4008cfd9643a4b8162853e37f41c957c6b");
         bytes memory sign = bytes(
@@ -1670,9 +1641,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         vm.prank(address(_controllerAddress));
         liquidStaking.registerValidator(pubkeys, signatures, depositDataRoots);
 
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"010000000000000000000000d9e2dc13b0d2f6f73cd21c32fbf7de143c558e29")
-        );
         pubkey =
             bytes(hex"804424fd3989527628d71618cc0964f1934a778af35fae602b775f92a326863677f705f9b4fd264dbc66b328d7b09721");
         sign = bytes(
@@ -2049,9 +2017,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         bytes[] memory pubkeys = new bytes[](1);
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"010000000000000000000000b553a401fbc2427777d05ec21dd37a03e1fa6894")
-        );
 
         bytes memory pubkey =
             bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920539a2");
@@ -2135,9 +2100,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         bytes[] memory pubkeys = new bytes[](1);
         bytes[] memory signatures = new bytes[](1);
         bytes32[] memory depositDataRoots = new bytes32[](1);
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"010000000000000000000000b553a401fbc2427777d05ec21dd37a03e1fa6894")
-        );
 
         bytes memory pubkey =
             bytes(hex"b54ee87c9c125925dcab01d3849fd860bf048abc0ace753f717ee1bc12e640d9a32477757e90c3478a7879e6920539a2");
@@ -2257,14 +2219,6 @@ contract LiquidStakingTest is Test, MockMultiOracleProvider {
         assertEq(address(liquidStaking.withdrawalRequestContract()), address(1000));
 
         assertEq(address(liquidStaking.vaultManagerContractAddress()), address(1000));
-
-        liquidStaking.setLiquidStakingWithdrawalCredentials(
-            bytes(hex"010000000000000000000000b553a401fbc2427777d05ec21dd37a03e1fa6894")
-        );
-        assertEq(
-            liquidStaking.liquidStakingWithdrawalCredentials(),
-            bytes(hex"010000000000000000000000b553a401fbc2427777d05ec21dd37a03e1fa6894")
-        );
 
         assertEq(address(liquidStaking.daoVaultAddress()), address(1000));
     }

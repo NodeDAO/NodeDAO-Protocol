@@ -280,7 +280,7 @@ contract LiquidStaking is
      * @notice stake eth to designated operator, stake ETH to get nETH
      * @param _operatorId operator id
      */
-    function stakeETH(uint256 _operatorId) external payable nonReentrant whenNotPaused {
+    function stakeETH(uint256 _operatorId) external payable nonReentrant whenNotPaused returns (uint256) {
         if (msg.value < 1000 gwei) revert InvalidAmount();
 
         // operatorId must be a trusted operator
@@ -311,6 +311,8 @@ contract LiquidStaking is
         _stakeRecords(_operatorId, msg.sender, amountOut);
 
         emit EthStake(_operatorId, msg.sender, msg.value, amountOut);
+
+        return amountOut;
     }
 
     function _updateStakeFundLedger(uint256 _operatorId, uint256 _amount) internal {
@@ -354,10 +356,17 @@ contract LiquidStaking is
      * @param _operatorId operator id
      * @param _amounts untake neth amount
      */
-    function unstakeETH(uint256 _operatorId, uint256 _amounts) public nonReentrant whenNotPaused {
+    function unstakeETH(uint256 _operatorId, uint256 _amounts) external nonReentrant whenNotPaused returns (uint256) {
         uint256 amountOut = _getEthOut(_amounts);
 
-        _unstake(_operatorId, msg.sender, _amounts);
+        if (_operatorId == nodeOperatorRegistryContract.isTrustedOperatorOfControllerAddress(msg.sender)) {
+            uint256 validatosCounts = vNFTContract.getActiveNftCountsOfOperator(_operatorId);
+            if (validatosCounts * 32 ether + operatorPoolBalances[_operatorId] < _amounts) {
+                revert UnstakeEthNoQuota();
+            }
+        } else {
+            _unstake(_operatorId, msg.sender, _amounts);
+        }
 
         uint256 targetOperatorId = _updateUnstakeFundLedger(amountOut, _operatorId);
 
@@ -365,6 +374,7 @@ contract LiquidStaking is
         payable(msg.sender).transfer(amountOut);
 
         emit EthUnstake(_operatorId, targetOperatorId, msg.sender, _amounts, amountOut);
+        return amountOut;
     }
 
     function _unstake(uint256 _operatorId, address _from, uint256 _amount) internal {
@@ -807,20 +817,6 @@ contract LiquidStaking is
      */
     function getExchangeRate() external view returns (uint256) {
         return _getEthOut(1 ether);
-    }
-
-    /**
-     * @notice Set LiquidStaking contract withdrawalCredentials
-     * @param _liquidStakingWithdrawalCredentials new withdrawalCredentials
-     */
-    function setLiquidStakingWithdrawalCredentials(bytes calldata _liquidStakingWithdrawalCredentials)
-        external
-        onlyOwner
-    {
-        emit LiquidStakingWithdrawalCredentialsSet(
-            liquidStakingWithdrawalCredentials, _liquidStakingWithdrawalCredentials
-        );
-        liquidStakingWithdrawalCredentials = _liquidStakingWithdrawalCredentials;
     }
 
     /**
