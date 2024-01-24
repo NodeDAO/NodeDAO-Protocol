@@ -95,6 +95,8 @@ contract NodeOperatorRegistry is
     // v3 storage
     ILargeStaking public largeStakingContract;
 
+    uint256 public globalPledgeAmount;
+
     error PermissionDenied();
     error InvalidAddr();
     error InvalidParameter();
@@ -113,6 +115,8 @@ contract NodeOperatorRegistry is
     error NoPermissionPhase();
     error InvalidRewardRatio();
     error PermissionlessPhaseStart();
+
+    event GlobalPledgeAmountSet(uint256 _oldGlobalPledgeAmount, uint256 _globalPledgeAmount);
 
     modifier onlyOperatorSlash() {
         if (msg.sender != address(operatorSlashContract)) revert PermissionDenied();
@@ -266,6 +270,11 @@ contract NodeOperatorRegistry is
     }
 
     function calcRequirePledgeBalance(uint256 _operatorId) internal view returns (uint256) {
+        uint256 _globalPledgeAmount = globalPledgeAmount;
+        if (_globalPledgeAmount != 0) {
+            return _globalPledgeAmount;
+        }
+
         uint256 operatorNftCounts = vNFTContract.getActiveNftCountsOfOperator(_operatorId)
             + vNFTContract.getEmptyNftCountsOfOperator(_operatorId)
             + largeStakingContract.getOperatorValidatorCounts(_operatorId);
@@ -281,6 +290,11 @@ contract NodeOperatorRegistry is
         }
 
         return requireVault;
+    }
+
+    function setGlobalPledgeAmount(uint256 _globalPledgeAmount) onlyDao external {
+        emit GlobalPledgeAmountSet(globalPledgeAmount, _globalPledgeAmount);
+        globalPledgeAmount = _globalPledgeAmount;
     }
 
     /**
